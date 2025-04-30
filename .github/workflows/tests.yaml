@@ -1,0 +1,79 @@
+name: 🎳 Run Tests
+
+on:
+  push:
+  pull_request:
+    types: [ opened, synchronize ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 🔌 Setup JDK 18
+        uses: actions/setup-java@v3
+        with:
+          java-version: '18'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 🔨 Build
+        run: |
+          ./mvnw --batch-mode --update-snapshots clean package -DskipTests
+
+      - name: 🍀 Generate .env file
+        run: |
+          echo "SPRING_PROFILES_ACTIVE=preprod,h2" >> src/test/resources/.env
+          echo "SERVICE_USER_ADDRESS=${{ secrets.SERVICE_USER_ADDRESS }}" >> src/test/resources/.env
+          
+          echo "TEST_USER_MNEMONIC=${{ secrets.TEST_USER_MNEMONIC }}" >> src/test/resources/.env
+          echo "SERVICE_ACCOUNT_MNEMONIC=${{ secrets.SERVICE_ACCOUNT_MNEMONIC }}" >> src/test/resources/.env
+          echo "FEE_RECEIVER_MNEMONIC=${{ secrets.FEE_RECEIVER_MNEMONIC }}" >> src/test/resources/.env
+          echo "FEE_RECEIVER_PARTNER_ADDRESS=${{ secrets.FEE_RECEIVER_PARTNER_ADDRESS }}" >> src/test/resources/.env
+          echo "FACILITATOR_ACCOUNT_MNEMONIC=${{ secrets.FACILITATOR_ACCOUNT_MNEMONIC }}" >> src/test/resources/.env
+          
+          echo "BLOCKFROST_PROJECT_ID=${{ secrets.BLOCKFROST_PROJECT_ID }}" >> src/test/resources/.env
+          echo "BLOCKFROST_BASE_URL=https://cardano-preprod.blockfrost.io/api/v0/" >> src/test/resources/.env
+          echo "CARDANO_BACKEND_TYPE=custom" >> src/test/resources/.env
+          echo "CARDANO_NETWORK=PREPROD" >> src/test/resources/.env
+
+          echo "CONNECTED_GOODS_EXTENSION_ENABLED=true" >> src/test/resources/.env
+          echo "CONNECTED_GOODS_SERVICE_WALLET_MNEMONIC=${{ secrets.CONNECTED_GOODS_SERVICE_WALLET_MNEMONIC }}" >> src/test/resources/.env
+          echo "CONNECTED_GOODS_SERVICE_WALLET_ADDRESS=${{ secrets.CONNECTED_GOODS_SERVICE_WALLET_ADDRESS }}" >> src/test/resources/.env
+          echo "CONNECTED_GOODS_ENCRYPTION_SALT=${{ secrets.CONNECTED_GOODS_ENCRYPTION_SALT }}" >> src/test/resources/.env
+
+      - name: 🎳 Test
+        run: |
+          ./mvnw clean verify
+
+      - name: 📊️ Publish coverage report to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          BRANCH: gh-pages
+          folder: target/site/jacoco-aggregate
+          target-folder: coverage-report/
+
+      - name: ✅ Generate JaCoCo Badge
+        uses: cicirello/jacoco-badge-generator@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          generate-branches-badge: true
+          jacoco-csv-file: target/site/jacoco-aggregate/jacoco.csv
+          badges-directory: build/reports/jacoco-aggregate/test/html/badges
+
+      - name: 💾 Log coverage percentage
+        run: |
+          echo "coverage = ${{ steps.jacoco.outputs.coverage }}"
+          echo "branch coverage = ${{ steps.jacoco.outputs.branches }}"
+
+      - name: 📤 Publish coverage report to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          branch: gh-pages
+          folder: build/reports/jacoco-aggregate/test/html/badges
+          target-folder: badges/
