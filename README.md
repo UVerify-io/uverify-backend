@@ -25,7 +25,7 @@ To get started, clone the repository and run the following commands:
 
 ```zsh
 mvn clean package
-java -jar target/uverify-backend-0.0.1-SNAPSHOT.jara
+java -jar target/uverify-backend-0.0.1-SNAPSHOT.jar
 ```
 
 ## 💙 Contributing
