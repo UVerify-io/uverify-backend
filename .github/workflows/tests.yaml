@@ -62,8 +62,8 @@ jobs:
         if: github.ref == 'refs/heads/main'
         with:
           generate-branches-badge: true
-          jacoco-csv-file: target/site/jacoco-aggregate/jacoco.csv
-          badges-directory: build/reports/jacoco-aggregate/test/html/badges
+          generate-summary: true
+          badges-directory: build/reports/jacoco/test/html/badges
 
       - name: 💾 Log coverage percentage
         run: |
@@ -75,5 +75,5 @@ jobs:
         if: github.ref == 'refs/heads/main'
         with:
           branch: gh-pages
-          folder: build/reports/jacoco-aggregate/test/html/badges
+          folder: build/reports/jacoco/test/html
           target-folder: badges/
