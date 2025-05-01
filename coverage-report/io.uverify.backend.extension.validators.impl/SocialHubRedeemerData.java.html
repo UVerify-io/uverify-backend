@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SocialHubRedeemerData.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.validators.impl</a> &gt; <span class="el_source">SocialHubRedeemerData.java</span></div><h1>SocialHubRedeemerData.java</h1><pre class="source lang-java linenums">package io.uverify.backend.extension.validators.impl;
+
+import com.bloxbean.cardano.client.plutus.blueprint.model.Data;
+import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
+import io.uverify.backend.extension.validators.SocialHubRedeemer;
+import io.uverify.backend.extension.validators.converter.SocialHubRedeemerConverter;
+import java.lang.Override;
+import java.lang.String;
+
+/**
+ * Auto generated code. DO NOT MODIFY
+ */
+public class SocialHubRedeemerData implements Data&lt;SocialHubRedeemer&gt; {
+<span class="nc" id="L14">  private static SocialHubRedeemerConverter converter = new SocialHubRedeemerConverter();</span>
+
+  private SocialHubRedeemer socialHubRedeemer;
+
+<span class="nc" id="L18">  private SocialHubRedeemerData(SocialHubRedeemer socialHubRedeemer) {</span>
+<span class="nc" id="L19">    this.socialHubRedeemer = socialHubRedeemer;</span>
+<span class="nc" id="L20">  }</span>
+
+  public static SocialHubRedeemerData of(SocialHubRedeemer socialHubRedeemer) {
+<span class="nc" id="L23">    return new SocialHubRedeemerData(socialHubRedeemer);</span>
+  }
+
+  @Override
+  public ConstrPlutusData toPlutusData() {
+<span class="nc" id="L28">    return converter.toPlutusData(socialHubRedeemer);</span>
+  }
+
+  public static SocialHubRedeemer fromPlutusData(ConstrPlutusData data) {
+<span class="nc" id="L32">    return converter.fromPlutusData(data);</span>
+  }
+
+  public static SocialHubRedeemer deserialize(String cborHex) {
+<span class="nc" id="L36">    return converter.deserialize(cborHex);</span>
+  }
+
+  public static SocialHubRedeemer deserialize(byte[] cborBytes) {
+<span class="nc" id="L40">    return converter.deserialize(cborBytes);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

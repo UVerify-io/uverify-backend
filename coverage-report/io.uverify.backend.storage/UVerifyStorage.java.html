@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UVerifyStorage.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.storage</a> &gt; <span class="el_source">UVerifyStorage.java</span></div><h1>UVerifyStorage.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.storage;
+
+import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.utxo.storage.impl.UtxoCache;
+import com.bloxbean.cardano.yaci.store.utxo.storage.impl.UtxoStorageImpl;
+import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.TxInputRepository;
+import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.UtxoRepository;
+import io.uverify.backend.extension.ExtensionManager;
+import io.uverify.backend.service.CardanoBlockchainService;
+import org.jooq.DSLContext;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Component
+@SuppressWarnings(&quot;unused&quot;)
+@Profile(&quot;!disable-indexer&quot;)
+public class UVerifyStorage extends UtxoStorageImpl {
+
+    @Autowired
+    private final CardanoBlockchainService cardanoBlockchainService;
+
+    @Autowired
+    private final ExtensionManager extensionManager;
+
+    public UVerifyStorage(UtxoRepository utxoRepository, TxInputRepository spentOutputRepository, DSLContext dsl, UtxoCache utxoCache, PlatformTransactionManager transactionManager, CardanoBlockchainService cardanoBlockchainService, ExtensionManager extensionManager) {
+<span class="fc" id="L49">        super(utxoRepository, spentOutputRepository, dsl, utxoCache, transactionManager);</span>
+<span class="fc" id="L50">        this.cardanoBlockchainService = cardanoBlockchainService;</span>
+<span class="fc" id="L51">        this.extensionManager = extensionManager;</span>
+<span class="fc" id="L52">    }</span>
+
+    @Override
+    public void saveUnspent(List&lt;AddressUtxo&gt; addressUtxoList) {
+<span class="nc" id="L56">        cardanoBlockchainService.processAddressUtxos(addressUtxoList);</span>
+<span class="nc" id="L57">        extensionManager.processAddressUtxos(addressUtxoList);</span>
+<span class="nc" id="L58">    }</span>
+
+    @Transactional
+    @Override
+    public int deleteUnspentBySlotGreaterThan(Long slot) {
+<span class="nc" id="L63">        cardanoBlockchainService.handleRollbackToSlot(slot);</span>
+<span class="nc" id="L64">        extensionManager.handleRollbackToSlot(slot);</span>
+<span class="nc" id="L65">        return 0;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

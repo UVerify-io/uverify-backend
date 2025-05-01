@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StateDatum.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.model</a> &gt; <span class="el_source">StateDatum.java</span></div><h1>StateDatum.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.model;
+
+import com.bloxbean.cardano.client.exception.CborDeserializationException;
+import com.bloxbean.cardano.client.plutus.spec.*;
+import com.bloxbean.cardano.client.util.HexUtil;
+import io.uverify.backend.enums.CardanoNetwork;
+import io.uverify.backend.util.ValidatorUtils;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigInteger;
+import java.util.List;
+
+import static io.uverify.backend.util.ValidatorUtils.*;
+
+@Getter
+<span class="fc" id="L35">@Setter</span>
+<span class="fc" id="L36">public class StateDatum {</span>
+<span class="fc" id="L37">    private String id;</span>
+<span class="fc" id="L38">    private String owner;</span>
+<span class="fc" id="L39">    private Integer fee;</span>
+<span class="fc" id="L40">    private Integer feeInterval;</span>
+<span class="fc" id="L41">    private List&lt;byte[]&gt; feeReceivers;</span>
+<span class="fc" id="L42">    private Long ttl;</span>
+<span class="fc" id="L43">    private Integer countdown;</span>
+<span class="fc" id="L44">    private List&lt;UVerifyCertificate&gt; uVerifyCertificates;</span>
+
+<span class="fc" id="L46">    private Integer batchSize;</span>
+<span class="fc" id="L47">    private String bootstrapDatumName;</span>
+
+    public static StateDatum fromBootstrapDatum(BootstrapDatum bootstrapDatum, String ownerCredential, List&lt;UVerifyCertificate&gt; uVerifyCertificates) {
+<span class="fc" id="L50">        StateDatum stateDatum = new StateDatum();</span>
+<span class="fc" id="L51">        stateDatum.setOwner(ownerCredential);</span>
+<span class="fc" id="L52">        stateDatum.setFee(bootstrapDatum.getFee());</span>
+<span class="fc" id="L53">        stateDatum.setFeeInterval(bootstrapDatum.getFeeInterval());</span>
+<span class="fc" id="L54">        stateDatum.setFeeReceivers(bootstrapDatum.getFeeReceivers());</span>
+<span class="fc" id="L55">        stateDatum.setTtl(bootstrapDatum.getTtl());</span>
+<span class="fc" id="L56">        stateDatum.setCountdown(bootstrapDatum.getTransactionLimit());</span>
+<span class="fc" id="L57">        stateDatum.setUVerifyCertificates(uVerifyCertificates);</span>
+<span class="fc" id="L58">        stateDatum.setBatchSize(bootstrapDatum.getBatchSize());</span>
+<span class="fc" id="L59">        stateDatum.setBootstrapDatumName(bootstrapDatum.getTokenName());</span>
+<span class="fc" id="L60">        return stateDatum;</span>
+    }
+
+    public static StateDatum fromBootstrapDatum(String inlineDatum, byte[] ownerCredential) {
+<span class="fc" id="L64">        BootstrapDatum bootstrapDatum = BootstrapDatum.fromUtxoDatum(inlineDatum);</span>
+<span class="fc" id="L65">        return fromBootstrapDatum(bootstrapDatum, HexUtil.encodeHexString(ownerCredential), null);</span>
+    }
+
+    public static StateDatum fromUtxoDatum(String inlineDatum) {
+<span class="fc" id="L69">        StateDatum stateDatum = new StateDatum();</span>
+        try {
+<span class="fc" id="L71">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
+<span class="fc" id="L72">            stateDatum.setId(extractByteArrayFromPlutusData(datum.get(0)));</span>
+<span class="fc" id="L73">            stateDatum.setOwner(extractByteArrayFromPlutusData(datum.get(1)));</span>
+<span class="fc" id="L74">            stateDatum.setFee(extractIntegerFromPlutusData(datum.get(4)));</span>
+<span class="fc" id="L75">            stateDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(5)));</span>
+<span class="fc" id="L76">            stateDatum.setFeeReceivers(extractListFromPlutusData(datum.get(6)));</span>
+<span class="fc" id="L77">            stateDatum.setTtl(extractLongFromPlutusData(datum.get(7)));</span>
+<span class="fc" id="L78">            stateDatum.setCountdown(extractIntegerFromPlutusData(datum.get(8)));</span>
+<span class="fc" id="L79">            stateDatum.setUVerifyCertificates(UVerifyCertificate.listFromPlutusData(datum.get(9)));</span>
+<span class="fc" id="L80">            stateDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(10)));</span>
+<span class="fc" id="L81">            stateDatum.setBootstrapDatumName(extractStringFromPlutusData(datum.get(11)));</span>
+<span class="nc" id="L82">        } catch (CborDeserializationException e) {</span>
+<span class="nc" id="L83">            throw new RuntimeException(e);</span>
+<span class="fc" id="L84">        }</span>
+<span class="fc" id="L85">        return stateDatum;</span>
+    }
+
+    public static StateDatum fromPreviousStateDatum(StateDatum previousStateDatum) {
+<span class="fc" id="L89">        StateDatum stateDatum = new StateDatum();</span>
+<span class="fc" id="L90">        stateDatum.setId(previousStateDatum.getId());</span>
+<span class="fc" id="L91">        stateDatum.setOwner(previousStateDatum.getOwner());</span>
+<span class="fc" id="L92">        stateDatum.setFee(previousStateDatum.getFee());</span>
+<span class="fc" id="L93">        stateDatum.setFeeInterval(previousStateDatum.getFeeInterval());</span>
+<span class="fc" id="L94">        stateDatum.setFeeReceivers(previousStateDatum.getFeeReceivers());</span>
+<span class="fc" id="L95">        stateDatum.setTtl(previousStateDatum.getTtl());</span>
+<span class="fc" id="L96">        stateDatum.setCountdown(previousStateDatum.getCountdown() - 1);</span>
+<span class="fc" id="L97">        stateDatum.setUVerifyCertificates(previousStateDatum.getUVerifyCertificates());</span>
+<span class="fc" id="L98">        stateDatum.setBatchSize(previousStateDatum.getBatchSize());</span>
+<span class="fc" id="L99">        stateDatum.setBootstrapDatumName(previousStateDatum.getBootstrapDatumName());</span>
+<span class="fc" id="L100">        return stateDatum;</span>
+    }
+
+    public static StateDatum fromPreviousStateDatum(String inlineDatum) {
+<span class="fc" id="L104">        StateDatum previousStateDatum = fromUtxoDatum(inlineDatum);</span>
+<span class="fc" id="L105">        return fromPreviousStateDatum(previousStateDatum);</span>
+    }
+
+    public PlutusData toPlutusData(CardanoNetwork network) {
+<span class="fc" id="L109">        PlutusData uVerifyCertificates = ListPlutusData.of(ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build());</span>
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">        if (this.uVerifyCertificates != null) {</span>
+<span class="fc" id="L111">            uVerifyCertificates = ListPlutusData.of(</span>
+<span class="fc" id="L112">                    this.uVerifyCertificates.stream()</span>
+<span class="fc" id="L113">                            .map(UVerifyCertificate::toPlutusData)</span>
+<span class="fc" id="L114">                            .toList()</span>
+<span class="fc" id="L115">                            .toArray(new PlutusData[0])</span>
+            );
+        }
+
+<span class="fc" id="L119">        String stateId = this.id;</span>
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">        if (stateId == null) {</span>
+<span class="nc" id="L121">            stateId = &quot;00&quot;;</span>
+        }
+
+<span class="fc" id="L124">        return ConstrPlutusData.of(0,</span>
+<span class="fc" id="L125">                BytesPlutusData.of(HexUtil.decodeHexString(stateId)),</span>
+<span class="fc" id="L126">                BytesPlutusData.of(HexUtil.decodeHexString(this.owner)),</span>
+<span class="fc" id="L127">                BytesPlutusData.of(HexUtil.decodeHexString(ValidatorUtils.getMintOrBurnAuthTokenHash(network))),</span>
+<span class="fc" id="L128">                BytesPlutusData.of(HexUtil.decodeHexString(ValidatorUtils.getUpdateStateTokenHash(network))),</span>
+<span class="fc" id="L129">                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),</span>
+<span class="fc" id="L130">                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),</span>
+<span class="fc" id="L131">                ListPlutusData.of(</span>
+<span class="fc" id="L132">                        this.feeReceivers.stream()</span>
+<span class="fc" id="L133">                                .map(BytesPlutusData::of)</span>
+<span class="fc" id="L134">                                .toList()</span>
+<span class="fc" id="L135">                                .toArray(new PlutusData[0])</span>
+                ),
+<span class="fc" id="L137">                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),</span>
+<span class="fc" id="L138">                BigIntPlutusData.of(BigInteger.valueOf(this.countdown)),</span>
+                uVerifyCertificates,
+<span class="fc" id="L140">                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize)),</span>
+<span class="fc" id="L141">                BytesPlutusData.of(this.bootstrapDatumName.getBytes())</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

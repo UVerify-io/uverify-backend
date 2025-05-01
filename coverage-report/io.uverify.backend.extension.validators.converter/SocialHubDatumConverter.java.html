@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SocialHubDatumConverter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.validators.converter</a> &gt; <span class="el_source">SocialHubDatumConverter.java</span></div><h1>SocialHubDatumConverter.java</h1><pre class="source lang-java linenums">package io.uverify.backend.extension.validators.converter;
+
+import com.bloxbean.cardano.client.common.cbor.CborSerializationUtil;
+import com.bloxbean.cardano.client.exception.CborRuntimeException;
+import com.bloxbean.cardano.client.plutus.annotation.BasePlutusDataConverter;
+import com.bloxbean.cardano.client.plutus.spec.BytesPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
+import com.bloxbean.cardano.client.util.HexUtil;
+import io.uverify.backend.extension.validators.SocialHubDatum;
+import java.lang.Exception;
+import java.lang.String;
+import java.util.Objects;
+import java.util.Optional;
+
+/**
+ * Auto generated code. DO NOT MODIFY
+ */
+<span class="fc" id="L19">public class SocialHubDatumConverter extends BasePlutusDataConverter {</span>
+  public ConstrPlutusData toPlutusData(SocialHubDatum obj) {
+<span class="fc" id="L21">    ConstrPlutusData constr = initConstr(0);</span>
+    //Field owner
+<span class="fc" id="L23">    Objects.requireNonNull(obj.getOwner(), &quot;owner cannot be null&quot;);</span>
+<span class="fc" id="L24">    constr.getData().add(toPlutusData(obj.getOwner()));</span>
+
+    //Field batchId
+<span class="fc" id="L27">    Objects.requireNonNull(obj.getBatchId(), &quot;batchId cannot be null&quot;);</span>
+<span class="fc" id="L28">    constr.getData().add(toPlutusData(obj.getBatchId()));</span>
+
+    //Field picture
+<span class="fc" id="L31">    Objects.requireNonNull(obj.getPicture(), &quot;picture cannot be null&quot;);</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">    if(obj.getPicture().isEmpty()) {</span>
+<span class="fc" id="L33">      var pictureConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L34">      constr.getData().add(pictureConstr);</span>
+<span class="fc" id="L35">    } else {</span>
+<span class="fc" id="L36">      var picture_$nested=toPlutusData(obj.getPicture().get());var pictureConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(picture_$nested)).build();</span>
+<span class="fc" id="L37">      constr.getData().add(pictureConstr);</span>
+    }
+
+    //Field name
+<span class="fc" id="L41">    Objects.requireNonNull(obj.getName(), &quot;name cannot be null&quot;);</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">    if(obj.getName().isEmpty()) {</span>
+<span class="fc" id="L43">      var nameConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L44">      constr.getData().add(nameConstr);</span>
+<span class="fc" id="L45">    } else {</span>
+<span class="fc" id="L46">      var name_$nested=toPlutusData(obj.getName().get());var nameConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(name_$nested)).build();</span>
+<span class="fc" id="L47">      constr.getData().add(nameConstr);</span>
+    }
+
+    //Field subtitle
+<span class="fc" id="L51">    Objects.requireNonNull(obj.getSubtitle(), &quot;subtitle cannot be null&quot;);</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">    if(obj.getSubtitle().isEmpty()) {</span>
+<span class="fc" id="L53">      var subtitleConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L54">      constr.getData().add(subtitleConstr);</span>
+<span class="fc" id="L55">    } else {</span>
+<span class="fc" id="L56">      var subtitle_$nested=toPlutusData(obj.getSubtitle().get());var subtitleConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(subtitle_$nested)).build();</span>
+<span class="fc" id="L57">      constr.getData().add(subtitleConstr);</span>
+    }
+
+    //Field x
+<span class="fc" id="L61">    Objects.requireNonNull(obj.getX(), &quot;x cannot be null&quot;);</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">    if(obj.getX().isEmpty()) {</span>
+<span class="fc" id="L63">      var xConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L64">      constr.getData().add(xConstr);</span>
+<span class="fc" id="L65">    } else {</span>
+<span class="fc" id="L66">      var x_$nested=toPlutusData(obj.getX().get());var xConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(x_$nested)).build();</span>
+<span class="fc" id="L67">      constr.getData().add(xConstr);</span>
+    }
+
+    //Field telegram
+<span class="fc" id="L71">    Objects.requireNonNull(obj.getTelegram(), &quot;telegram cannot be null&quot;);</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">    if(obj.getTelegram().isEmpty()) {</span>
+<span class="fc" id="L73">      var telegramConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L74">      constr.getData().add(telegramConstr);</span>
+<span class="fc" id="L75">    } else {</span>
+<span class="fc" id="L76">      var telegram_$nested=toPlutusData(obj.getTelegram().get());var telegramConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(telegram_$nested)).build();</span>
+<span class="fc" id="L77">      constr.getData().add(telegramConstr);</span>
+    }
+
+    //Field instagram
+<span class="fc" id="L81">    Objects.requireNonNull(obj.getInstagram(), &quot;instagram cannot be null&quot;);</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">    if(obj.getInstagram().isEmpty()) {</span>
+<span class="fc" id="L83">      var instagramConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L84">      constr.getData().add(instagramConstr);</span>
+<span class="fc" id="L85">    } else {</span>
+<span class="fc" id="L86">      var instagram_$nested=toPlutusData(obj.getInstagram().get());var instagramConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(instagram_$nested)).build();</span>
+<span class="fc" id="L87">      constr.getData().add(instagramConstr);</span>
+    }
+
+    //Field discord
+<span class="fc" id="L91">    Objects.requireNonNull(obj.getDiscord(), &quot;discord cannot be null&quot;);</span>
+<span class="fc bfc" id="L92" title="All 2 branches covered.">    if(obj.getDiscord().isEmpty()) {</span>
+<span class="fc" id="L93">      var discordConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L94">      constr.getData().add(discordConstr);</span>
+<span class="fc" id="L95">    } else {</span>
+<span class="fc" id="L96">      var discord_$nested=toPlutusData(obj.getDiscord().get());var discordConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(discord_$nested)).build();</span>
+<span class="fc" id="L97">      constr.getData().add(discordConstr);</span>
+    }
+
+    //Field reddit
+<span class="fc" id="L101">    Objects.requireNonNull(obj.getReddit(), &quot;reddit cannot be null&quot;);</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">    if(obj.getReddit().isEmpty()) {</span>
+<span class="fc" id="L103">      var redditConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L104">      constr.getData().add(redditConstr);</span>
+<span class="fc" id="L105">    } else {</span>
+<span class="fc" id="L106">      var reddit_$nested=toPlutusData(obj.getReddit().get());var redditConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(reddit_$nested)).build();</span>
+<span class="fc" id="L107">      constr.getData().add(redditConstr);</span>
+    }
+
+    //Field youtube
+<span class="fc" id="L111">    Objects.requireNonNull(obj.getYoutube(), &quot;youtube cannot be null&quot;);</span>
+<span class="fc bfc" id="L112" title="All 2 branches covered.">    if(obj.getYoutube().isEmpty()) {</span>
+<span class="fc" id="L113">      var youtubeConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L114">      constr.getData().add(youtubeConstr);</span>
+<span class="fc" id="L115">    } else {</span>
+<span class="fc" id="L116">      var youtube_$nested=toPlutusData(obj.getYoutube().get());var youtubeConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(youtube_$nested)).build();</span>
+<span class="fc" id="L117">      constr.getData().add(youtubeConstr);</span>
+    }
+
+    //Field linkedin
+<span class="fc" id="L121">    Objects.requireNonNull(obj.getLinkedin(), &quot;linkedin cannot be null&quot;);</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">    if(obj.getLinkedin().isEmpty()) {</span>
+<span class="fc" id="L123">      var linkedinConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L124">      constr.getData().add(linkedinConstr);</span>
+<span class="fc" id="L125">    } else {</span>
+<span class="fc" id="L126">      var linkedin_$nested=toPlutusData(obj.getLinkedin().get());var linkedinConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(linkedin_$nested)).build();</span>
+<span class="fc" id="L127">      constr.getData().add(linkedinConstr);</span>
+    }
+
+    //Field github
+<span class="fc" id="L131">    Objects.requireNonNull(obj.getGithub(), &quot;github cannot be null&quot;);</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">    if(obj.getGithub().isEmpty()) {</span>
+<span class="nc" id="L133">      var githubConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="nc" id="L134">      constr.getData().add(githubConstr);</span>
+<span class="nc" id="L135">    } else {</span>
+<span class="fc" id="L136">      var github_$nested=toPlutusData(obj.getGithub().get());var githubConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(github_$nested)).build();</span>
+<span class="fc" id="L137">      constr.getData().add(githubConstr);</span>
+    }
+
+    //Field website
+<span class="fc" id="L141">    Objects.requireNonNull(obj.getWebsite(), &quot;website cannot be null&quot;);</span>
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">    if(obj.getWebsite().isEmpty()) {</span>
+<span class="fc" id="L143">      var websiteConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L144">      constr.getData().add(websiteConstr);</span>
+<span class="fc" id="L145">    } else {</span>
+<span class="nc" id="L146">      var website_$nested=toPlutusData(obj.getWebsite().get());var websiteConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(website_$nested)).build();</span>
+<span class="nc" id="L147">      constr.getData().add(websiteConstr);</span>
+    }
+
+    //Field adahandle
+<span class="fc" id="L151">    Objects.requireNonNull(obj.getAdahandle(), &quot;adahandle cannot be null&quot;);</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">    if(obj.getAdahandle().isEmpty()) {</span>
+<span class="fc" id="L153">      var adahandleConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L154">      constr.getData().add(adahandleConstr);</span>
+<span class="fc" id="L155">    } else {</span>
+<span class="fc" id="L156">      var adahandle_$nested=toPlutusData(obj.getAdahandle().get());var adahandleConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(adahandle_$nested)).build();</span>
+<span class="fc" id="L157">      constr.getData().add(adahandleConstr);</span>
+    }
+
+    //Field email
+<span class="fc" id="L161">    Objects.requireNonNull(obj.getEmail(), &quot;email cannot be null&quot;);</span>
+<span class="fc bfc" id="L162" title="All 2 branches covered.">    if(obj.getEmail().isEmpty()) {</span>
+<span class="fc" id="L163">      var emailConstr = ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+<span class="fc" id="L164">      constr.getData().add(emailConstr);</span>
+<span class="fc" id="L165">    } else {</span>
+<span class="fc" id="L166">      var email_$nested=toPlutusData(obj.getEmail().get());var emailConstr = ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of(email_$nested)).build();</span>
+<span class="fc" id="L167">      constr.getData().add(emailConstr);</span>
+    }
+
+<span class="fc" id="L170">    return constr;</span>
+  }
+
+  public SocialHubDatum fromPlutusData(ConstrPlutusData constr) {
+<span class="fc" id="L174">    var obj = new SocialHubDatum();</span>
+<span class="fc" id="L175">    var data = constr.getData();</span>
+
+    //Field owner
+<span class="fc" id="L178">    var owner = ((BytesPlutusData)data.getPlutusDataList().get(0)).getValue();</span>
+<span class="fc" id="L179">    obj.setOwner(owner);</span>
+
+    //Field batchId
+<span class="fc" id="L182">    var batchId = ((BytesPlutusData)data.getPlutusDataList().get(1)).getValue();</span>
+<span class="fc" id="L183">    obj.setBatchId(batchId);</span>
+
+    //Field picture
+<span class="fc" id="L186">    java.util.Optional&lt;byte[]&gt; picture = null;</span>
+<span class="fc" id="L187">    var pictureConstr = (ConstrPlutusData)data.getPlutusDataList().get(2);</span>
+<span class="pc bpc" id="L188" title="1 of 2 branches missed.">    if(pictureConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L189">      picture = Optional.empty();</span>
+    } else {
+<span class="nc" id="L191">      var picturePlutusData = pictureConstr.getData().getPlutusDataList().get(0);</span>
+<span class="nc" id="L192">      var picture_$nested=plutusDataToBytes(picturePlutusData);;</span>
+<span class="nc" id="L193">      picture = Optional.ofNullable(picture_$nested);</span>
+    }
+
+<span class="fc" id="L196">    obj.setPicture(picture);</span>
+
+    //Field name
+<span class="fc" id="L199">    java.util.Optional&lt;byte[]&gt; name = null;</span>
+<span class="fc" id="L200">    var nameConstr = (ConstrPlutusData)data.getPlutusDataList().get(3);</span>
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">    if(nameConstr.getAlternative() == 1) {</span>
+<span class="nc" id="L202">      name = Optional.empty();</span>
+    } else {
+<span class="fc" id="L204">      var namePlutusData = nameConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L205">      var name_$nested=plutusDataToBytes(namePlutusData);;</span>
+<span class="fc" id="L206">      name = Optional.ofNullable(name_$nested);</span>
+    }
+
+<span class="fc" id="L209">    obj.setName(name);</span>
+
+    //Field subtitle
+<span class="fc" id="L212">    java.util.Optional&lt;byte[]&gt; subtitle = null;</span>
+<span class="fc" id="L213">    var subtitleConstr = (ConstrPlutusData)data.getPlutusDataList().get(4);</span>
+<span class="fc bfc" id="L214" title="All 2 branches covered.">    if(subtitleConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L215">      subtitle = Optional.empty();</span>
+    } else {
+<span class="fc" id="L217">      var subtitlePlutusData = subtitleConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L218">      var subtitle_$nested=plutusDataToBytes(subtitlePlutusData);;</span>
+<span class="fc" id="L219">      subtitle = Optional.ofNullable(subtitle_$nested);</span>
+    }
+
+<span class="fc" id="L222">    obj.setSubtitle(subtitle);</span>
+
+    //Field x
+<span class="fc" id="L225">    java.util.Optional&lt;byte[]&gt; x = null;</span>
+<span class="fc" id="L226">    var xConstr = (ConstrPlutusData)data.getPlutusDataList().get(5);</span>
+<span class="fc bfc" id="L227" title="All 2 branches covered.">    if(xConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L228">      x = Optional.empty();</span>
+    } else {
+<span class="fc" id="L230">      var xPlutusData = xConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L231">      var x_$nested=plutusDataToBytes(xPlutusData);;</span>
+<span class="fc" id="L232">      x = Optional.ofNullable(x_$nested);</span>
+    }
+
+<span class="fc" id="L235">    obj.setX(x);</span>
+
+    //Field telegram
+<span class="fc" id="L238">    java.util.Optional&lt;byte[]&gt; telegram = null;</span>
+<span class="fc" id="L239">    var telegramConstr = (ConstrPlutusData)data.getPlutusDataList().get(6);</span>
+<span class="fc bfc" id="L240" title="All 2 branches covered.">    if(telegramConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L241">      telegram = Optional.empty();</span>
+    } else {
+<span class="fc" id="L243">      var telegramPlutusData = telegramConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L244">      var telegram_$nested=plutusDataToBytes(telegramPlutusData);;</span>
+<span class="fc" id="L245">      telegram = Optional.ofNullable(telegram_$nested);</span>
+    }
+
+<span class="fc" id="L248">    obj.setTelegram(telegram);</span>
+
+    //Field instagram
+<span class="fc" id="L251">    java.util.Optional&lt;byte[]&gt; instagram = null;</span>
+<span class="fc" id="L252">    var instagramConstr = (ConstrPlutusData)data.getPlutusDataList().get(7);</span>
+<span class="fc bfc" id="L253" title="All 2 branches covered.">    if(instagramConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L254">      instagram = Optional.empty();</span>
+    } else {
+<span class="fc" id="L256">      var instagramPlutusData = instagramConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L257">      var instagram_$nested=plutusDataToBytes(instagramPlutusData);;</span>
+<span class="fc" id="L258">      instagram = Optional.ofNullable(instagram_$nested);</span>
+    }
+
+<span class="fc" id="L261">    obj.setInstagram(instagram);</span>
+
+    //Field discord
+<span class="fc" id="L264">    java.util.Optional&lt;byte[]&gt; discord = null;</span>
+<span class="fc" id="L265">    var discordConstr = (ConstrPlutusData)data.getPlutusDataList().get(8);</span>
+<span class="fc bfc" id="L266" title="All 2 branches covered.">    if(discordConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L267">      discord = Optional.empty();</span>
+    } else {
+<span class="fc" id="L269">      var discordPlutusData = discordConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L270">      var discord_$nested=plutusDataToBytes(discordPlutusData);;</span>
+<span class="fc" id="L271">      discord = Optional.ofNullable(discord_$nested);</span>
+    }
+
+<span class="fc" id="L274">    obj.setDiscord(discord);</span>
+
+    //Field reddit
+<span class="fc" id="L277">    java.util.Optional&lt;byte[]&gt; reddit = null;</span>
+<span class="fc" id="L278">    var redditConstr = (ConstrPlutusData)data.getPlutusDataList().get(9);</span>
+<span class="fc bfc" id="L279" title="All 2 branches covered.">    if(redditConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L280">      reddit = Optional.empty();</span>
+    } else {
+<span class="fc" id="L282">      var redditPlutusData = redditConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L283">      var reddit_$nested=plutusDataToBytes(redditPlutusData);;</span>
+<span class="fc" id="L284">      reddit = Optional.ofNullable(reddit_$nested);</span>
+    }
+
+<span class="fc" id="L287">    obj.setReddit(reddit);</span>
+
+    //Field youtube
+<span class="fc" id="L290">    java.util.Optional&lt;byte[]&gt; youtube = null;</span>
+<span class="fc" id="L291">    var youtubeConstr = (ConstrPlutusData)data.getPlutusDataList().get(10);</span>
+<span class="fc bfc" id="L292" title="All 2 branches covered.">    if(youtubeConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L293">      youtube = Optional.empty();</span>
+    } else {
+<span class="fc" id="L295">      var youtubePlutusData = youtubeConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L296">      var youtube_$nested=plutusDataToBytes(youtubePlutusData);;</span>
+<span class="fc" id="L297">      youtube = Optional.ofNullable(youtube_$nested);</span>
+    }
+
+<span class="fc" id="L300">    obj.setYoutube(youtube);</span>
+
+    //Field linkedin
+<span class="fc" id="L303">    java.util.Optional&lt;byte[]&gt; linkedin = null;</span>
+<span class="fc" id="L304">    var linkedinConstr = (ConstrPlutusData)data.getPlutusDataList().get(11);</span>
+<span class="fc bfc" id="L305" title="All 2 branches covered.">    if(linkedinConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L306">      linkedin = Optional.empty();</span>
+    } else {
+<span class="fc" id="L308">      var linkedinPlutusData = linkedinConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L309">      var linkedin_$nested=plutusDataToBytes(linkedinPlutusData);;</span>
+<span class="fc" id="L310">      linkedin = Optional.ofNullable(linkedin_$nested);</span>
+    }
+
+<span class="fc" id="L313">    obj.setLinkedin(linkedin);</span>
+
+    //Field github
+<span class="fc" id="L316">    java.util.Optional&lt;byte[]&gt; github = null;</span>
+<span class="fc" id="L317">    var githubConstr = (ConstrPlutusData)data.getPlutusDataList().get(12);</span>
+<span class="pc bpc" id="L318" title="1 of 2 branches missed.">    if(githubConstr.getAlternative() == 1) {</span>
+<span class="nc" id="L319">      github = Optional.empty();</span>
+    } else {
+<span class="fc" id="L321">      var githubPlutusData = githubConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L322">      var github_$nested=plutusDataToBytes(githubPlutusData);;</span>
+<span class="fc" id="L323">      github = Optional.ofNullable(github_$nested);</span>
+    }
+
+<span class="fc" id="L326">    obj.setGithub(github);</span>
+
+    //Field website
+<span class="fc" id="L329">    java.util.Optional&lt;byte[]&gt; website = null;</span>
+<span class="fc" id="L330">    var websiteConstr = (ConstrPlutusData)data.getPlutusDataList().get(13);</span>
+<span class="pc bpc" id="L331" title="1 of 2 branches missed.">    if(websiteConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L332">      website = Optional.empty();</span>
+    } else {
+<span class="nc" id="L334">      var websitePlutusData = websiteConstr.getData().getPlutusDataList().get(0);</span>
+<span class="nc" id="L335">      var website_$nested=plutusDataToBytes(websitePlutusData);;</span>
+<span class="nc" id="L336">      website = Optional.ofNullable(website_$nested);</span>
+    }
+
+<span class="fc" id="L339">    obj.setWebsite(website);</span>
+
+    //Field adahandle
+<span class="fc" id="L342">    java.util.Optional&lt;byte[]&gt; adahandle = null;</span>
+<span class="fc" id="L343">    var adahandleConstr = (ConstrPlutusData)data.getPlutusDataList().get(14);</span>
+<span class="fc bfc" id="L344" title="All 2 branches covered.">    if(adahandleConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L345">      adahandle = Optional.empty();</span>
+    } else {
+<span class="fc" id="L347">      var adahandlePlutusData = adahandleConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L348">      var adahandle_$nested=plutusDataToBytes(adahandlePlutusData);;</span>
+<span class="fc" id="L349">      adahandle = Optional.ofNullable(adahandle_$nested);</span>
+    }
+
+<span class="fc" id="L352">    obj.setAdahandle(adahandle);</span>
+
+    //Field email
+<span class="fc" id="L355">    java.util.Optional&lt;byte[]&gt; email = null;</span>
+<span class="fc" id="L356">    var emailConstr = (ConstrPlutusData)data.getPlutusDataList().get(15);</span>
+<span class="fc bfc" id="L357" title="All 2 branches covered.">    if(emailConstr.getAlternative() == 1) {</span>
+<span class="fc" id="L358">      email = Optional.empty();</span>
+    } else {
+<span class="fc" id="L360">      var emailPlutusData = emailConstr.getData().getPlutusDataList().get(0);</span>
+<span class="fc" id="L361">      var email_$nested=plutusDataToBytes(emailPlutusData);;</span>
+<span class="fc" id="L362">      email = Optional.ofNullable(email_$nested);</span>
+    }
+
+<span class="fc" id="L365">    obj.setEmail(email);</span>
+<span class="fc" id="L366">    return obj;</span>
+  }
+
+  public byte[] serialize(SocialHubDatum obj) {
+<span class="nc" id="L370">    Objects.requireNonNull(obj);;</span>
+    try {
+<span class="nc" id="L372">      var constr = toPlutusData(obj);</span>
+<span class="nc" id="L373">      return CborSerializationUtil.serialize(constr.serialize());</span>
+<span class="nc" id="L374">    } catch (Exception e) {</span>
+<span class="nc" id="L375">      throw new CborRuntimeException(e);</span>
+    }
+  }
+
+  public String serializeToHex(SocialHubDatum obj) {
+<span class="nc" id="L380">    Objects.requireNonNull(obj);;</span>
+<span class="nc" id="L381">    var constr = toPlutusData(obj);</span>
+<span class="nc" id="L382">    return constr.serializeToHex();</span>
+  }
+
+  public SocialHubDatum deserialize(byte[] bytes) {
+<span class="fc" id="L386">    Objects.requireNonNull(bytes);;</span>
+    try {
+<span class="fc" id="L388">      var di = CborSerializationUtil.deserialize(bytes);</span>
+<span class="fc" id="L389">      var constr = ConstrPlutusData.deserialize(di);</span>
+<span class="fc" id="L390">      return fromPlutusData(constr);</span>
+<span class="nc" id="L391">    } catch (Exception e) {</span>
+<span class="nc" id="L392">      throw new CborRuntimeException(e);</span>
+    }
+  }
+
+  public SocialHubDatum deserialize(String hex) {
+<span class="fc" id="L397">    Objects.requireNonNull(hex);;</span>
+<span class="fc" id="L398">    var bytes = HexUtil.decodeHexString(hex);</span>
+<span class="fc" id="L399">    return deserialize(bytes);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

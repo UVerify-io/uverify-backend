@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransactionController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.controller</a> &gt; <span class="el_source">TransactionController.java</span></div><h1>TransactionController.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.uverify.backend.dto.BuildTransactionRequest;
+import io.uverify.backend.dto.BuildTransactionResponse;
+import io.uverify.backend.dto.SubmitTransactionRequest;
+import io.uverify.backend.enums.BuildStatusCode;
+import io.uverify.backend.enums.TransactionType;
+import io.uverify.backend.service.TransactionService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@SuppressWarnings(&quot;unused&quot;)
+@RequestMapping(&quot;/api/v1/transaction&quot;)
+@Tag(name = &quot;Transaction Management&quot;, description = &quot;Endpoints for building and submitting UVerify certificate transactions to the Cardano blockchain.&quot;)
+<span class="fc" id="L44">public class TransactionController {</span>
+    @Autowired
+    private TransactionService transactionService;
+
+    @PostMapping(&quot;/build&quot;)
+    @Operation(
+            summary = &quot;Build a transaction&quot;,
+            description = &quot;&quot;&quot;
+                    Builds a transaction for the Cardano blockchain based on the provided request. Supports the following transaction types:
+                    - **DEFAULT**: Submits UVerify certificates to the blockchain using the cheapest options. If no state is initialized, it forks a new state from the bootstrap datum with the best service fee conditions. If a user state exists with a valid transaction countdown and no service fee is required, it will be reused.
+                    - **BOOTSTRAP**: Initializes a new bootstrap token and datum for forking states. Requires a whitelisted credential to sign the transaction.
+                    - **CUSTOM**: Allows the user to specify a bootstrap datum to fork or consume a state related to a specific bootstrap datum. This is useful for use cases requiring a 'partner datum' and may result in a different certificate UI on the client side.&quot;&quot;&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Transaction built successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid transaction type or request data&quot;),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;?&gt; buildTransaction(@RequestBody BuildTransactionRequest request) {
+        try {
+<span class="fc bfc" id="L65" title="All 2 branches covered.">            if (request.getType().equals(TransactionType.DEFAULT)) {</span>
+<span class="fc" id="L66">                BuildTransactionResponse buildTransactionResponse = transactionService.buildUVerifyTransaction(request.getCertificates(), request.getAddress());</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="fc" id="L68">                    return ResponseEntity.ok(buildTransactionResponse);</span>
+                } else {
+<span class="nc" id="L70">                    return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+                }
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">            } else if (request.getType().equals(TransactionType.BOOTSTRAP)) {</span>
+<span class="fc" id="L73">                BuildTransactionResponse buildTransactionResponse = transactionService.buildBootstrapDatum(request.getBootstrapDatum());</span>
+<span class="pc bpc" id="L74" title="1 of 2 branches missed.">                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="fc" id="L75">                    return ResponseEntity.ok(buildTransactionResponse);</span>
+                } else {
+<span class="nc" id="L77">                    return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+                }
+<span class="nc bnc" id="L79" title="All 2 branches missed.">            } else if (request.getType().equals(TransactionType.CUSTOM)) {</span>
+<span class="nc" id="L80">                BuildTransactionResponse buildTransactionResponse = transactionService.buildCustomTransaction(request.getCertificates(), request.getAddress(), request.getBootstrapDatum().getName());</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="nc" id="L82">                    return ResponseEntity.ok(buildTransactionResponse);</span>
+                } else {
+<span class="nc" id="L84">                    return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+                }
+            } else {
+<span class="nc" id="L87">                return ResponseEntity.badRequest().body(&quot;Unknown transaction type. Allowed types are: DEFAULT, BOOTSTRAP, CUSTOM.&quot;);</span>
+            }
+<span class="nc" id="L89">        } catch (Exception e) {</span>
+<span class="nc" id="L90">            return ResponseEntity.internalServerError().build();</span>
+        }
+    }
+
+    @PostMapping(&quot;/submit&quot;)
+    @Operation(
+            summary = &quot;Submit a transaction&quot;,
+            description = &quot;Submits a transaction to the Cardano blockchain using the provided transaction data and witness set. &quot;
+                    + &quot;Returns the result of the submission or a 500 status code in case of server errors.&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Transaction submitted successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;)),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;?&gt; submitTransaction(@RequestBody SubmitTransactionRequest request) {
+        try {
+<span class="nc" id="L107">            return ResponseEntity.ok(transactionService.submit(request.getTransaction(), request.getWitnessSet()));</span>
+<span class="nc" id="L108">        } catch (Exception e) {</span>
+<span class="nc" id="L109">            return ResponseEntity.internalServerError().build();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

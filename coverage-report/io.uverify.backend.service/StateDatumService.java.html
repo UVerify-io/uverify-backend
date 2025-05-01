@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StateDatumService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.service</a> &gt; <span class="el_source">StateDatumService.java</span></div><h1>StateDatumService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.service;
+
+import com.bloxbean.cardano.client.util.HexUtil;
+import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import io.uverify.backend.entity.StateDatumEntity;
+import io.uverify.backend.entity.StateDatumUpdateEntity;
+import io.uverify.backend.model.StateDatum;
+import io.uverify.backend.repository.StateDatumRepository;
+import io.uverify.backend.repository.StateDatumUpdateRepository;
+import io.uverify.backend.util.CardanoUtils;
+import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+<span class="fc" id="L38">@Slf4j</span>
+public class StateDatumService {
+
+    @Autowired
+    private final StateDatumRepository stateDatumRepository;
+
+    @Autowired
+    private final StateDatumUpdateRepository stateDatumUpdateRepository;
+
+    @Autowired
+<span class="fc" id="L48">    public StateDatumService(StateDatumRepository stateDatumRepository, StateDatumUpdateRepository stateDatumUpdateRepository) {</span>
+<span class="fc" id="L49">        this.stateDatumRepository = stateDatumRepository;</span>
+<span class="fc" id="L50">        this.stateDatumUpdateRepository = stateDatumUpdateRepository;</span>
+<span class="fc" id="L51">    }</span>
+
+    public StateDatumEntity selectCheapestStateDatum(List&lt;StateDatumEntity&gt; stateDatums) {
+<span class="fc" id="L54">        List&lt;StateDatumEntity&gt; stateDatumEntities = stateDatums.stream().filter(</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">                stateDatumEntity -&gt; stateDatumEntity.getInvalidationSlot() == null</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">                        &amp;&amp; stateDatumEntity.getCountdown() &gt; 0</span>
+<span class="fc" id="L57">        ).toList();</span>
+
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        if (stateDatumEntities.isEmpty()) {</span>
+<span class="nc" id="L60">            throw new IllegalArgumentException(&quot;List of valid state datum entities with countdown &gt; 0 is empty.&quot;);</span>
+        }
+
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if (stateDatumEntities.size() == 1) {</span>
+<span class="fc" id="L64">            return stateDatumEntities.get(0);</span>
+        }
+
+<span class="fc" id="L67">        StateDatumEntity stateDatumEntity = stateDatumEntities.get(0);</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">        for (StateDatumEntity entity : stateDatumEntities) {</span>
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">            if (entity.getCountdown() % entity.getBootstrapDatum().getFeeInterval() != 0) {</span>
+<span class="fc" id="L70">                stateDatumEntity = entity;</span>
+<span class="fc" id="L71">                break;</span>
+            } else {
+<span class="nc bnc" id="L73" title="All 2 branches missed.">                if (entity.getBootstrapDatum().getFee() &lt; stateDatumEntity.getBootstrapDatum().getFee()) {</span>
+<span class="nc" id="L74">                    stateDatumEntity = entity;</span>
+                }
+            }
+<span class="nc" id="L77">        }</span>
+<span class="fc" id="L78">        return stateDatumEntity;</span>
+    }
+
+    @Transactional
+    public void undoInvalidationBeforeSlot(long slot) {
+<span class="fc" id="L83">        stateDatumRepository.undoInvalidationBeforeSlot(slot);</span>
+<span class="fc" id="L84">    }</span>
+
+    public void invalidateStateDatum(String id, long slot) {
+<span class="nc" id="L87">        stateDatumRepository.markAsInvalid(id, slot);</span>
+<span class="nc" id="L88">    }</span>
+
+    public void updateStateDatum(StateDatumEntity stateDatumEntity, Long slot) {
+<span class="fc" id="L91">        StateDatumUpdateEntity stateDatumUpdateEntity = StateDatumUpdateEntity.builder()</span>
+<span class="fc" id="L92">                .countdown(stateDatumEntity.getCountdown())</span>
+<span class="fc" id="L93">                .transactionId(stateDatumEntity.getTransactionId())</span>
+<span class="fc" id="L94">                .slot(slot)</span>
+<span class="fc" id="L95">                .build();</span>
+
+<span class="fc" id="L97">        stateDatumEntity.addUpdate(stateDatumUpdateEntity);</span>
+
+<span class="fc" id="L99">        stateDatumUpdateRepository.save(stateDatumUpdateEntity);</span>
+<span class="fc" id="L100">        stateDatumRepository.save(stateDatumEntity);</span>
+<span class="fc" id="L101">    }</span>
+
+    public Optional&lt;StateDatumEntity&gt; findByAddressUtxo(AddressUtxo addressUtxo) {
+<span class="fc" id="L104">        StateDatum stateDatum = StateDatum.fromUtxoDatum(addressUtxo.getInlineDatum());</span>
+<span class="fc" id="L105">        return this.findById(stateDatum.getId());</span>
+    }
+
+    public Optional&lt;StateDatumEntity&gt; findById(String id) {
+<span class="fc" id="L109">        return stateDatumRepository.findById(id);</span>
+    }
+
+    public void save(StateDatumEntity stateDatumEntity) {
+<span class="fc" id="L113">        stateDatumRepository.save(stateDatumEntity);</span>
+<span class="fc" id="L114">    }</span>
+
+    public List&lt;StateDatumEntity&gt; findByOwner(String address) {
+<span class="fc" id="L117">        return stateDatumRepository.findByOwner(</span>
+<span class="fc" id="L118">                HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)));</span>
+    }
+
+    public Optional&lt;StateDatumEntity&gt; findByUserAndBootstrapToken(String address, String bootstrapTokenName) {
+<span class="nc" id="L122">        return stateDatumRepository.findByUserAndBootstrapToken(</span>
+<span class="nc" id="L123">                CardanoUtils.extractCredentialFromAddress(address), bootstrapTokenName);</span>
+    }
+
+    @Transactional
+    public void handleRollbackToSlot(long slot) {
+<span class="fc" id="L128">        stateDatumUpdateRepository.deleteAllAfterSlot(slot);</span>
+<span class="fc" id="L129">        stateDatumRepository.deleteAllAfterSlot(slot);</span>
+<span class="fc" id="L130">        stateDatumRepository.handleRollback();</span>
+<span class="fc" id="L131">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

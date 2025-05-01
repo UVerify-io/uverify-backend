@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CertificateController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.controller</a> &gt; <span class="el_source">CertificateController.java</span></div><h1>CertificateController.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.uverify.backend.dto.CertificateResponse;
+import io.uverify.backend.entity.UVerifyCertificateEntity;
+import io.uverify.backend.enums.CardanoNetwork;
+import io.uverify.backend.mapper.CertificateMapper;
+import io.uverify.backend.service.UVerifyCertificateService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@SuppressWarnings(&quot;unused&quot;)
+@RequestMapping(&quot;/api/v1/verify&quot;)
+@Tag(name = &quot;Certificate Verification&quot;, description = &quot;Endpoints for retrieving and verifying certificates stored on the Cardano blockchain.&quot;)
+public class CertificateController {
+
+    private final UVerifyCertificateService UVerifyCertificateService;
+
+    private final CardanoNetwork network;
+
+    @Autowired
+<span class="fc" id="L53">    public CertificateController(@Value(&quot;${cardano.network}&quot;) String network, UVerifyCertificateService UVerifyCertificateService) {</span>
+<span class="fc" id="L54">        this.network = CardanoNetwork.valueOf(network);</span>
+<span class="fc" id="L55">        this.UVerifyCertificateService = UVerifyCertificateService;</span>
+<span class="fc" id="L56">    }</span>
+
+    @GetMapping(&quot;/{hash}&quot;)
+    @Operation(
+            summary = &quot;Retrieve certificates by data hash&quot;,
+            description = &quot;Retrieves a list of certificates associated with the provided data hash. &quot;
+                    + &quot;The `hash` is the data hash (e.g., SHA-256 or SHA-512) of the file or text that was certified.&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Certificates retrieved successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = CertificateResponse.class))),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;No certificates found for the provided hash&quot;),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;List&lt;CertificateResponse&gt;&gt; getCertificateByHash(
+            @PathVariable String hash) {
+<span class="nc" id="L72">        List&lt;UVerifyCertificateEntity&gt; UVerifyCertificateEntities = UVerifyCertificateService.getCertificatesByHash(hash);</span>
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        if (UVerifyCertificateEntities.isEmpty()) {</span>
+<span class="nc" id="L75">            return ResponseEntity.notFound().build();</span>
+        }
+<span class="nc" id="L77">        return ResponseEntity.ok(UVerifyCertificateEntities.stream().map(entity -&gt; CertificateMapper.fromCertificate(entity, network)).toList());</span>
+    }
+
+    @GetMapping(&quot;/by-transaction-hash/{transactionHash}/{dataHash}&quot;)
+    @Operation(
+            summary = &quot;Retrieve a certificate by transaction hash and data hash&quot;,
+            description = &quot;&quot;&quot;
+                    Retrieves a certificate associated with the provided Cardano blockchain transaction hash and data hash.
+                    The `transactionHash` is the hash of the Cardano blockchain transaction where the certificate data has been stored,
+                    and the `dataHash` is the hash of the certified file or text.&quot;&quot;&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Certificate retrieved successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = CertificateResponse.class))),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;No certificate found for the provided transaction hash and data hash&quot;),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;?&gt; getCertificateByTransactionHash(
+            @PathVariable String transactionHash, @PathVariable String dataHash) {
+<span class="nc" id="L96">        UVerifyCertificateEntity UVerifyCertificateEntity = UVerifyCertificateService.getCertificateByTransactionHash(transactionHash, dataHash);</span>
+
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (UVerifyCertificateEntity == null) {</span>
+<span class="nc" id="L99">            return ResponseEntity.notFound().build();</span>
+        }
+<span class="nc" id="L101">        return ResponseEntity.ok(UVerifyCertificateEntity);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

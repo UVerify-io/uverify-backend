@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConnectedGoodsDatumItemData.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.validators.impl</a> &gt; <span class="el_source">ConnectedGoodsDatumItemData.java</span></div><h1>ConnectedGoodsDatumItemData.java</h1><pre class="source lang-java linenums">package io.uverify.backend.extension.validators.impl;
+
+import com.bloxbean.cardano.client.plutus.blueprint.model.Data;
+import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
+import io.uverify.backend.extension.validators.ConnectedGoodsDatumItem;
+import io.uverify.backend.extension.validators.converter.ConnectedGoodsDatumItemConverter;
+import java.lang.Override;
+import java.lang.String;
+
+/**
+ * Auto generated code. DO NOT MODIFY
+ */
+public class ConnectedGoodsDatumItemData extends ConnectedGoodsDatumItem implements Data&lt;ConnectedGoodsDatumItem&gt; {
+<span class="nc" id="L14">  private static ConnectedGoodsDatumItemConverter converter = new ConnectedGoodsDatumItemConverter();</span>
+
+<span class="nc" id="L16">  public ConnectedGoodsDatumItemData() {</span>
+<span class="nc" id="L17">  }</span>
+
+  @Override
+  public ConstrPlutusData toPlutusData() {
+<span class="nc" id="L21">    return converter.toPlutusData((ConnectedGoodsDatumItem)this);</span>
+  }
+
+  public static ConnectedGoodsDatumItem fromPlutusData(ConstrPlutusData data) {
+<span class="nc" id="L25">    return converter.fromPlutusData(data);</span>
+  }
+
+  public static ConnectedGoodsDatumItem deserialize(String cborHex) {
+<span class="nc" id="L29">    return converter.deserialize(cborHex);</span>
+  }
+
+  public static ConnectedGoodsDatumItem deserialize(byte[] cborBytes) {
+<span class="nc" id="L33">    return converter.deserialize(cborBytes);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SocialHub.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.dto</a> &gt; <span class="el_source">SocialHub.java</span></div><h1>SocialHub.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.dto;
+
+import com.bloxbean.cardano.client.address.AddressProvider;
+import com.bloxbean.cardano.client.address.Credential;
+import com.bloxbean.cardano.client.common.model.Network;
+import com.bloxbean.cardano.client.util.HexUtil;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.uverify.backend.extension.entity.SocialHubEntity;
+import io.uverify.backend.extension.validators.SocialHubDatum;
+import lombok.*;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Optional;
+
+@Getter
+<span class="fc" id="L35">@Setter</span>
+<span class="fc" id="L36">@AllArgsConstructor</span>
+<span class="pc" id="L37">@Builder</span>
+<span class="fc" id="L38">@NoArgsConstructor</span>
+public class SocialHub {
+<span class="fc" id="L40">    private String owner;</span>
+<span class="fc" id="L41">    private String picture;</span>
+<span class="fc" id="L42">    private String name;</span>
+<span class="fc" id="L43">    private String subtitle;</span>
+<span class="fc" id="L44">    private String x;</span>
+<span class="fc" id="L45">    private String telegram;</span>
+<span class="fc" id="L46">    private String discord;</span>
+<span class="fc" id="L47">    private String youtube;</span>
+<span class="fc" id="L48">    private String website;</span>
+<span class="fc" id="L49">    private String email;</span>
+    @JsonProperty(&quot;ada_handle&quot;)
+<span class="fc" id="L51">    private String adaHandle;</span>
+<span class="fc" id="L52">    private String reddit;</span>
+<span class="fc" id="L53">    private String instagram;</span>
+<span class="fc" id="L54">    private String github;</span>
+<span class="fc" id="L55">    private String linkedin;</span>
+    @JsonProperty(&quot;item_name&quot;)
+<span class="fc" id="L57">    private String itemName;</span>
+
+    private static String addressFromCredential(String credential, Network network) {
+<span class="pc bpc" id="L60" title="2 of 4 branches missed.">        if (credential == null || credential.isEmpty()) {</span>
+<span class="nc" id="L61">            return null;</span>
+        }
+
+<span class="fc" id="L64">        return AddressProvider.getEntAddress(Credential.fromKey(credential), network).getAddress();</span>
+    }
+
+    public static SocialHub fromSocialHubEntity(SocialHubEntity entity, Network network) {
+<span class="fc" id="L68">        String owner = null;</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        if (entity.getOwner() != null) {</span>
+<span class="fc" id="L70">            owner = addressFromCredential(entity.getOwner(), network);</span>
+        }
+
+<span class="fc" id="L73">        return SocialHub.builder()</span>
+<span class="fc" id="L74">                .owner(owner)</span>
+<span class="fc" id="L75">                .picture(entity.getPicture())</span>
+<span class="fc" id="L76">                .name(entity.getName())</span>
+<span class="fc" id="L77">                .subtitle(entity.getSubtitle())</span>
+<span class="fc" id="L78">                .x(entity.getX())</span>
+<span class="fc" id="L79">                .telegram(entity.getTelegram())</span>
+<span class="fc" id="L80">                .discord(entity.getDiscord())</span>
+<span class="fc" id="L81">                .youtube(entity.getYoutube())</span>
+<span class="fc" id="L82">                .website(entity.getWebsite())</span>
+<span class="fc" id="L83">                .reddit(entity.getReddit())</span>
+<span class="fc" id="L84">                .instagram(entity.getInstagram())</span>
+<span class="fc" id="L85">                .linkedin(entity.getLinkedin())</span>
+<span class="fc" id="L86">                .github(entity.getGithub())</span>
+<span class="fc" id="L87">                .email(entity.getEmail())</span>
+<span class="fc" id="L88">                .adaHandle(entity.getAdaHandle())</span>
+<span class="fc" id="L89">                .itemName(entity.getAssetId())</span>
+<span class="fc" id="L90">                .build();</span>
+    }
+
+    private static String fieldFromBase64ToString(byte[] data) {
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        if (data == null) {</span>
+<span class="nc" id="L95">            return null;</span>
+        }
+<span class="nc" id="L97">        return Base64.getEncoder().encodeToString(data);</span>
+    }
+
+    private static byte[] fieldToBase64ByteArray(String data) {
+<span class="fc bfc" id="L101" title="All 2 branches covered.">        if (data == null) {</span>
+<span class="fc" id="L102">            return null;</span>
+        }
+<span class="fc" id="L104">        return Base64.getDecoder().decode(data);</span>
+    }
+
+    private static String fieldToString(byte[] data) {
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (data == null) {</span>
+<span class="nc" id="L109">            return null;</span>
+        }
+<span class="nc" id="L111">        return new String(data, StandardCharsets.UTF_8);</span>
+    }
+
+    private static byte[] fieldToByteArray(String data) {
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        if (data == null) {</span>
+<span class="nc" id="L116">            return null;</span>
+        }
+<span class="nc" id="L118">        return data.getBytes(StandardCharsets.UTF_8);</span>
+    }
+
+    public static SocialHub fromSocialHubDatum(SocialHubDatum socialHubDatum, Network network, String itemName) {
+<span class="nc" id="L122">        return SocialHub.builder()</span>
+<span class="nc" id="L123">                .owner(addressFromCredential(HexUtil.encodeHexString(socialHubDatum.getOwner()), network))</span>
+<span class="nc" id="L124">                .picture(fieldFromBase64ToString(socialHubDatum.getPicture().orElse(null)))</span>
+<span class="nc" id="L125">                .name(fieldFromBase64ToString(socialHubDatum.getName().orElse(null)))</span>
+<span class="nc" id="L126">                .subtitle(fieldFromBase64ToString(socialHubDatum.getSubtitle().orElse(null)))</span>
+<span class="nc" id="L127">                .x(fieldFromBase64ToString(socialHubDatum.getX().orElse(null)))</span>
+<span class="nc" id="L128">                .telegram(fieldFromBase64ToString(socialHubDatum.getTelegram().orElse(null)))</span>
+<span class="nc" id="L129">                .discord(fieldFromBase64ToString(socialHubDatum.getDiscord().orElse(null)))</span>
+<span class="nc" id="L130">                .youtube(fieldFromBase64ToString(socialHubDatum.getYoutube().orElse(null)))</span>
+<span class="nc" id="L131">                .website(fieldFromBase64ToString(socialHubDatum.getWebsite().orElse(null)))</span>
+<span class="nc" id="L132">                .reddit(fieldFromBase64ToString(socialHubDatum.getReddit().orElse(null)))</span>
+<span class="nc" id="L133">                .instagram(fieldFromBase64ToString(socialHubDatum.getInstagram().orElse(null)))</span>
+<span class="nc" id="L134">                .linkedin(fieldFromBase64ToString(socialHubDatum.getLinkedin().orElse(null)))</span>
+<span class="nc" id="L135">                .github(fieldFromBase64ToString(socialHubDatum.getGithub().orElse(null)))</span>
+<span class="nc" id="L136">                .email(fieldFromBase64ToString(socialHubDatum.getEmail().orElse(null)))</span>
+<span class="nc" id="L137">                .adaHandle(fieldFromBase64ToString(socialHubDatum.getAdahandle().orElse(null)))</span>
+<span class="nc" id="L138">                .itemName(itemName)</span>
+<span class="nc" id="L139">                .build();</span>
+    }
+
+    public byte[] asBinaryName() {
+<span class="fc" id="L143">        return fieldToBase64ByteArray(name);</span>
+    }
+
+    public byte[] asBinarySubtitle() {
+<span class="fc" id="L147">        return fieldToBase64ByteArray(subtitle);</span>
+    }
+
+    public byte[] asBinaryX() {
+<span class="fc" id="L151">        return fieldToBase64ByteArray(x);</span>
+    }
+
+    public byte[] asBinaryTelegram() {
+<span class="fc" id="L155">        return fieldToBase64ByteArray(telegram);</span>
+    }
+
+    public byte[] asBinaryDiscord() {
+<span class="fc" id="L159">        return fieldToBase64ByteArray(discord);</span>
+    }
+
+    public byte[] asBinaryYoutube() {
+<span class="fc" id="L163">        return fieldToBase64ByteArray(youtube);</span>
+    }
+
+    public byte[] asBinaryWebsite() {
+<span class="fc" id="L167">        return fieldToBase64ByteArray(website);</span>
+    }
+
+    public byte[] asBinaryReddit() {
+<span class="fc" id="L171">        return fieldToBase64ByteArray(reddit);</span>
+    }
+
+    public byte[] asBinaryLinkedin() {
+<span class="fc" id="L175">        return fieldToBase64ByteArray(linkedin);</span>
+    }
+
+    public byte[] asBinaryInstagram() {
+<span class="fc" id="L179">        return fieldToBase64ByteArray(instagram);</span>
+    }
+
+    public byte[] asBinaryGithub() {
+<span class="fc" id="L183">        return fieldToBase64ByteArray(github);</span>
+    }
+
+    public byte[] asBinaryEmail() {
+<span class="fc" id="L187">        return fieldToBase64ByteArray(email);</span>
+    }
+
+    public byte[] asBinaryAdahandle() {
+<span class="fc" id="L191">        return fieldToBase64ByteArray(adaHandle);</span>
+    }
+
+    public byte[] asBinaryPicture() {
+<span class="fc" id="L195">        return fieldToBase64ByteArray(picture);</span>
+    }
+
+    public SocialHubDatum toSocialHubDatum(String batchId) {
+<span class="nc" id="L199">        byte[] socialHubOwner = null;</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">        if (owner != null) {</span>
+<span class="nc" id="L201">            socialHubOwner = HexUtil.decodeHexString(owner);</span>
+        }
+
+<span class="nc" id="L204">        return SocialHubDatum.builder()</span>
+<span class="nc" id="L205">                .owner(socialHubOwner)</span>
+<span class="nc" id="L206">                .batchId(HexUtil.decodeHexString(batchId))</span>
+<span class="nc" id="L207">                .picture(Optional.ofNullable(fieldToByteArray(picture)))</span>
+<span class="nc" id="L208">                .name(Optional.ofNullable((fieldToByteArray(name))))</span>
+<span class="nc" id="L209">                .subtitle(Optional.ofNullable((fieldToByteArray(subtitle))))</span>
+<span class="nc" id="L210">                .x(Optional.ofNullable((fieldToByteArray(x))))</span>
+<span class="nc" id="L211">                .telegram(Optional.ofNullable(fieldToByteArray(telegram)))</span>
+<span class="nc" id="L212">                .discord(Optional.ofNullable(fieldToByteArray(discord)))</span>
+<span class="nc" id="L213">                .youtube(Optional.ofNullable(fieldToByteArray(youtube)))</span>
+<span class="nc" id="L214">                .website(Optional.ofNullable(fieldToByteArray(website)))</span>
+<span class="nc" id="L215">                .reddit(Optional.ofNullable(fieldToByteArray(reddit)))</span>
+<span class="nc" id="L216">                .linkedin(Optional.ofNullable(fieldToByteArray(linkedin)))</span>
+<span class="nc" id="L217">                .instagram(Optional.ofNullable(fieldToByteArray(instagram)))</span>
+<span class="nc" id="L218">                .github(Optional.ofNullable(fieldToByteArray(github)))</span>
+<span class="nc" id="L219">                .email(Optional.ofNullable(fieldToByteArray(email)))</span>
+<span class="nc" id="L220">                .adahandle(Optional.ofNullable(fieldToByteArray(adaHandle)))</span>
+<span class="nc" id="L221">                .build();</span>
+    }
+
+    public SocialHubDatum toBase64SocialHubDatum(String batchId) {
+<span class="nc" id="L225">        byte[] socialHubOwner = null;</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        if (owner != null) {</span>
+<span class="nc" id="L227">            socialHubOwner = HexUtil.decodeHexString(owner);</span>
+        }
+
+<span class="nc" id="L230">        return SocialHubDatum.builder()</span>
+<span class="nc" id="L231">                .owner(socialHubOwner)</span>
+<span class="nc" id="L232">                .batchId(fieldToBase64ByteArray(batchId))</span>
+<span class="nc" id="L233">                .picture(Optional.ofNullable(fieldToBase64ByteArray(picture)))</span>
+<span class="nc" id="L234">                .name(Optional.ofNullable(fieldToBase64ByteArray(name)))</span>
+<span class="nc" id="L235">                .subtitle(Optional.ofNullable(fieldToBase64ByteArray(subtitle)))</span>
+<span class="nc" id="L236">                .x(Optional.ofNullable(fieldToBase64ByteArray(x)))</span>
+<span class="nc" id="L237">                .telegram(Optional.ofNullable(fieldToBase64ByteArray(telegram)))</span>
+<span class="nc" id="L238">                .discord(Optional.ofNullable(fieldToBase64ByteArray(discord)))</span>
+<span class="nc" id="L239">                .youtube(Optional.ofNullable(fieldToBase64ByteArray(youtube)))</span>
+<span class="nc" id="L240">                .website(Optional.ofNullable(fieldToBase64ByteArray(website)))</span>
+<span class="nc" id="L241">                .reddit(Optional.ofNullable(fieldToBase64ByteArray(reddit)))</span>
+<span class="nc" id="L242">                .linkedin(Optional.ofNullable(fieldToBase64ByteArray(linkedin)))</span>
+<span class="nc" id="L243">                .instagram(Optional.ofNullable(fieldToBase64ByteArray(instagram)))</span>
+<span class="nc" id="L244">                .github(Optional.ofNullable(fieldToBase64ByteArray(github)))</span>
+<span class="nc" id="L245">                .email(Optional.ofNullable(fieldToBase64ByteArray(email)))</span>
+<span class="nc" id="L246">                .adahandle(Optional.ofNullable(fieldToBase64ByteArray(adaHandle)))</span>
+<span class="nc" id="L247">                .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

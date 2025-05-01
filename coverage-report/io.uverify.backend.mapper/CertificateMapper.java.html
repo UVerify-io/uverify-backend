@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CertificateMapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.mapper</a> &gt; <span class="el_source">CertificateMapper.java</span></div><h1>CertificateMapper.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.mapper;
+
+import com.bloxbean.cardano.client.address.AddressProvider;
+import com.bloxbean.cardano.client.address.Credential;
+import io.uverify.backend.dto.CertificateResponse;
+import io.uverify.backend.entity.UVerifyCertificateEntity;
+import io.uverify.backend.enums.CardanoNetwork;
+import lombok.extern.slf4j.Slf4j;
+
+import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
+
+<span class="nc" id="L30">@Slf4j</span>
+<span class="nc" id="L31">public class CertificateMapper {</span>
+    public static CertificateResponse fromCertificate(UVerifyCertificateEntity UVerifyCertificateEntity, CardanoNetwork network) {
+<span class="nc" id="L33">        CertificateResponse certificateResponse = new CertificateResponse();</span>
+<span class="nc" id="L34">        certificateResponse.setBlockHash(UVerifyCertificateEntity.getBlockHash());</span>
+<span class="nc" id="L35">        certificateResponse.setBlockNumber(UVerifyCertificateEntity.getBlockNumber());</span>
+<span class="nc" id="L36">        certificateResponse.setHash(UVerifyCertificateEntity.getHash());</span>
+<span class="nc" id="L37">        certificateResponse.setSlot(UVerifyCertificateEntity.getSlot());</span>
+<span class="nc" id="L38">        certificateResponse.setAddress(UVerifyCertificateEntity.getPaymentCredential());</span>
+<span class="nc" id="L39">        certificateResponse.setTransactionHash(UVerifyCertificateEntity.getTransactionId());</span>
+<span class="nc" id="L40">        certificateResponse.setCreationTime(UVerifyCertificateEntity.getCreationTime().getTime());</span>
+<span class="nc" id="L41">        certificateResponse.setMetadata(UVerifyCertificateEntity.getExtra());</span>
+<span class="nc" id="L42">        certificateResponse.setIssuer(AddressProvider.getEntAddress(Credential.fromKey(UVerifyCertificateEntity.getPaymentCredential()), fromCardanoNetwork(network)).toBech32());</span>
+<span class="nc" id="L43">        return certificateResponse;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

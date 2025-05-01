@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConnectedGoodsDatumConverter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.validators.converter</a> &gt; <span class="el_source">ConnectedGoodsDatumConverter.java</span></div><h1>ConnectedGoodsDatumConverter.java</h1><pre class="source lang-java linenums">package io.uverify.backend.extension.validators.converter;
+
+import com.bloxbean.cardano.client.common.cbor.CborSerializationUtil;
+import com.bloxbean.cardano.client.exception.CborRuntimeException;
+import com.bloxbean.cardano.client.plutus.annotation.BasePlutusDataConverter;
+import com.bloxbean.cardano.client.plutus.spec.BytesPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
+import com.bloxbean.cardano.client.util.HexUtil;
+import io.uverify.backend.extension.validators.ConnectedGoodsDatum;
+import java.lang.Exception;
+import java.lang.String;
+import java.util.ArrayList;
+import java.util.Objects;
+
+/**
+ * Auto generated code. DO NOT MODIFY
+ */
+<span class="fc" id="L19">public class ConnectedGoodsDatumConverter extends BasePlutusDataConverter {</span>
+  public ConstrPlutusData toPlutusData(ConnectedGoodsDatum obj) {
+<span class="fc" id="L21">    ConstrPlutusData constr = initConstr(0);</span>
+    //Field id
+<span class="fc" id="L23">    Objects.requireNonNull(obj.getId(), &quot;id cannot be null&quot;);</span>
+<span class="fc" id="L24">    constr.getData().add(toPlutusData(obj.getId()));</span>
+
+    //Field items
+<span class="fc" id="L27">    Objects.requireNonNull(obj.getItems(), &quot;items cannot be null&quot;);</span>
+<span class="fc" id="L28">    ListPlutusData itemsListPlutusData = ListPlutusData.builder().build();</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">    for(var item: obj.getItems()) {</span>
+<span class="fc" id="L30">      itemsListPlutusData.add(new io.uverify.backend.extension.validators.converter.ConnectedGoodsDatumItemConverter().toPlutusData(item));</span>
+<span class="fc" id="L31">    }</span>
+<span class="fc" id="L32">    constr.getData().add(itemsListPlutusData);</span>
+
+<span class="fc" id="L34">    return constr;</span>
+  }
+
+  public ConnectedGoodsDatum fromPlutusData(ConstrPlutusData constr) {
+<span class="fc" id="L38">    var obj = new ConnectedGoodsDatum();</span>
+<span class="fc" id="L39">    var data = constr.getData();</span>
+
+    //Field id
+<span class="fc" id="L42">    var id = ((BytesPlutusData)data.getPlutusDataList().get(0)).getValue();</span>
+<span class="fc" id="L43">    obj.setId(id);</span>
+
+    //Field items
+<span class="fc" id="L46">    var itemsList = (ListPlutusData)data.getPlutusDataList().get(1);</span>
+<span class="fc" id="L47">    java.util.List&lt;io.uverify.backend.extension.validators.ConnectedGoodsDatumItem&gt; items = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">    for(var item: ((ListPlutusData)itemsList).getPlutusDataList()) {</span>
+<span class="fc" id="L49">      var o = new io.uverify.backend.extension.validators.converter.ConnectedGoodsDatumItemConverter().fromPlutusData((ConstrPlutusData)item);</span>
+<span class="fc" id="L50">      items.add(o);</span>
+<span class="fc" id="L51">    }</span>
+<span class="fc" id="L52">    obj.setItems(items);</span>
+<span class="fc" id="L53">    return obj;</span>
+  }
+
+  public byte[] serialize(ConnectedGoodsDatum obj) {
+<span class="nc" id="L57">    Objects.requireNonNull(obj);;</span>
+    try {
+<span class="nc" id="L59">      var constr = toPlutusData(obj);</span>
+<span class="nc" id="L60">      return CborSerializationUtil.serialize(constr.serialize());</span>
+<span class="nc" id="L61">    } catch (Exception e) {</span>
+<span class="nc" id="L62">      throw new CborRuntimeException(e);</span>
+    }
+  }
+
+  public String serializeToHex(ConnectedGoodsDatum obj) {
+<span class="nc" id="L67">    Objects.requireNonNull(obj);;</span>
+<span class="nc" id="L68">    var constr = toPlutusData(obj);</span>
+<span class="nc" id="L69">    return constr.serializeToHex();</span>
+  }
+
+  public ConnectedGoodsDatum deserialize(byte[] bytes) {
+<span class="fc" id="L73">    Objects.requireNonNull(bytes);;</span>
+    try {
+<span class="fc" id="L75">      var di = CborSerializationUtil.deserialize(bytes);</span>
+<span class="fc" id="L76">      var constr = ConstrPlutusData.deserialize(di);</span>
+<span class="fc" id="L77">      return fromPlutusData(constr);</span>
+<span class="nc" id="L78">    } catch (Exception e) {</span>
+<span class="nc" id="L79">      throw new CborRuntimeException(e);</span>
+    }
+  }
+
+  public ConnectedGoodsDatum deserialize(String hex) {
+<span class="fc" id="L84">    Objects.requireNonNull(hex);;</span>
+<span class="fc" id="L85">    var bytes = HexUtil.decodeHexString(hex);</span>
+<span class="fc" id="L86">    return deserialize(bytes);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConnectedGoodsController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.controller</a> &gt; <span class="el_source">ConnectedGoodsController.java</span></div><h1>ConnectedGoodsController.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.controller;
+
+import com.bloxbean.cardano.client.address.Address;
+import com.bloxbean.cardano.client.address.Credential;
+import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.client.util.HexUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.uverify.backend.dto.BuildTransactionResponse;
+import io.uverify.backend.enums.CardanoNetwork;
+import io.uverify.backend.extension.dto.ClaimUpdateConnectedGoodsRequest;
+import io.uverify.backend.extension.dto.MintConnectedGoodsRequest;
+import io.uverify.backend.extension.dto.MintConnectedGoodsResponse;
+import io.uverify.backend.extension.dto.SocialHub;
+import io.uverify.backend.extension.entity.ConnectedGoodEntity;
+import io.uverify.backend.extension.entity.ConnectedGoodUpdateEntity;
+import io.uverify.backend.extension.entity.SocialHubEntity;
+import io.uverify.backend.extension.service.ConnectedGoodsService;
+import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
+
+import static io.uverify.backend.extension.dto.SocialHub.fromSocialHubEntity;
+import static io.uverify.backend.extension.utils.ConnectedGoodUtils.applySHA3_256;
+import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
+
+<span class="fc" id="L55">@Slf4j</span>
+@ConditionalOnProperty(value = &quot;extensions.connected-goods.enabled&quot;, havingValue = &quot;true&quot;)
+@RestController
+@SuppressWarnings(&quot;unused&quot;)
+@RequestMapping(&quot;/api/v1/extension/connected-goods&quot;)
+public class ConnectedGoodsController {
+
+    @Autowired
+    private final ConnectedGoodsService connectedGoodsService;
+    private final CardanoNetwork network;
+
+<span class="fc" id="L66">    public ConnectedGoodsController(@Value(&quot;${cardano.network}&quot;) String network, ConnectedGoodsService connectedGoodsService) {</span>
+<span class="fc" id="L67">        this.connectedGoodsService = connectedGoodsService;</span>
+<span class="fc" id="L68">        this.network = CardanoNetwork.valueOf(network);</span>
+<span class="fc" id="L69">    }</span>
+
+    // TODO: Remove it in the future and replace it by proper UVerify certificate re-minting strategies
+    private String correctBatchIds(String batchId) {
+<span class="pc bpc" id="L73" title="3 of 4 branches missed.">        return switch (batchId) {</span>
+            case &quot;0ef210c95e39bbfc1f3bff7354f05e02d6ef751aedb6087df684ad655d2fb13b&quot; -&gt;
+<span class="nc" id="L75">                    &quot;189b6ba68788f9e4806aecac2724ce0cfa92553ea384d2c1607b8af383598860&quot;;</span>
+            case &quot;2898c9849a49f216e0c389040eda20610819c1e4b64b9d41b2137bc54f374455&quot; -&gt;
+<span class="nc" id="L77">                    &quot;c78ef5bed568c856a113e16f559feb73b2cd3c161561fb97ae91d0450c552571&quot;;</span>
+            case &quot;f696dd2126597392fdb4f564af149f14c2df75544e9a844152ccfd054dae57f5&quot; -&gt;
+<span class="nc" id="L79">                    &quot;1d6f25308d25e3d955ced55025c484d178f1fa6b7932e86a74bbd9ee790b6e22&quot;;</span>
+<span class="fc" id="L80">            default -&gt; batchId;</span>
+        };
+    }
+
+    @GetMapping(&quot;/{batchIds}/{itemId}&quot;)
+    public ResponseEntity&lt;?&gt; getConnectedGood(@PathVariable String batchIds, @PathVariable String itemId) {
+<span class="fc" id="L86">        batchIds = correctBatchIds(batchIds);</span>
+
+<span class="fc" id="L88">        SocialHubEntity socialHubEntity = connectedGoodsService.getSocialHubByBatchIdsAndItemId(batchIds, itemId);</span>
+        try {
+<span class="fc" id="L90">            return ResponseEntity.ok(</span>
+<span class="fc" id="L91">                    connectedGoodsService.decryptSocialHub(</span>
+<span class="fc" id="L92">                            fromSocialHubEntity(socialHubEntity, fromCardanoNetwork(network)), itemId));</span>
+<span class="nc" id="L93">        } catch (Exception exception) {</span>
+<span class="nc" id="L94">            log.error(&quot;Error decrypting social hub: {}&quot;, exception.getMessage(), exception);</span>
+<span class="nc" id="L95">            return ResponseEntity.badRequest().body(&quot;Error while decrypting social hub. Please check the provided item id and try again.&quot;);</span>
+        }
+    }
+
+    @PostMapping(&quot;/mint/batch&quot;)
+    @Operation(
+            summary = &quot;Returns an unsigned transaction to mint a batch of connected goods&quot;,
+            description = &quot;&quot;&quot;
+                    Returns an unsigned transaction to mint a batch of connected goods.
+                    The transaction needs to be signed by a user wallet.
+                    The request contains a list of connected goods, each with an asset name and a unique claiming password.
+                    &quot;&quot;&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;transaction successfully created&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid request or unknown action type&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;MintConnectedGoodsResponse&gt; mintConnectedGoods(@RequestBody @NotNull MintConnectedGoodsRequest mintConnectedGoodsRequest) {
+        try {
+<span class="fc" id="L117">            return ResponseEntity.ok(connectedGoodsService.mint(mintConnectedGoodsRequest.getTokenName(), mintConnectedGoodsRequest.getItems(), mintConnectedGoodsRequest.getAddress()));</span>
+<span class="nc" id="L118">        } catch (Exception exception) {</span>
+<span class="nc" id="L119">            MintConnectedGoodsResponse response = new MintConnectedGoodsResponse();</span>
+<span class="nc" id="L120">            log.error(&quot;Error building transaction: {}&quot;, exception.getMessage(), exception);</span>
+<span class="nc" id="L121">            response.setStatus(HttpStatus.BAD_REQUEST);</span>
+<span class="nc" id="L122">            response.setError(exception.getMessage());</span>
+<span class="nc" id="L123">            response.setMessage(&quot;Transaction building failed. Please check the request and try again.&quot;);</span>
+<span class="nc" id="L124">            return ResponseEntity.badRequest().body(response);</span>
+        }
+    }
+
+    @PostMapping(&quot;/claim/item&quot;)
+    public ResponseEntity&lt;?&gt; claimItem(@RequestBody @NotNull ClaimUpdateConnectedGoodsRequest claimUpdateConnectedGoodsRequest) {
+<span class="nc" id="L130">        String batchId = correctBatchIds(claimUpdateConnectedGoodsRequest.getBatchId());</span>
+
+        try {
+<span class="nc" id="L133">            SocialHubEntity socialHubEntity = connectedGoodsService.getSocialHubByBatchIdAndMintHash(</span>
+                    batchId,
+<span class="nc" id="L135">                    applySHA3_256(claimUpdateConnectedGoodsRequest.getPassword())</span>
+            );
+<span class="nc" id="L137">            SocialHub socialHub = claimUpdateConnectedGoodsRequest.getSocialHub();</span>
+
+<span class="nc bnc" id="L139" title="All 2 branches missed.">            if (socialHub.getOwner().startsWith(&quot;addr&quot;)) {</span>
+<span class="nc" id="L140">                Address address = new Address(claimUpdateConnectedGoodsRequest.getUserAddress());</span>
+<span class="nc" id="L141">                Optional&lt;Credential&gt; optionalCredential = address.getPaymentCredential();</span>
+
+<span class="nc bnc" id="L143" title="All 2 branches missed.">                if (optionalCredential.isEmpty()) {</span>
+<span class="nc" id="L144">                    return ResponseEntity.badRequest().body(&quot;Invalid user address&quot;);</span>
+                }
+
+<span class="nc" id="L147">                socialHub.setOwner(HexUtil.encodeHexString(optionalCredential.get().getBytes()));</span>
+            }
+<span class="nc" id="L149">            ConnectedGoodEntity connectedGood = socialHubEntity.getConnectedGood();</span>
+<span class="nc" id="L150">            ConnectedGoodUpdateEntity latestConnectedGoodUpdate = connectedGoodsService.getLatestUpdateByConnectedGoodId(connectedGood.getId());</span>
+
+<span class="nc" id="L152">            Transaction transaction = connectedGoodsService.claim(</span>
+<span class="nc" id="L153">                    claimUpdateConnectedGoodsRequest.getSocialHub().getItemName(),</span>
+<span class="nc" id="L154">                    claimUpdateConnectedGoodsRequest.getPassword(),</span>
+<span class="nc" id="L155">                    latestConnectedGoodUpdate.getTransactionId(),</span>
+<span class="nc" id="L156">                    latestConnectedGoodUpdate.getOutputIndex(),</span>
+<span class="nc" id="L157">                    socialHub.toSocialHubDatum(batchId),</span>
+<span class="nc" id="L158">                    claimUpdateConnectedGoodsRequest.getUserAddress()</span>
+            );
+<span class="nc" id="L160">            return ResponseEntity.ok(transaction.serializeToHex());</span>
+<span class="nc" id="L161">        } catch (Exception exception) {</span>
+<span class="nc" id="L162">            log.error(&quot;Error building transaction: {}&quot;, exception.getMessage(), exception);</span>
+<span class="nc" id="L163">            return ResponseEntity.badRequest().body(&quot;Error while building transaction. Please check the request and try again.&quot;);</span>
+        }
+    }
+
+    @PostMapping(&quot;/update/item&quot;)
+    public ResponseEntity&lt;?&gt; updateItem(@RequestBody @NotNull ClaimUpdateConnectedGoodsRequest claimUpdateConnectedGoodsRequest) {
+<span class="nc" id="L169">        String batchId = correctBatchIds(claimUpdateConnectedGoodsRequest.getBatchId());</span>
+
+        try {
+<span class="nc" id="L172">            SocialHubEntity socialHubEntity = connectedGoodsService.getSocialHubByBatchIdAndMintHash(</span>
+                    batchId,
+<span class="nc" id="L174">                    applySHA3_256(claimUpdateConnectedGoodsRequest.getPassword())</span>
+            );
+<span class="nc" id="L176">            SocialHub socialHub = claimUpdateConnectedGoodsRequest.getSocialHub();</span>
+
+<span class="nc bnc" id="L178" title="All 2 branches missed.">            if (socialHub.getOwner().startsWith(&quot;addr&quot;)) {</span>
+<span class="nc" id="L179">                Address address = new Address(claimUpdateConnectedGoodsRequest.getUserAddress());</span>
+<span class="nc" id="L180">                Optional&lt;Credential&gt; optionalCredential = address.getPaymentCredential();</span>
+
+<span class="nc bnc" id="L182" title="All 2 branches missed.">                if (optionalCredential.isEmpty()) {</span>
+<span class="nc" id="L183">                    return ResponseEntity.badRequest().body(&quot;Invalid user address&quot;);</span>
+                }
+
+<span class="nc" id="L186">                socialHub.setOwner(HexUtil.encodeHexString(optionalCredential.get().getBytes()));</span>
+            }
+
+<span class="nc" id="L189">            Transaction transaction = connectedGoodsService.update(</span>
+<span class="nc" id="L190">                    socialHub.toSocialHubDatum(batchId),</span>
+<span class="nc" id="L191">                    socialHubEntity.getTransactionId(),</span>
+<span class="nc" id="L192">                    socialHubEntity.getOutputIndex(),</span>
+<span class="nc" id="L193">                    claimUpdateConnectedGoodsRequest.getUserAddress(),</span>
+<span class="nc" id="L194">                    claimUpdateConnectedGoodsRequest.getPassword()</span>
+            );
+<span class="nc" id="L196">            return ResponseEntity.ok(transaction.serializeToHex());</span>
+<span class="nc" id="L197">        } catch (Exception exception) {</span>
+<span class="nc" id="L198">            log.error(&quot;Error building transaction: {}&quot;, exception.getMessage(), exception);</span>
+<span class="nc" id="L199">            return ResponseEntity.badRequest().body(&quot;Error while building transaction. Please check the request and try again.&quot;);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
