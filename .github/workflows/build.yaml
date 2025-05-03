@@ -48,5 +48,5 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/your-service:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/your-service:${{ env.POM_VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/uverify-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/uverify-backend:${{ env.POM_VERSION }}
