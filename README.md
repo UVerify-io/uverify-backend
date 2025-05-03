@@ -2,11 +2,14 @@
 
 <p align="center">
   <a href="https://UVerify-io.github.io/coverage-report/index.html">
-    <img src="https://img.shields.io/github/actions/workflow/status/UVerify-io/uverify-backend/tests.yaml" alt="Test Workflow Status">
+    <img src="https://img.shields.io/github/actions/workflow/status/UVerify-io/uverify-backend/tests.yaml?label=tests" alt="Test Workflow Status" />
+  </a>
+  <a href="https://github.com/UVerify-io/uverify-backend/actions/workflows/build.yaml">
+    <img src="https://img.shields.io/github/actions/workflow/status/UVerify-io/uverify-backend/build.yaml" alt="Build Workflow Status" />
   </a>
    <a href="https://UVerify-io.github.io/uverify-backend/coverage-report/index.html"><img alt="Coverage" src="https://uverify-io.github.io/uverify-backend/coverage-report/badges/jacoco.svg" /></a>
    <a href="https://github.com/UVerify-io/uverify-backend/actions/workflows/release.yaml">
-    <img src="https://img.shields.io/github/actions/workflow/status/UVerify-io/uverify-backend/release.yaml" alt="Release Workflow Status">
+    <img src="https://img.shields.io/github/actions/workflow/status/UVerify-io/uverify-backend/release.yaml?label=release" alt="Release Workflow Status">
   </a>
    <a href="https://conventionalcommits.org">
     <img src="https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white" alt="Conventional Commits">
