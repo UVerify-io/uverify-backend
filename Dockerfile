@@ -13,6 +13,5 @@ FROM openjdk:21-jdk-slim AS runtime
 WORKDIR /app
 COPY --from=build /app/target/*.jar /app/uverify-backend.jar
 
-COPY .env /app/.env
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "uverify-backend.jar"]
