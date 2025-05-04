@@ -9,7 +9,7 @@ Thank you for your interest in contributing to **UVerify** (the "Project"). This
 
 - **"You" (or "Your")**: This refers to the individual or legal entity making a contribution to the Project.
 - **"Contribution"**: Any code, documentation, or other material that you submit to the Project, in any form, including but not limited to source code, object code, patches, bug fixes, documentation, or any other work.
-- **"Project"**: The UVerify project hosted at **https://github.com/UVerify-io/uverify-ui** and its associated repositories. An instance of the Project is hosted at **app.uverify.io**.
+- **"Project"**: The UVerify project, including the repositories available under the GitHub organization https://github.com/UVerify-io, and any related repositories or subprojects within this organization. A publicly accessible instance of the Project is deployed as a web service at app.uverify.io.
 
 ## 2. Grant of Rights
 
@@ -36,14 +36,13 @@ You acknowledge that the Project is currently licensed under the **GNU Affero Ge
 You understand that the Project is under no obligation to use or include Your Contribution.
 
 ## 6. Signing the CLA
-
-Before your Contribution can be accepted into the Project, you must explicitly agree to the terms of this Contributor License Agreement. Contributions will not be merged unless the CLA has been signed. A CLA bot will guide you through the signing process when you submit a pull request.
+Before your Contribution can be accepted into the Project, you must explicitly agree to the terms of this Contributor License Agreement. Contributions will not be merged unless the CLA has been signed. A CLA bot (e.g., CLA Assistant) will guide you through the signing process when you submit a pull request.
 
 ## 7. Miscellaneous
 
 1. This Agreement is governed by the laws of Germany, without regard to its conflict of laws principles.
-2. If any provision of this Agreement is found to be unenforceable, the remaining provisions will remain in full force and effect.
+2. Any disputes arising out of or in connection with this Agreement shall be resolved through arbitration in accordance with the rules of the German Arbitration Institute (DIS), with the seat of arbitration in Berlin, Germany.
+3. If any provision of this Agreement is found to be unenforceable, the remaining provisions will remain in full force and effect.
 
 ---
-
-By signing this Contributor License Agreement, You agree to its terms.
+By signing this Contributor License Agreement, You confirm that You have read and understood its terms and agree to be bound by them.

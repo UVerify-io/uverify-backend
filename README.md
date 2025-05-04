@@ -1,11 +1,11 @@
 # 💎 Welcome to UVerify: Your Gateway to Blockchain Simplicity
 
 <p align="center">
-  <a href="https://UVerify-io.github.io/coverage-report/index.html">
-    <img src="https://img.shields.io/github/actions/workflow/status/UVerify-io/uverify-backend/tests.yaml?label=tests" alt="Test Workflow Status" />
-  </a>
   <a href="https://github.com/UVerify-io/uverify-backend/actions/workflows/build.yaml">
     <img src="https://img.shields.io/github/actions/workflow/status/UVerify-io/uverify-backend/build.yaml" alt="Build Workflow Status" />
+  </a>
+  <a href="https://UVerify-io.github.io/coverage-report/index.html">
+    <img src="https://img.shields.io/github/actions/workflow/status/UVerify-io/uverify-backend/tests.yaml?label=tests" alt="Test Workflow Status" />
   </a>
    <a href="https://UVerify-io.github.io/uverify-backend/coverage-report/index.html"><img alt="Coverage" src="https://uverify-io.github.io/uverify-backend/coverage-report/badges/jacoco.svg" /></a>
    <a href="https://github.com/UVerify-io/uverify-backend/actions/workflows/release.yaml">
