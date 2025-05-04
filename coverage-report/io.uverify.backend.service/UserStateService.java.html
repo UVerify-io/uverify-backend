@@ -66,158 +66,165 @@ public class UserStateService {
     CardanoBlockchainService cardanoBlockchainService;
 
     @Autowired
-    public UserStateService(@Value(&quot;${cardano.facilitator.user.mnemonic}&quot;) String facilitatorAccountMnemonic,
+    public UserStateService(@Value(&quot;${cardano.facilitator.user.mnemonic:}&quot;) String facilitatorAccountMnemonic,
 <span class="fc" id="L70">                            @Value(&quot;${cardano.network}&quot;) String network) {</span>
 <span class="fc" id="L71">        this.network = CardanoNetwork.valueOf(network);</span>
-<span class="fc" id="L72">        this.facilitator = new Account(fromCardanoNetwork(this.network), facilitatorAccountMnemonic);</span>
-<span class="fc" id="L73">    }</span>
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">        if (facilitatorAccountMnemonic.isEmpty()) {</span>
+<span class="nc" id="L73">            log.warn(&quot;Facilitator account mnemonic is empty. Generating a temporary account. &quot; +</span>
+                    &quot;This is not recommended for production use and may result in an odd user experience, &quot; +
+                    &quot;if this UVerify backend service restarts while requests are still pending.&quot;);
+<span class="nc" id="L76">            this.facilitator = new Account(fromCardanoNetwork(this.network));</span>
+        } else {
+<span class="fc" id="L78">            this.facilitator = new Account(fromCardanoNetwork(this.network), facilitatorAccountMnemonic);</span>
+        }
+<span class="fc" id="L80">    }</span>
 
     private UserActionResponse buildUserActionResponse(String address, UserAction action) {
-<span class="fc" id="L76">        return buildUserActionResponse(address, action, null);</span>
+<span class="fc" id="L83">        return buildUserActionResponse(address, action, null);</span>
     }
 
     private UserActionResponse buildUserActionResponse(String address, UserAction action, String stateId) {
-<span class="fc" id="L80">        long timestamp = System.currentTimeMillis();</span>
-<span class="fc" id="L81">        String actionName = action.name();</span>
-<span class="pc bpc" id="L82" title="1 of 2 branches missed.">        if (stateId != null) {</span>
-<span class="nc" id="L83">            actionName += &quot;:&quot; + stateId;</span>
+<span class="fc" id="L87">        long timestamp = System.currentTimeMillis();</span>
+<span class="fc" id="L88">        String actionName = action.name();</span>
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">        if (stateId != null) {</span>
+<span class="nc" id="L90">            actionName += &quot;:&quot; + stateId;</span>
         }
 
-<span class="fc" id="L86">        String message = &quot;[&quot; + actionName + &quot;@&quot; + timestamp + &quot;] Please sign this message with your private key to verify, &quot; +</span>
+<span class="fc" id="L93">        String message = &quot;[&quot; + actionName + &quot;@&quot; + timestamp + &quot;] Please sign this message with your private key to verify, &quot; +</span>
                 &quot;that you are the owner of the address &quot; + address + &quot;.&quot;;
-<span class="fc" id="L88">        EdDSASigningProvider edDSASigningProvider = new EdDSASigningProvider();</span>
-<span class="fc" id="L89">        String signature = HexUtil.encodeHexString(</span>
-<span class="fc" id="L90">                edDSASigningProvider.signExtended(message.getBytes(StandardCharsets.UTF_8), facilitator.privateKeyBytes()));</span>
-<span class="fc" id="L91">        return UserActionResponse.builder()</span>
-<span class="fc" id="L92">                .address(address)</span>
-<span class="fc" id="L93">                .action(action)</span>
-<span class="fc" id="L94">                .signature(signature)</span>
-<span class="fc" id="L95">                .timestamp(timestamp)</span>
-<span class="fc" id="L96">                .message(message)</span>
-<span class="fc" id="L97">                .status(HttpStatus.OK)</span>
-<span class="fc" id="L98">                .build();</span>
+<span class="fc" id="L95">        EdDSASigningProvider edDSASigningProvider = new EdDSASigningProvider();</span>
+<span class="fc" id="L96">        String signature = HexUtil.encodeHexString(</span>
+<span class="fc" id="L97">                edDSASigningProvider.signExtended(message.getBytes(StandardCharsets.UTF_8), facilitator.privateKeyBytes()));</span>
+<span class="fc" id="L98">        return UserActionResponse.builder()</span>
+<span class="fc" id="L99">                .address(address)</span>
+<span class="fc" id="L100">                .action(action)</span>
+<span class="fc" id="L101">                .signature(signature)</span>
+<span class="fc" id="L102">                .timestamp(timestamp)</span>
+<span class="fc" id="L103">                .message(message)</span>
+<span class="fc" id="L104">                .status(HttpStatus.OK)</span>
+<span class="fc" id="L105">                .build();</span>
     }
 
 
     public UserActionResponse requestUserInfo(String address) {
-<span class="fc" id="L103">        return buildUserActionResponse(address, UserAction.USER_INFO);</span>
+<span class="fc" id="L110">        return buildUserActionResponse(address, UserAction.USER_INFO);</span>
     }
 
     public UserActionResponse requestInvalidateState(String address, String stateId) {
-<span class="nc" id="L107">        return buildUserActionResponse(address, UserAction.INVALIDATE_STATE, stateId);</span>
+<span class="nc" id="L114">        return buildUserActionResponse(address, UserAction.INVALIDATE_STATE, stateId);</span>
     }
 
     public UserActionResponse requestOptOut(String address) {
-<span class="nc" id="L111">        return buildUserActionResponse(address, UserAction.OPT_OUT);</span>
+<span class="nc" id="L118">        return buildUserActionResponse(address, UserAction.OPT_OUT);</span>
     }
 
     private boolean signaturesAreValid(ExecuteUserActionRequest actionRequest) {
-<span class="fc" id="L115">        EdDSASigningProvider edDSASigningProvider = new EdDSASigningProvider();</span>
+<span class="fc" id="L122">        EdDSASigningProvider edDSASigningProvider = new EdDSASigningProvider();</span>
 
-<span class="fc" id="L117">        String actionName = actionRequest.getAction().name();</span>
-<span class="pc bpc" id="L118" title="1 of 2 branches missed.">        if (actionRequest.getStateId() != null) {</span>
-<span class="nc" id="L119">            actionName += &quot;:&quot; + actionRequest.getStateId();</span>
+<span class="fc" id="L124">        String actionName = actionRequest.getAction().name();</span>
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">        if (actionRequest.getStateId() != null) {</span>
+<span class="nc" id="L126">            actionName += &quot;:&quot; + actionRequest.getStateId();</span>
         }
 
-<span class="fc" id="L122">        String message = &quot;[&quot; + actionName + &quot;@&quot; + actionRequest.getTimestamp() + &quot;] Please sign this message with your private key to verify, &quot; +</span>
-<span class="fc" id="L123">                &quot;that you are the owner of the address &quot; + actionRequest.getAddress() + &quot;.&quot;;</span>
+<span class="fc" id="L129">        String message = &quot;[&quot; + actionName + &quot;@&quot; + actionRequest.getTimestamp() + &quot;] Please sign this message with your private key to verify, &quot; +</span>
+<span class="fc" id="L130">                &quot;that you are the owner of the address &quot; + actionRequest.getAddress() + &quot;.&quot;;</span>
 
-<span class="pc bpc" id="L125" title="1 of 2 branches missed.">        if (!message.equals(actionRequest.getMessage())) {</span>
-<span class="nc" id="L126">            return false;</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">        if (!message.equals(actionRequest.getMessage())) {</span>
+<span class="nc" id="L133">            return false;</span>
         }
 
-<span class="fc" id="L129">        CIP30Verifier cip30Verifier = new CIP30Verifier(actionRequest.getUserSignature(), actionRequest.getUserPublicKey());</span>
-<span class="fc" id="L130">        Cip30VerificationResult cip30VerificationResult = cip30Verifier.verify();</span>
-<span class="fc" id="L131">        Optional&lt;String&gt; optionalUserAddress = cip30VerificationResult.getAddress(AddressFormat.TEXT);</span>
+<span class="fc" id="L136">        CIP30Verifier cip30Verifier = new CIP30Verifier(actionRequest.getUserSignature(), actionRequest.getUserPublicKey());</span>
+<span class="fc" id="L137">        Cip30VerificationResult cip30VerificationResult = cip30Verifier.verify();</span>
+<span class="fc" id="L138">        Optional&lt;String&gt; optionalUserAddress = cip30VerificationResult.getAddress(AddressFormat.TEXT);</span>
 
-<span class="pc bpc" id="L133" title="1 of 2 branches missed.">        if (optionalUserAddress.isEmpty()) {</span>
-<span class="nc" id="L134">            return false;</span>
+<span class="pc bpc" id="L140" title="1 of 2 branches missed.">        if (optionalUserAddress.isEmpty()) {</span>
+<span class="nc" id="L141">            return false;</span>
         }
         // TODO: Check if timestamp is in validity range
 
-<span class="pc bpc" id="L138" title="1 of 2 branches missed.">        return edDSASigningProvider.verify(HexUtil.decodeHexString(actionRequest.getSignature()),</span>
-<span class="fc" id="L139">                actionRequest.getMessage().getBytes(), facilitator.publicKeyBytes()) &amp;&amp;</span>
-<span class="pc bpc" id="L140" title="2 of 4 branches missed.">                cip30VerificationResult.isValid() &amp;&amp; message.equals(cip30VerificationResult.getMessage(MessageFormat.TEXT))</span>
-<span class="pc bpc" id="L141" title="1 of 2 branches missed.">                &amp;&amp; actionRequest.getAddress().equals(optionalUserAddress.get());</span>
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">        return edDSASigningProvider.verify(HexUtil.decodeHexString(actionRequest.getSignature()),</span>
+<span class="fc" id="L146">                actionRequest.getMessage().getBytes(), facilitator.publicKeyBytes()) &amp;&amp;</span>
+<span class="pc bpc" id="L147" title="2 of 4 branches missed.">                cip30VerificationResult.isValid() &amp;&amp; message.equals(cip30VerificationResult.getMessage(MessageFormat.TEXT))</span>
+<span class="pc bpc" id="L148" title="1 of 2 branches missed.">                &amp;&amp; actionRequest.getAddress().equals(optionalUserAddress.get());</span>
     }
 
     public ExecuteUserActionResponse executeUserOptOut(ExecuteUserActionRequest request) {
-<span class="nc bnc" id="L145" title="All 2 branches missed.">        if (signaturesAreValid(request)) {</span>
-<span class="nc" id="L146">            String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(request.getAddress()));</span>
-<span class="nc" id="L147">            List&lt;StateDatumEntity&gt; stateDatumEntities = stateDatumRepository.findByOwner(userCredential);</span>
-<span class="nc" id="L148">            Address userAddress = new Address(request.getAddress());</span>
-<span class="nc" id="L149">            ExecuteUserActionResponse response = ExecuteUserActionResponse.builder().status(HttpStatus.OK).build();</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">        if (signaturesAreValid(request)) {</span>
+<span class="nc" id="L153">            String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(request.getAddress()));</span>
+<span class="nc" id="L154">            List&lt;StateDatumEntity&gt; stateDatumEntities = stateDatumRepository.findByOwner(userCredential);</span>
+<span class="nc" id="L155">            Address userAddress = new Address(request.getAddress());</span>
+<span class="nc" id="L156">            ExecuteUserActionResponse response = ExecuteUserActionResponse.builder().status(HttpStatus.OK).build();</span>
             try {
-<span class="nc" id="L151">                Transaction unsignedTransaction = cardanoBlockchainService.invalidateStates(userAddress, stateDatumEntities.stream().map(StateDatumEntity::getTransactionId).toList());</span>
-<span class="nc" id="L152">                response.setUnsignedTransaction(unsignedTransaction.serializeToHex());</span>
-<span class="nc" id="L153">            } catch (ApiException | CborSerializationException exception) {</span>
-<span class="nc" id="L154">                log.error(&quot;Failed to invalidate states&quot;, exception);</span>
-<span class="nc" id="L155">                response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);</span>
-<span class="nc" id="L156">                response.setError(&quot;Failed to invalidate states.&quot;);</span>
-<span class="nc" id="L157">            }</span>
-<span class="nc" id="L158">            return response;</span>
+<span class="nc" id="L158">                Transaction unsignedTransaction = cardanoBlockchainService.invalidateStates(userAddress, stateDatumEntities.stream().map(StateDatumEntity::getTransactionId).toList());</span>
+<span class="nc" id="L159">                response.setUnsignedTransaction(unsignedTransaction.serializeToHex());</span>
+<span class="nc" id="L160">            } catch (ApiException | CborSerializationException exception) {</span>
+<span class="nc" id="L161">                log.error(&quot;Failed to invalidate states&quot;, exception);</span>
+<span class="nc" id="L162">                response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);</span>
+<span class="nc" id="L163">                response.setError(&quot;Failed to invalidate states.&quot;);</span>
+<span class="nc" id="L164">            }</span>
+<span class="nc" id="L165">            return response;</span>
         } else {
-<span class="nc" id="L160">            return ExecuteUserActionResponse.builder().status(HttpStatus.BAD_REQUEST)</span>
-<span class="nc" id="L161">                    .error(&quot;The provided signatures are not valid.&quot;).build();</span>
+<span class="nc" id="L167">            return ExecuteUserActionResponse.builder().status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L168">                    .error(&quot;The provided signatures are not valid.&quot;).build();</span>
         }
     }
 
     public ExecuteUserActionResponse executeStateInvalidationRequest(ExecuteUserActionRequest actionRequest) {
-<span class="nc bnc" id="L166" title="All 2 branches missed.">        if (signaturesAreValid(actionRequest)) {</span>
-<span class="nc" id="L167">            Optional&lt;StateDatumEntity&gt; optionalStateDatum = stateDatumRepository.findById(actionRequest.getStateId());</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        if (signaturesAreValid(actionRequest)) {</span>
+<span class="nc" id="L174">            Optional&lt;StateDatumEntity&gt; optionalStateDatum = stateDatumRepository.findById(actionRequest.getStateId());</span>
 
-<span class="nc bnc" id="L169" title="All 2 branches missed.">            if (optionalStateDatum.isEmpty()) {</span>
-<span class="nc" id="L170">                return ExecuteUserActionResponse.builder()</span>
-<span class="nc" id="L171">                        .status(HttpStatus.BAD_REQUEST)</span>
-<span class="nc" id="L172">                        .error(&quot;State with the provided ID does not exist.&quot;)</span>
-<span class="nc" id="L173">                        .build();</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">            if (optionalStateDatum.isEmpty()) {</span>
+<span class="nc" id="L177">                return ExecuteUserActionResponse.builder()</span>
+<span class="nc" id="L178">                        .status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L179">                        .error(&quot;State with the provided ID does not exist.&quot;)</span>
+<span class="nc" id="L180">                        .build();</span>
             }
 
-<span class="nc" id="L176">            StateDatumEntity stateDatumEntity = optionalStateDatum.get();</span>
-<span class="nc" id="L177">            Address userAddress = new Address(stateDatumEntity.getOwner());</span>
-<span class="nc" id="L178">            ExecuteUserActionResponse response = ExecuteUserActionResponse.builder().status(HttpStatus.OK).build();</span>
+<span class="nc" id="L183">            StateDatumEntity stateDatumEntity = optionalStateDatum.get();</span>
+<span class="nc" id="L184">            Address userAddress = new Address(stateDatumEntity.getOwner());</span>
+<span class="nc" id="L185">            ExecuteUserActionResponse response = ExecuteUserActionResponse.builder().status(HttpStatus.OK).build();</span>
             try {
-<span class="nc" id="L180">                response.setUnsignedTransaction(cardanoBlockchainService.invalidateState(userAddress, stateDatumEntity.getTransactionId()).serializeToHex());</span>
-<span class="nc" id="L181">            } catch (ApiException exception) {</span>
-<span class="nc" id="L182">                log.error(&quot;Failed to invalidate state&quot;, exception);</span>
-<span class="nc" id="L183">                response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);</span>
-<span class="nc" id="L184">                response.setError(&quot;Failed to invalidate state.&quot;);</span>
-<span class="nc" id="L185">            } catch (CborSerializationException exception) {</span>
-<span class="nc" id="L186">                log.error(&quot;Failed to serialize transaction&quot;, exception);</span>
-<span class="nc" id="L187">                response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);</span>
-<span class="nc" id="L188">                response.setError(&quot;Failed to serialize transaction.&quot;);</span>
-<span class="nc" id="L189">            }</span>
-<span class="nc" id="L190">            return response;</span>
+<span class="nc" id="L187">                response.setUnsignedTransaction(cardanoBlockchainService.invalidateState(userAddress, stateDatumEntity.getTransactionId()).serializeToHex());</span>
+<span class="nc" id="L188">            } catch (ApiException exception) {</span>
+<span class="nc" id="L189">                log.error(&quot;Failed to invalidate state&quot;, exception);</span>
+<span class="nc" id="L190">                response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);</span>
+<span class="nc" id="L191">                response.setError(&quot;Failed to invalidate state.&quot;);</span>
+<span class="nc" id="L192">            } catch (CborSerializationException exception) {</span>
+<span class="nc" id="L193">                log.error(&quot;Failed to serialize transaction&quot;, exception);</span>
+<span class="nc" id="L194">                response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);</span>
+<span class="nc" id="L195">                response.setError(&quot;Failed to serialize transaction.&quot;);</span>
+<span class="nc" id="L196">            }</span>
+<span class="nc" id="L197">            return response;</span>
         }
-<span class="nc" id="L192">        return ExecuteUserActionResponse.builder().status(HttpStatus.BAD_REQUEST)</span>
-<span class="nc" id="L193">                .error(&quot;The provided signatures are not valid.&quot;).build();</span>
+<span class="nc" id="L199">        return ExecuteUserActionResponse.builder().status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L200">                .error(&quot;The provided signatures are not valid.&quot;).build();</span>
     }
 
     public ExecuteUserActionResponse executeUserInfoRequest(ExecuteUserActionRequest actionRequest) {
-<span class="pc bpc" id="L197" title="1 of 2 branches missed.">        if (signaturesAreValid(actionRequest)) {</span>
-<span class="fc" id="L198">            String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(actionRequest.getAddress()));</span>
-<span class="fc" id="L199">            List&lt;BootstrapDatumEntity&gt; bootstrapDatumEntities = bootstrapDatumRepository.findAllWhitelisted();</span>
-<span class="fc" id="L200">            List&lt;BootstrapDatumEntity&gt; customBootstrapDatumEntities = bootstrapDatumRepository.findByAllowedCredential(userCredential);</span>
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">        if (signaturesAreValid(actionRequest)) {</span>
+<span class="fc" id="L205">            String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(actionRequest.getAddress()));</span>
+<span class="fc" id="L206">            List&lt;BootstrapDatumEntity&gt; bootstrapDatumEntities = bootstrapDatumRepository.findAllWhitelisted();</span>
+<span class="fc" id="L207">            List&lt;BootstrapDatumEntity&gt; customBootstrapDatumEntities = bootstrapDatumRepository.findByAllowedCredential(userCredential);</span>
 
-<span class="fc" id="L202">            bootstrapDatumEntities.addAll(customBootstrapDatumEntities);</span>
+<span class="fc" id="L209">            bootstrapDatumEntities.addAll(customBootstrapDatumEntities);</span>
 
-<span class="fc" id="L204">            List&lt;StateDatumEntity&gt; stateDatumEntities = stateDatumRepository.findByOwner(userCredential);</span>
+<span class="fc" id="L211">            List&lt;StateDatumEntity&gt; stateDatumEntities = stateDatumRepository.findByOwner(userCredential);</span>
 
-<span class="fc" id="L206">            return ExecuteUserActionResponse.builder()</span>
-<span class="fc" id="L207">                    .state(UserState.builder()</span>
-<span class="fc" id="L208">                            .bootstrapDatums(bootstrapDatumEntities.stream()</span>
-<span class="fc" id="L209">                                    .map(bootstrapDatumEntity -&gt;</span>
-<span class="fc" id="L210">                                            BootstrapData.fromBootstrapDatumEntity(bootstrapDatumEntity, network))</span>
-<span class="fc" id="L211">                                    .toList())</span>
-<span class="fc" id="L212">                            .states(stateDatumEntities.stream().map(stateDatumEntity -&gt;</span>
-<span class="fc" id="L213">                                            StateData.fromStateDatumEntity(stateDatumEntity, network))</span>
-<span class="fc" id="L214">                                    .toList())</span>
-<span class="fc" id="L215">                            .build())</span>
-<span class="fc" id="L216">                    .status(HttpStatus.OK)</span>
-<span class="fc" id="L217">                    .build();</span>
+<span class="fc" id="L213">            return ExecuteUserActionResponse.builder()</span>
+<span class="fc" id="L214">                    .state(UserState.builder()</span>
+<span class="fc" id="L215">                            .bootstrapDatums(bootstrapDatumEntities.stream()</span>
+<span class="fc" id="L216">                                    .map(bootstrapDatumEntity -&gt;</span>
+<span class="fc" id="L217">                                            BootstrapData.fromBootstrapDatumEntity(bootstrapDatumEntity, network))</span>
+<span class="fc" id="L218">                                    .toList())</span>
+<span class="fc" id="L219">                            .states(stateDatumEntities.stream().map(stateDatumEntity -&gt;</span>
+<span class="fc" id="L220">                                            StateData.fromStateDatumEntity(stateDatumEntity, network))</span>
+<span class="fc" id="L221">                                    .toList())</span>
+<span class="fc" id="L222">                            .build())</span>
+<span class="fc" id="L223">                    .status(HttpStatus.OK)</span>
+<span class="fc" id="L224">                    .build();</span>
         }
-<span class="nc" id="L219">        return ExecuteUserActionResponse.builder().status(HttpStatus.BAD_REQUEST)</span>
-<span class="nc" id="L220">                .error(&quot;The provided signatures are not valid.&quot;).build();</span>
+<span class="nc" id="L226">        return ExecuteUserActionResponse.builder().status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L227">                .error(&quot;The provided signatures are not valid.&quot;).build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
