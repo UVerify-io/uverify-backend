@@ -7,9 +7,6 @@ spring:
   main:
     banner-mode: off
   flyway:
-    locations:
-      - classpath:db/store/{vendor}
-      - classpath:db/migration/uverify
     out-of-order: true
   datasource:
     url: ${DB_URL:jdbc:h2:./data/db}
@@ -83,6 +80,10 @@ spring:
   datasource:
     driverClassName: ${DB_DRIVER:org.postgresql.Driver}
     url: ${DB_URL:jdbc:postgresql://localhost:5432/uverify}
+  flyway:
+    locations:
+      - classpath:db/store/{vendor}
+      - classpath:db/migration/postgres/uverify
 ---
 spring:
   config:
@@ -90,9 +91,15 @@ spring:
       on-profile: h2
   jpa:
     database-platform: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
+  flyway:
+    locations:
+      - classpath:db/store/{vendor}
+      - classpath:db/migration/h2/uverify
   h2:
     console:
       enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:uverify}
 ---
 spring:
   config:
@@ -123,30 +130,6 @@ spring:
   datasource:
     driverClassName: ${DB_DRIVER:org.postgresql.Driver}
     url: ${DB_URL:jdbc:postgresql://localhost:5432/uverify}
----
-spring:
-  config:
-    activate:
-      on-profile: h2
-  jpa:
-    database-platform: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
-  h2:
-    console:
-      enabled: true
----
-spring:
-  config:
-    activate:
-      on-profile: test
-  jpa:
-    database-platform: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
-  h2:
-    console:
-      enabled: true
-  datasource:
-    url: ${DB_URL:jdbc:h2:mem:uverify}
-    username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:password}
 ---
 spring:
   config:
