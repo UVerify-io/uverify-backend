@@ -38,7 +38,7 @@
     <groupId>io.uverify</groupId>
 
     <artifactId>uverify-backend</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 
     <name>Uverify Backend</name>
     <description>A scoped indexer and transaction builder to both interact with the Uverify Aiken smart contract and
