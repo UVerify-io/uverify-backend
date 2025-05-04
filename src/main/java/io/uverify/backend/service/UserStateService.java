@@ -66,10 +66,17 @@ public class UserStateService {
     CardanoBlockchainService cardanoBlockchainService;
 
     @Autowired
-    public UserStateService(@Value("${cardano.facilitator.user.mnemonic}") String facilitatorAccountMnemonic,
+    public UserStateService(@Value("${cardano.facilitator.user.mnemonic:}") String facilitatorAccountMnemonic,
                             @Value("${cardano.network}") String network) {
         this.network = CardanoNetwork.valueOf(network);
-        this.facilitator = new Account(fromCardanoNetwork(this.network), facilitatorAccountMnemonic);
+        if (facilitatorAccountMnemonic.isEmpty()) {
+            log.warn("Facilitator account mnemonic is empty. Generating a temporary account. " +
+                    "This is not recommended for production use and may result in an odd user experience, " +
+                    "if this UVerify backend service restarts while requests are still pending.");
+            this.facilitator = new Account(fromCardanoNetwork(this.network));
+        } else {
+            this.facilitator = new Account(fromCardanoNetwork(this.network), facilitatorAccountMnemonic);
+        }
     }
 
     private UserActionResponse buildUserActionResponse(String address, UserAction action) {

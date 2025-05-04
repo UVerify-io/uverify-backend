@@ -56,7 +56,7 @@ cardano:
   network: ${CARDANO_NETWORK:preprod}
   facilitator:
     user:
-      mnemonic: ${FACILITATOR_ACCOUNT_MNEMONIC}
+      mnemonic: ${FACILITATOR_ACCOUNT_MNEMONIC:}
   service:
     user:
       address: ${SERVICE_USER_ADDRESS}
