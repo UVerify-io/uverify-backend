@@ -8,6 +8,9 @@ spring:
     banner-mode: off
   flyway:
     out-of-order: true
+    locations:
+      - classpath:db/store/{vendor}
+      - classpath:db/migration/h2/uverify
   datasource:
     url: ${DB_URL:jdbc:h2:./data/db}
     username: ${DB_USERNAME:sa}
@@ -37,12 +40,14 @@ management:
           - prometheus
 
 store:
+  sync-auto-start: ${YACI_STORE_AUTO_START:true}
   cardano:
     host: ${REMOTE_NODE_URL:backbone.cardano.iog.io}
     port: ${REMOTE_NODE_PORT:3001}
     protocol-magic: 764824073
     sync-start-slot: 153422988
     sync-start-blockhash: c6b1c0eebd697a25bbcc429f4d66258b83db07ad060b13065612e50410bda7b2
+    sync-auto-start: ${YACI_STORE_AUTO_START:true}
   blocks:
     epoch-calculation-interval=14400:  # 14400 = 4 hours
 
@@ -54,9 +59,18 @@ cardano:
   facilitator:
     user:
       mnemonic: ${FACILITATOR_ACCOUNT_MNEMONIC:}
+  test:
+    user:
+      mnemonic: ${TEST_USER_MNEMONIC:}
   service:
     user:
+      mnemonic: ${SERVICE_ACCOUNT_MNEMONIC:}
       address: ${SERVICE_USER_ADDRESS}
+    fee:
+      receiver:
+        mnemonic: ${FEE_RECEIVER_MNEMONIC:}
+      partner:
+        address: ${FEE_RECEIVER_PARTNER_ADDRESS:}
   backend:
     service:
       type: ${CARDANO_BACKEND_TYPE:blockfrost}
@@ -70,6 +84,7 @@ extensions:
       salt: ${CONNECTED_GOODS_ENCRYPTION_SALT}
     enabled: ${CONNECTED_GOODS_EXTENSION_ENABLED:true}
     service-wallet:
+      mnemonic: ${CONNECTED_GOODS_SERVICE_WALLET_MNEMONIC:}
       address: ${CONNECTED_GOODS_SERVICE_WALLET_ADDRESS}
 
 ---
@@ -118,22 +133,6 @@ server:
 spring:
   config:
     activate:
-      on-profile: disable-indexer
-
-store:
-  sync-auto-start: false
----
-spring:
-  config:
-    activate:
-      on-profile: postgres
-  datasource:
-    driverClassName: ${DB_DRIVER:org.postgresql.Driver}
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/uverify}
----
-spring:
-  config:
-    activate:
       on-profile: preprod
 store:
   cardano:
@@ -142,4 +141,8 @@ store:
     protocol-magic: ${PROTOCOL_MAGIC:1}
     sync-start-slot: 80086574
     sync-start-blockhash: 4f9308fcc35bc2fffc399171dc36d3730bcd4f4e9349dd59362f1fdb8604fde8
+logging:
+  level:
+    root: INFO
+    io.uverify.backend.service: DEBUG
 ---
