@@ -135,14 +135,12 @@ spring:
     activate:
       on-profile: preprod
 store:
+  sync-auto-start: ${YACI_STORE_AUTO_START:true}
   cardano:
     host: ${REMOTE_NODE_URL:preprod-node.world.dev.cardano.org}
     port: ${REMOTE_NODE_PORT:30000}
     protocol-magic: ${PROTOCOL_MAGIC:1}
     sync-start-slot: 80086574
     sync-start-blockhash: 4f9308fcc35bc2fffc399171dc36d3730bcd4f4e9349dd59362f1fdb8604fde8
-logging:
-  level:
-    root: INFO
-    io.uverify.backend.service: DEBUG
+    sync-auto-start: ${YACI_STORE_AUTO_START:true}
 ---

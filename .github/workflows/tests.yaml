@@ -26,8 +26,7 @@ jobs:
 
       - name: 🍀 Generate .env file
         run: |
-          mkdir -p src/test/resources
-          echo "SPRING_PROFILES_ACTIVE=preprod,h2" > src/test/resources/.env
+          echo "SPRING_PROFILES_ACTIVE=preprod,h2" >> src/test/resources/.env
           echo "SERVICE_USER_ADDRESS=${{ secrets.SERVICE_USER_ADDRESS }}" >> src/test/resources/.env
           
           echo "TEST_USER_MNEMONIC=${{ secrets.TEST_USER_MNEMONIC }}" >> src/test/resources/.env

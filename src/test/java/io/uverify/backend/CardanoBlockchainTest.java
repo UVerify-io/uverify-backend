@@ -39,7 +39,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +47,7 @@ import java.util.List;
 @SpringBootTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CardanoBlockchainTest {
-    protected static final YaciCardanoContainer yaciCardanoContainer = new YaciCardanoContainer(DockerImageName.parse("bloxbean/yaci-cli:0.10.0-preview2"));
+    protected final YaciCardanoContainer yaciCardanoContainer = new YaciCardanoContainer();
 
     protected final Account serviceAccount;
     protected final Account userAccount;

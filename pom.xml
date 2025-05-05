@@ -54,7 +54,7 @@
         <version.spring-dotenv>4.0.0</version.spring-dotenv>
         <version.cardano-client-lib>0.6.2</version.cardano-client-lib>
         <version.yaci-store>0.1.0</version.yaci-store>
-        <version.yaci-cardano-test>0.0.3-SNAPSHOT</version.yaci-cardano-test>
+        <version.yaci-cardano-test>0.1.0</version.yaci-cardano-test>
         <version.scalus-bloxbean-cardano-client-lib>0.8.2</version.scalus-bloxbean-cardano-client-lib>
         <version.zxing>3.5.3</version.zxing>
         <version.postgres>42.7.5</version.postgres>
