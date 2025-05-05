@@ -27,6 +27,8 @@ jobs:
       - name: 🍀 Generate .env file
         run: |
           echo "SPRING_PROFILES_ACTIVE=preprod,h2" >> src/test/resources/.env
+          echo "DB_URL=jdbc:h2:mem:uverify-test" >> src/test/resources/.env
+          echo "YACI_STORE_AUTO_START=false" >> src/test/resources/.env
           echo "SERVICE_USER_ADDRESS=${{ secrets.SERVICE_USER_ADDRESS }}" >> src/test/resources/.env
           
           echo "TEST_USER_MNEMONIC=${{ secrets.TEST_USER_MNEMONIC }}" >> src/test/resources/.env
