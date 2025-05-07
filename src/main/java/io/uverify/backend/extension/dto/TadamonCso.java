@@ -16,13 +16,28 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.dto;
+package io.uverify.backend.extension.dto;
 
-import io.uverify.backend.enums.BuildStatusCode;
-import lombok.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+
+import java.time.LocalDateTime;
 
 @Data
-public class BuildStatus {
-    private String message;
-    private BuildStatusCode code;
+public class TadamonCso {
+    private String name;
+
+    private String email;
+
+    @JsonProperty("establishment_date")
+    private LocalDateTime establishmentDate;
+
+    @JsonProperty("organization_type")
+    private String organizationType;
+
+    @JsonProperty("registration_country")
+    private String registrationCountry;
+
+    @JsonProperty("status_approved")
+    private Boolean statusApproved;
 }

@@ -16,13 +16,10 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.dto;
+package io.uverify.backend.extension.repository;
 
-import io.uverify.backend.enums.BuildStatusCode;
-import lombok.*;
+import io.uverify.backend.extension.entity.TadamonTransactionEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Data
-public class BuildStatus {
-    private String message;
-    private BuildStatusCode code;
+public interface TadamonTransactionRepository extends JpaRepository<TadamonTransactionEntity, Long> {
 }

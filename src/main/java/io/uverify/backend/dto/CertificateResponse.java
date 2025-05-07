@@ -18,27 +18,22 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class CertificateResponse {
     private String hash;
     private String address;
-    @JsonProperty("block_hash")
+    @JsonAlias({"blockHash", "block_hash"})
     private String blockHash;
-    @JsonProperty("block_number")
+    @JsonAlias({"blockNumber", "block_number"})
     private Long blockNumber;
-    @JsonProperty("transaction_hash")
+    @JsonAlias({"transactionHash", "transaction_hash"})
     private String transactionHash;
     private Long slot;
-    @JsonProperty("creation_time")
+    @JsonAlias({"creationTime", "creation_time"})
     private Long creationTime;
     private String metadata;
     private String issuer;

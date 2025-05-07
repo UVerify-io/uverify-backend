@@ -21,11 +21,7 @@ package io.uverify.backend.dto;
 import io.uverify.backend.enums.UserAction;
 import lombok.*;
 import org.springframework.http.HttpStatus;
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Data
 public class UserActionResponse {
     private String address;
     private UserAction action;

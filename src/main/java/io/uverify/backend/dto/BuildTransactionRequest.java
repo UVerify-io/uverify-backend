@@ -18,25 +18,20 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.uverify.backend.enums.TransactionType;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class BuildTransactionRequest {
     private List<CertificateData> certificates;
     private TransactionType type;
     private String address;
-    @JsonProperty("bootstrap_datum")
+    @JsonAlias({"bootstrapDatum", "bootstrap_datum"})
     private BootstrapData bootstrapDatum;
-    @JsonProperty("state_id")
+    @JsonAlias({"stateId", "state_id"})
     private String stateId;
 }
