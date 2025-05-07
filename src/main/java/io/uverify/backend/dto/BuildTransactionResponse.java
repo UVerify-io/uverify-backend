@@ -24,6 +24,7 @@ import io.uverify.backend.enums.TransactionType;
 import lombok.*;
 
 @Data
+@Builder
 public class BuildTransactionResponse {
     @JsonAlias({"unsignedTransaction", "unsigned_transaction"})
     private String unsignedTransaction;

@@ -24,6 +24,7 @@ import lombok.*;
 import org.springframework.http.HttpStatus;
 
 @Data
+@Builder
 public class ExecuteUserActionResponse {
     private UserState state;
     private HttpStatus status;

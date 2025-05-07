@@ -50,7 +50,7 @@ public class TadamonController {
         this.tadamonService = tadamonService;
     }
 
-    @PostMapping("/submit")
+    @PostMapping("/tx/submit")
     @Operation(
             summary = "Submit a transaction",
             description = "Submits a transaction to the Cardano blockchain using the provided transaction data and witness set. "

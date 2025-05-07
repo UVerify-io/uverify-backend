@@ -21,6 +21,7 @@ package io.uverify.backend.dto;
 import lombok.*;
 
 @Data
+@Builder
 public class CertificateData {
     private String hash;
     private String metadata;

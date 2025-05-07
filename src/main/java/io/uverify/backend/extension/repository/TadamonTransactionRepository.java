@@ -21,5 +21,9 @@ package io.uverify.backend.extension.repository;
 import io.uverify.backend.extension.entity.TadamonTransactionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public interface TadamonTransactionRepository extends JpaRepository<TadamonTransactionEntity, Long> {
+
+    List<TadamonTransactionEntity> findBySlotGreaterThan(Long slot);
 }

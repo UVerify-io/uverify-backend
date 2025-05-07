@@ -19,12 +19,14 @@
 package io.uverify.backend.extension.service;
 
 import co.nstant.in.cbor.model.Map;
+import com.bloxbean.cardano.client.address.Address;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.common.cbor.CborSerializationUtil;
 import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.client.transaction.spec.TransactionOutput;
 import com.bloxbean.cardano.client.transaction.spec.TransactionWitnessSet;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
@@ -32,13 +34,19 @@ import io.uverify.backend.extension.UVerifyServiceExtension;
 import io.uverify.backend.extension.dto.TadamonTransactionRequest;
 import io.uverify.backend.extension.entity.TadamonTransactionEntity;
 import io.uverify.backend.extension.repository.TadamonTransactionRepository;
+import io.uverify.backend.model.StateDatum;
+import io.uverify.backend.model.UVerifyCertificate;
 import io.uverify.backend.service.CardanoBlockchainService;
+import io.uverify.backend.util.ValidatorUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -53,6 +61,9 @@ public class TadamonService implements UVerifyServiceExtension {
     @Autowired
     private final TadamonTransactionRepository tadamonTransactionRepository;
 
+    @Value("${extensions.tadamon.allowed-addresses}")
+    private final List<String> allowedAddresses;
+
     @Override
     public void processAddressUtxos(List<AddressUtxo> addressUtxos) {
 
@@ -60,17 +71,57 @@ public class TadamonService implements UVerifyServiceExtension {
 
     @Override
     public void handleRollbackToSlot(long slot) {
+        List<TadamonTransactionEntity> transactionEntities = tadamonTransactionRepository.findBySlotGreaterThan(slot);
 
+        for (TadamonTransactionEntity transactionEntity : transactionEntities) {
+            log.info("Handle rollback for tadamon certificate {} to slot {} for transaction {}",
+                    transactionEntity.getCertificateDataHash(),
+                    slot,
+                    transactionEntity.getTransactionId());
+            try {
+                Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(transactionEntity.getTransactionHex()));
+                Result<String> result = cardanoBlockchainService.submitTransaction(transaction);
+                if (result.isSuccessful()) {
+                    log.info("Transaction {} rolled back successfully and is now {}", transactionEntity.getTransactionId(), result.getResponse());
+                    transactionEntity.setTransactionId(result.getResponse());
+                    transactionEntity.setCertificateCreationDate(LocalDateTime.now());
+                    transactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());
+                    tadamonTransactionRepository.save(transactionEntity);
+                } else {
+                    log.error("Failed to roll back transaction {}: {}", transactionEntity.getTransactionId(), result.getResponse());
+                }
+            } catch (Exception e) {
+                log.error("Error while rolling back transaction {}: {}", transactionEntity.getTransactionId(), e.getMessage());
+            }
+        }
     }
 
-    public Result<String> submit(TadamonTransactionRequest request) throws CborDeserializationException, CborSerializationException, ApiException {
-        TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(request.getWitnessSet())));
+    public Result<?> submit(TadamonTransactionRequest request) throws CborDeserializationException, CborSerializationException, ApiException {
         Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(request.getTransaction()));
-        transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());
+        if (request.getWitnessSet() != null && !request.getWitnessSet().isEmpty()) {
+            TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(request.getWitnessSet())));
+            transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());
+        }
 
-        // TODO: Verify the issuer payment credential
+        if (transaction.getWitnessSet() == null || transaction.getWitnessSet().getVkeyWitnesses().isEmpty()) {
+            return Result.error("Transaction witness set is empty. Make sure either the transaction is signed or the witness set is provided");
+        }
 
-        // TODO: Add transaction hex to the database for resubmission on rollback
+        boolean signedByAllowedAddress = transaction.getWitnessSet().getVkeyWitnesses().stream().anyMatch(
+                vkeyWitness -> {
+                    for (String address : allowedAddresses) {
+                        if (Arrays.equals(vkeyWitness.getVkey(), new Address(address).getPaymentCredentialHash().orElse(null))) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+        );
+
+        if (!signedByAllowedAddress) {
+            return Result.error("Transaction not signed by whitelisted address");
+        }
+
         TadamonTransactionEntity tadamonTransactionEntity = new TadamonTransactionEntity();
         tadamonTransactionEntity.setTransactionHex(transaction.serializeToHex());
         tadamonTransactionEntity.setCsoName(request.getCso().getName());
@@ -82,11 +133,33 @@ public class TadamonService implements UVerifyServiceExtension {
         tadamonTransactionEntity.setTadamonId(request.getTadamonId());
         tadamonTransactionEntity.setVeridianAid(request.getVeridianAid());
         tadamonTransactionEntity.setUndpSigningDate(request.getUndpSigningDate());
+        tadamonTransactionEntity.setBeneficiarySigningDate(request.getBeneficiarySigningDate());
+
+        TransactionOutput transactionOutput = transaction.getBody().getOutputs().stream().filter(
+                ValidatorUtils::includesStateToken
+        ).findFirst().orElse(null);
+
+        if (transactionOutput == null) {
+            return Result.error("Transaction output does not contain a state token nor UVerify certificates");
+        }
+
+        StateDatum stateDatum = StateDatum.fromUtxoDatum(transactionOutput.getInlineDatum().serializeToHex());
+
+        if (stateDatum.getUVerifyCertificates().isEmpty()) {
+            return Result.error("Transaction output does not contain UVerify certificates");
+        } else if (stateDatum.getUVerifyCertificates().size() > 1) {
+            return Result.error("Transaction output contains multiple UVerify certificates. Only one is allowed" +
+                    " for the Tadamon extension");
+        }
+
+        UVerifyCertificate certificate = stateDatum.getUVerifyCertificates().get(0);
+        tadamonTransactionEntity.setCertificateDataHash(certificate.getHash());
 
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction);
-
         if (result.isSuccessful()) {
             tadamonTransactionEntity.setTransactionId(result.getResponse());
+            tadamonTransactionEntity.setCertificateCreationDate(LocalDateTime.now());
+            tadamonTransactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());
             tadamonTransactionRepository.save(tadamonTransactionEntity);
         }
 

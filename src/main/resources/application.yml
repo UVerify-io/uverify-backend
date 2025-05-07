@@ -87,7 +87,13 @@ extensions:
       mnemonic: ${CONNECTED_GOODS_SERVICE_WALLET_MNEMONIC:}
       address: ${CONNECTED_GOODS_SERVICE_WALLET_ADDRESS}
   tadamon:
-    enabled: ${TADAMON_EXTENSION_ENABLED:true}
+    enabled: ${TADAMON_EXTENSION_ENABLED:false}
+    allowed-addresses: ${TADAMON_ALLOWED_ADDRESSES:}
+    google:
+      sheets:
+        id: ${TADAMON_GOOGLE_SHEETS_ID:}
+        access-token: ${TADAMON_GOOGLE_SHEETS_ACCESS_TOKEN:}
+
 
 ---
 spring:

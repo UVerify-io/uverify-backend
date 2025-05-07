@@ -33,6 +33,9 @@ import java.util.List;
 import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 
 @Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class BootstrapData {
     private String name;
     @JsonAlias({"whitelistedAddresses", "whitelisted_addresses"})

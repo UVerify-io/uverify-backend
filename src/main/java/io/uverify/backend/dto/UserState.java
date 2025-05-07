@@ -25,6 +25,7 @@ import lombok.*;
 import java.util.List;
 
 @Data
+@Builder
 public class UserState {
     @JsonAlias({"bootstrapDatums", "bootstrap_datums"})
     private List<BootstrapData> bootstrapDatums;

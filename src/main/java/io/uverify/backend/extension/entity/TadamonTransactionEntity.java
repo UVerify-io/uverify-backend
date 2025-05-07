@@ -78,4 +78,7 @@ public class TadamonTransactionEntity {
 
     @Column(name = "certificate_creation_date", nullable = false)
     private LocalDateTime certificateCreationDate;
+
+    @Column(name = "certificate_data_hash", nullable = false, length = 64)
+    private String certificateDataHash;
 }

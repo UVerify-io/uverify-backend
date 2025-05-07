@@ -22,6 +22,7 @@ import io.uverify.backend.enums.BuildStatusCode;
 import lombok.*;
 
 @Data
+@Builder
 public class BuildStatus {
     private String message;
     private BuildStatusCode code;
