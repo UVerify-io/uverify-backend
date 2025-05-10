@@ -20,13 +20,20 @@ package io.uverify.backend.extension;
 
 import io.uverify.backend.extension.entity.TadamonTransactionEntity;
 import io.uverify.backend.extension.service.TadamonGoogleSheetsService;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit.jupiter.EnabledIf;
 
 import java.time.LocalDateTime;
 
 @SpringBootTest
+@EnabledIf(
+        expression = "${extensions.tadamon.enabled}",
+        loadContext = true,
+        reason = "Tadamon extension must be enabled for this test"
+)
 public class TadamonExtensionTest {
 
     @Autowired
@@ -39,7 +46,7 @@ public class TadamonExtensionTest {
                 .transactionId("abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
                 .beneficiarySigningDate(LocalDateTime.of(2023, 10, 1, 12, 0))
                 .certificateDataHash("abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
-                .csoName("Test CSO")
+                .csoName("Test CSO 1")
                 .csoEmail("test@csotest.tld")
                 .csoEstablishmentDate(LocalDateTime.of(2023, 10, 1, 12, 0))
                 .csoOrganizationType("Test Organization Type")
@@ -50,6 +57,18 @@ public class TadamonExtensionTest {
                 .csoRegistrationCountry("Test Country")
                 .transactionHex("abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
                 .build();
-        tadamonGoogleSheetsService.appendRowToSheet(tadamonTransactionEntity);
+        tadamonGoogleSheetsService.writeRowToSheet(tadamonTransactionEntity, 5);
+    }
+
+    @Test
+    public void testFindRowByDataHash() {
+        int expectedRow = tadamonGoogleSheetsService.findRowByDataHash("xds2318732837");
+        Assertions.assertEquals(4, expectedRow, "The row should be 4");
+    }
+
+    @Test
+    public void testGetFirstEmptyRow() {
+        int firstEmptyRow = tadamonGoogleSheetsService.findRowByDataHash();
+        Assertions.assertEquals(6, firstEmptyRow, "The first empty row should be 6");
     }
 }

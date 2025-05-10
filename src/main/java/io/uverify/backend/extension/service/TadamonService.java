@@ -61,6 +61,9 @@ public class TadamonService implements UVerifyServiceExtension {
     @Autowired
     private final TadamonTransactionRepository tadamonTransactionRepository;
 
+    @Autowired
+    private final TadamonGoogleSheetsService tadamonGoogleSheetsService;
+
     @Value("${extensions.tadamon.allowed-addresses}")
     private final List<String> allowedAddresses;
 
@@ -87,6 +90,9 @@ public class TadamonService implements UVerifyServiceExtension {
                     transactionEntity.setCertificateCreationDate(LocalDateTime.now());
                     transactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());
                     tadamonTransactionRepository.save(transactionEntity);
+
+                    int row = tadamonGoogleSheetsService.findRowByDataHash(transactionEntity.getCertificateDataHash());
+                    tadamonGoogleSheetsService.writeRowToSheet(transactionEntity, row);
                 } else {
                     log.error("Failed to roll back transaction {}: {}", transactionEntity.getTransactionId(), result.getResponse());
                 }
@@ -161,9 +167,10 @@ public class TadamonService implements UVerifyServiceExtension {
             tadamonTransactionEntity.setCertificateCreationDate(LocalDateTime.now());
             tadamonTransactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());
             tadamonTransactionRepository.save(tadamonTransactionEntity);
-        }
 
-        // TODO: Update the google form
+            int row = tadamonGoogleSheetsService.findRowByDataHash(tadamonTransactionEntity.getCertificateDataHash());
+            tadamonGoogleSheetsService.writeRowToSheet(tadamonTransactionEntity, row);
+        }
 
         return result;
     }

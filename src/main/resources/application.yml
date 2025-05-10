@@ -92,8 +92,8 @@ extensions:
     google:
       sheets:
         id: ${TADAMON_GOOGLE_SHEETS_ID:}
-        access-token: ${TADAMON_GOOGLE_SHEETS_ACCESS_TOKEN:}
-
+        private-key: ${TADAMON_GOOGLE_SHEETS_PRIVATE_KEY:}
+        service-account: ${TADAMON_GOOGLE_SHEETS_SERVICE_ACCOUNT:}
 
 ---
 spring:
