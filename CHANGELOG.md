@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0](https://github.com/UVerify-io/uverify-backend/compare/v1.2.0...v1.3.0) (2025-05-10)
+
+
+### Features
+
+* create schema for storing transaction data for resubmission ([1105f0c](https://github.com/UVerify-io/uverify-backend/commit/1105f0c16c495994379bbfd55f249e37995fd5c9))
+* implement google sheets service for writing certificate changes to a google spreadsheet ([f7c5055](https://github.com/UVerify-io/uverify-backend/commit/f7c5055d5f3a9ebcd219ae6820f7d3a0c762bb19))
+* update google sheet on rollback ([ea765b9](https://github.com/UVerify-io/uverify-backend/commit/ea765b91b8cae3865449dffab6a28069b1ebc021))
+
+
+### Bug Fixes
+
+* add new variables to generated env file ([88c4178](https://github.com/UVerify-io/uverify-backend/commit/88c41787399788dfc889ef820e10a5c232b3be33))
+* update test pipeline and exclude tadamon extension ([ceff8c9](https://github.com/UVerify-io/uverify-backend/commit/ceff8c9e142d9908a50346e3040e32c51c08fe0a))
+
 ## [1.2.0](https://github.com/UVerify-io/uverify-backend/compare/v1.1.0...v1.2.0) (2025-05-04)
 
 
