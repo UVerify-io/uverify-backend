@@ -16,21 +16,28 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.dto;
+package io.uverify.backend.extension.dto;
 
-import io.uverify.backend.enums.UserAction;
-import lombok.*;
-import org.springframework.http.HttpStatus;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserActionResponse {
-    private String address;
-    private UserAction action;
-    private String signature;
-    private Long timestamp;
-    private String message;
-    private HttpStatus status;
-    private String error;
+public class TadamonCso {
+    private String name;
+
+    private String email;
+
+    @JsonProperty("establishment_date")
+    private LocalDateTime establishmentDate;
+
+    @JsonProperty("organization_type")
+    private String organizationType;
+
+    @JsonProperty("registration_country")
+    private String registrationCountry;
+
+    @JsonProperty("status_approved")
+    private Boolean statusApproved;
 }

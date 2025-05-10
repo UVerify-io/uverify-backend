@@ -29,6 +29,7 @@ import com.bloxbean.cardano.client.plutus.spec.BigIntPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.BytesPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusData;
+import com.bloxbean.cardano.client.transaction.spec.TransactionOutput;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.common.domain.Amt;
@@ -127,6 +128,13 @@ public class ValidatorUtils {
 
     public static Long extractLongFromPlutusData(PlutusData plutusData) {
         return ((BigIntPlutusData) plutusData).getValue().longValue();
+    }
+
+    public static boolean includesStateToken(TransactionOutput output) {
+        return output.getValue().getMultiAssets().stream().anyMatch(
+                asset -> asset.getPolicyId() != null && asset.getPolicyId().equalsIgnoreCase(getMintStateTokenHash(CardanoNetwork.MAINNET))
+                || asset.getPolicyId().equalsIgnoreCase(getMintStateTokenHash(CardanoNetwork.PREPROD))
+        );
     }
 
     public static boolean includesStateToken(AddressUtxo addressUtxo, CardanoNetwork network) {

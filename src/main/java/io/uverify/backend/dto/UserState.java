@@ -18,18 +18,16 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.util.List;
 
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
+@Data
 @Builder
 public class UserState {
-    @JsonProperty("bootstrap_datums")
+    @JsonAlias({"bootstrapDatums", "bootstrap_datums"})
     private List<BootstrapData> bootstrapDatums;
     private List<StateData> states;
 }

@@ -21,7 +21,7 @@ package io.uverify.backend.dto;
 import com.bloxbean.cardano.client.address.AddressProvider;
 import com.bloxbean.cardano.client.address.Credential;
 import com.bloxbean.cardano.client.util.HexUtil;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.UserCredentialEntity;
@@ -32,24 +32,23 @@ import java.util.List;
 
 import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class BootstrapData {
     private String name;
-    @JsonProperty("whitelisted_addresses")
+    @JsonAlias({"whitelistedAddresses", "whitelisted_addresses"})
     private List<String> whitelistedAddresses;
     private Integer fee;
-    @JsonProperty("fee_interval")
+    @JsonAlias({"feeInterval", "fee_interval"})
     private Integer feeInterval;
-    @JsonProperty("fee_receiver_addresses")
+    @JsonAlias({"feeReceiverAddresses", "fee_receiver_addresses"})
     private List<String> feeReceiverAddresses;
     private Long ttl;
-    @JsonProperty("transaction_limit")
+    @JsonAlias({"transactionLimit", "transaction_limit"})
     private Integer transactionLimit;
-    @JsonProperty("batch_size")
+    @JsonAlias({"batchSize", "batch_size"})
     private Integer batchSize;
 
     public static BootstrapData fromBootstrapDatumEntity(BootstrapDatumEntity bootstrapDatumEntity, CardanoNetwork network) {

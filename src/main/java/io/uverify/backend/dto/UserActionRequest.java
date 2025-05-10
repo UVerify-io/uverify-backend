@@ -18,18 +18,15 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.uverify.backend.enums.UserAction;
 import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Data
 public class UserActionRequest {
     private String address;
     private UserAction action;
-    @JsonProperty("state_id")
+    @JsonAlias({"stateId", "state_id"})
     private String stateId;
 }

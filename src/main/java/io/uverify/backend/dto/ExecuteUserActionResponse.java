@@ -18,19 +18,17 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.springframework.http.HttpStatus;
 
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
+@Data
 @Builder
 public class ExecuteUserActionResponse {
     private UserState state;
     private HttpStatus status;
     private String error;
-    @JsonProperty("unsigned_transaction")
+    @JsonAlias({"unsignedTransaction", "unsigned_transaction"})
     private String unsignedTransaction;
 }

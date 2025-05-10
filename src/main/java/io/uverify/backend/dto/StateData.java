@@ -21,35 +21,30 @@ package io.uverify.backend.dto;
 import com.bloxbean.cardano.client.address.AddressProvider;
 import com.bloxbean.cardano.client.address.Credential;
 import com.bloxbean.cardano.client.util.HexUtil;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.enums.CardanoNetwork;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 
 import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class StateData {
     private String id;
     private Integer fee;
-    @JsonProperty("fee_interval")
+    @JsonAlias({"feeInterval", "fee_interval"})
     private Integer feeInterval;
-    @JsonProperty("fee_receiver_addresses")
+    @JsonAlias({"feeReceiverAddresses", "fee_receiver_addresses"})
     private List<String> feeReceiverAddresses;
     private Long ttl;
-    @JsonProperty("batch_size")
+    @JsonAlias({"batchSize", "batch_size"})
     private Integer batchSize;
     private Integer countdown;
-    @JsonProperty("bootstrap_datum_name")
+    @JsonAlias({"bootstrapDatumName", "bootstrap_datum_name"})
     private String bootstrapDatumName;
 
     public static StateData fromStateDatumEntity(StateDatumEntity stateDatumEntity, CardanoNetwork network) {

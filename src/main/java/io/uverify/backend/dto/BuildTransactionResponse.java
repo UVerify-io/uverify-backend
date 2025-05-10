@@ -18,17 +18,15 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.uverify.backend.enums.TransactionType;
 import lombok.*;
 
-@Getter
-@Setter
+@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class BuildTransactionResponse {
-    @JsonProperty("unsigned_transaction")
+    @JsonAlias({"unsignedTransaction", "unsigned_transaction"})
     private String unsignedTransaction;
     private TransactionType type;
     private BuildStatus status;

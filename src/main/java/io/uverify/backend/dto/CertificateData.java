@@ -20,10 +20,7 @@ package io.uverify.backend.dto;
 
 import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 @Builder
 public class CertificateData {
     private String hash;

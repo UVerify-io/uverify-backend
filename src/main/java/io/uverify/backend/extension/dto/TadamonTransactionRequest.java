@@ -16,21 +16,31 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.dto;
-
-import io.uverify.backend.enums.UserAction;
+package io.uverify.backend.extension.dto;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
-import org.springframework.http.HttpStatus;
+
+import java.time.LocalDateTime;
+
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserActionResponse {
-    private String address;
-    private UserAction action;
-    private String signature;
-    private Long timestamp;
-    private String message;
-    private HttpStatus status;
-    private String error;
+public class TadamonTransactionRequest {
+    private String transaction;
+    @JsonAlias({"witnessSet", "witness_set"})
+    private String witnessSet;
+
+    @JsonProperty("cso")
+    private TadamonCso cso;
+
+    @JsonAlias({"tadamonId", "tadamon_id"})
+    private String tadamonId;
+
+    @JsonAlias({"veridianAid", "veridian_aid"})
+    private String veridianAid;
+
+    @JsonAlias({"undpSigningDate", "undp_signing_date"})
+    private LocalDateTime undpSigningDate;
+
+    @JsonAlias({"beneficiarySigningDate", "beneficiary_signing_date"})
+    private LocalDateTime beneficiarySigningDate;
 }

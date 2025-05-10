@@ -18,29 +18,26 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.uverify.backend.enums.UserAction;
 import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Data
 public class ExecuteUserActionRequest {
     private String address;
     private UserAction action;
 
-    @JsonProperty("state_id")
+    @JsonAlias({"stateId", "state_id"})
     private String stateId;
 
     private String message;
     private String signature;
 
-    @JsonProperty("user_signature")
+    @JsonAlias({"userSignature", "user_signature"})
     private String userSignature;
 
-    @JsonProperty("user_public_key")
+    @JsonAlias({"userPublicKey", "user_public_key"})
     private String userPublicKey;
     private long timestamp;
 }

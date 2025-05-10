@@ -18,16 +18,12 @@
 
 package io.uverify.backend.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class SubmitTransactionRequest {
     private String transaction;
+    @JsonAlias({"witnessSet", "witness_set"})
     private String witnessSet;
 }

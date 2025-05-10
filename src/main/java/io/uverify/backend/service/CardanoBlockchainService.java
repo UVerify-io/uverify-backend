@@ -565,4 +565,8 @@ public class CardanoBlockchainService {
                 .withRequiredSigners(userAddress)
                 .build();
     }
+
+    public Long getLatestSlot() throws ApiException {
+        return CardanoUtils.getLatestSlot(backendService);
+    }
 }

@@ -16,21 +16,14 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.dto;
+package io.uverify.backend.extension.repository;
 
-import io.uverify.backend.enums.UserAction;
-import lombok.*;
-import org.springframework.http.HttpStatus;
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserActionResponse {
-    private String address;
-    private UserAction action;
-    private String signature;
-    private Long timestamp;
-    private String message;
-    private HttpStatus status;
-    private String error;
+import io.uverify.backend.extension.entity.TadamonTransactionEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface TadamonTransactionRepository extends JpaRepository<TadamonTransactionEntity, Long> {
+
+    List<TadamonTransactionEntity> findBySlotGreaterThan(Long slot);
 }

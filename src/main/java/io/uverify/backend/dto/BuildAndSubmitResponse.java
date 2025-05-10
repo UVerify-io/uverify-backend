@@ -18,18 +18,15 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Data
 public class BuildAndSubmitResponse {
     private boolean successful;
     private String message;
     private String value;
-    @JsonProperty("bearer_token")
+    @JsonAlias({"bearerToken", "bearer_token"})
     private String bearerToken;
 }

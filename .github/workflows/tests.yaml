@@ -46,6 +46,8 @@ jobs:
           echo "CONNECTED_GOODS_SERVICE_WALLET_MNEMONIC=${{ secrets.CONNECTED_GOODS_SERVICE_WALLET_MNEMONIC }}" >> src/test/resources/.env
           echo "CONNECTED_GOODS_SERVICE_WALLET_ADDRESS=${{ secrets.CONNECTED_GOODS_SERVICE_WALLET_ADDRESS }}" >> src/test/resources/.env
           echo "CONNECTED_GOODS_ENCRYPTION_SALT=${{ secrets.CONNECTED_GOODS_ENCRYPTION_SALT }}" >> src/test/resources/.env
+          
+          echo "TADAMON_EXTENSION_ENABLED=false" >> src/test/resources/.env
 
       - name: 🎳 Test
         run: |

@@ -21,11 +21,8 @@ package io.uverify.backend.dto;
 import io.uverify.backend.enums.BuildStatusCode;
 import lombok.*;
 
-@Getter
-@Setter
+@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class BuildStatus {
     private String message;
     private BuildStatusCode code;
