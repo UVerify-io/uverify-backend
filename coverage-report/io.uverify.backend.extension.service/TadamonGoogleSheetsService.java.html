@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TadamonGoogleSheetsService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.service</a> &gt; <span class="el_source">TadamonGoogleSheetsService.java</span></div><h1>TadamonGoogleSheetsService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.uverify.backend.extension.entity.TadamonTransactionEntity;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Base64;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+
+@Service
+<span class="nc" id="L48">@Slf4j</span>
+@ConditionalOnProperty(value = &quot;extensions.tadamon.enabled&quot;, havingValue = &quot;true&quot;)
+public class TadamonGoogleSheetsService {
+
+    private final String spreadsheetId;
+    private final String serviceAccountEmail;
+    private final PrivateKey privateKey;
+<span class="nc" id="L55">    private final RestTemplate restTemplate = new RestTemplate();</span>
+<span class="nc" id="L56">    private final ObjectMapper objectMapper = new ObjectMapper();</span>
+<span class="nc" id="L57">    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(&quot;dd.MM.yyyy&quot;);</span>
+
+
+    @Autowired
+    public TadamonGoogleSheetsService(@Value(&quot;${extensions.tadamon.google.sheets.id}&quot;) String spreadsheetId,
+                                      @Value(&quot;${extensions.tadamon.google.sheets.private-key}&quot;) String privateKeyString,
+<span class="nc" id="L63">                                      @Value(&quot;${extensions.tadamon.google.sheets.service-account}&quot;) String serviceAccountEmail) {</span>
+<span class="nc" id="L64">        this.spreadsheetId = spreadsheetId;</span>
+<span class="nc" id="L65">        this.serviceAccountEmail = serviceAccountEmail;</span>
+<span class="nc" id="L66">        privateKeyString = privateKeyString</span>
+<span class="nc" id="L67">                .replace(&quot;\\n&quot;, &quot;\n&quot;)</span>
+<span class="nc" id="L68">                .replace(&quot;-----BEGIN PRIVATE KEY-----&quot;, &quot;&quot;)</span>
+<span class="nc" id="L69">                .replace(&quot;-----END PRIVATE KEY-----&quot;, &quot;&quot;)</span>
+<span class="nc" id="L70">                .replaceAll(&quot;\\s&quot;, &quot;&quot;);</span>
+<span class="nc" id="L71">        byte[] privateKeyBytes = Base64.decodeBase64(privateKeyString);</span>
+<span class="nc" id="L72">        KeyFactory keyFactory = null;</span>
+        try {
+<span class="nc" id="L74">            keyFactory = KeyFactory.getInstance(&quot;RSA&quot;);</span>
+<span class="nc" id="L75">            PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateKeyBytes);</span>
+<span class="nc" id="L76">            this.privateKey = keyFactory.generatePrivate(keySpec);</span>
+<span class="nc" id="L77">        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {</span>
+<span class="nc" id="L78">            throw new RuntimeException(e);</span>
+<span class="nc" id="L79">        }</span>
+<span class="nc" id="L80">    }</span>
+    public String formatDate(LocalDateTime dateTime) {
+<span class="nc" id="L82">        return dateTime.format(FORMATTER);</span>
+    }
+    private String createRequestBodyFromList(List&lt;String&gt; values) {
+<span class="nc" id="L85">        StringBuilder json = new StringBuilder(&quot;{\&quot;values\&quot;: [[&quot;);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        for (int i = 0; i &lt; values.size(); i++) {</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">            String value = values.get(i) != null ? values.get(i).replace(&quot;\&quot;&quot;, &quot;\\\&quot;&quot;) : &quot;&quot;;</span>
+<span class="nc" id="L88">            json.append(&quot;\&quot;&quot;).append(value).append(&quot;\&quot;&quot;);</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">            if (i &lt; values.size() - 1) {</span>
+<span class="nc" id="L90">                json.append(&quot;,&quot;);</span>
+            }
+        }
+<span class="nc" id="L93">        json.append(&quot;]]}&quot;);</span>
+<span class="nc" id="L94">        return json.toString();</span>
+    }
+
+    private String generateJwt() throws Exception {
+<span class="nc" id="L98">        Instant now = Instant.now();</span>
+<span class="nc" id="L99">        long expirySeconds = now.plusSeconds(3600).getEpochSecond();</span>
+
+<span class="nc" id="L101">        Map&lt;String, Object&gt; header = Map.of(&quot;alg&quot;, &quot;RS256&quot;, &quot;typ&quot;, &quot;JWT&quot;);</span>
+<span class="nc" id="L102">        Map&lt;String, Object&gt; payload = Map.of(</span>
+                &quot;iss&quot;, serviceAccountEmail,
+                &quot;scope&quot;, &quot;https://www.googleapis.com/auth/spreadsheets&quot;,
+                &quot;aud&quot;, &quot;https://oauth2.googleapis.com/token&quot;,
+<span class="nc" id="L106">                &quot;exp&quot;, expirySeconds,</span>
+<span class="nc" id="L107">                &quot;iat&quot;, now.getEpochSecond()</span>
+        );
+
+<span class="nc" id="L110">        String encodedHeader = Base64.encodeBase64URLSafeString(objectMapper.writeValueAsBytes(header));</span>
+<span class="nc" id="L111">        String encodedPayload = Base64.encodeBase64URLSafeString(objectMapper.writeValueAsBytes(payload));</span>
+
+<span class="nc" id="L113">        java.security.Signature signature = java.security.Signature.getInstance(&quot;SHA256withRSA&quot;);</span>
+<span class="nc" id="L114">        signature.initSign(privateKey);</span>
+<span class="nc" id="L115">        signature.update((encodedHeader + &quot;.&quot; + encodedPayload).getBytes(StandardCharsets.UTF_8));</span>
+<span class="nc" id="L116">        String encodedSignature = Base64.encodeBase64URLSafeString(signature.sign());</span>
+
+<span class="nc" id="L118">        return encodedHeader + &quot;.&quot; + encodedPayload + &quot;.&quot; + encodedSignature;</span>
+    }
+
+    private String getAccessToken() throws Exception {
+<span class="nc" id="L122">        String jwt = generateJwt();</span>
+
+<span class="nc" id="L124">        HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L125">        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);</span>
+
+<span class="nc" id="L127">        MultiValueMap&lt;String, String&gt; requestBody = new LinkedMultiValueMap&lt;&gt;();</span>
+<span class="nc" id="L128">        requestBody.add(&quot;grant_type&quot;, &quot;urn:ietf:params:oauth:grant-type:jwt-bearer&quot;);</span>
+<span class="nc" id="L129">        requestBody.add(&quot;assertion&quot;, jwt);</span>
+
+<span class="nc" id="L131">        HttpEntity&lt;MultiValueMap&lt;String, String&gt;&gt; request = new HttpEntity&lt;&gt;(requestBody, headers);</span>
+
+<span class="nc" id="L133">        String tokenEndpoint = &quot;https://oauth2.googleapis.com/token&quot;;</span>
+<span class="nc" id="L134">        JsonNode response = restTemplate.postForObject(tokenEndpoint, request, JsonNode.class);</span>
+
+<span class="nc bnc" id="L136" title="All 4 branches missed.">        if (response != null &amp;&amp; response.has(&quot;access_token&quot;)) {</span>
+<span class="nc" id="L137">            return response.get(&quot;access_token&quot;).asText();</span>
+<span class="nc bnc" id="L138" title="All 4 branches missed.">        } else if (response != null &amp;&amp; response.has(&quot;error&quot;)) {</span>
+<span class="nc" id="L139">            throw new RuntimeException(&quot;Error getting access token: &quot; + response.get(&quot;error_description&quot;).asText());</span>
+        } else {
+<span class="nc" id="L141">            throw new RuntimeException(&quot;Failed to retrieve access token&quot;);</span>
+        }
+    }
+
+    public void writeRowToSheet(TadamonTransactionEntity transactionEntity, int row) {
+<span class="nc" id="L146">        String accessToken = null;</span>
+        try {
+<span class="nc" id="L148">            accessToken = getAccessToken();</span>
+<span class="nc" id="L149">            HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L150">            headers.setContentType(MediaType.APPLICATION_JSON);</span>
+<span class="nc" id="L151">            headers.setBearerAuth(accessToken);</span>
+
+<span class="nc" id="L153">            String requestBody = createRequestBodyFromList(</span>
+<span class="nc" id="L154">                    List.of(</span>
+<span class="nc" id="L155">                            transactionEntity.getCsoName(),</span>
+<span class="nc" id="L156">                            transactionEntity.getCsoEmail(),</span>
+<span class="nc" id="L157">                            formatDate(transactionEntity.getCsoEstablishmentDate()),</span>
+<span class="nc" id="L158">                            transactionEntity.getCsoOrganizationType(),</span>
+<span class="nc" id="L159">                            transactionEntity.getCsoRegistrationCountry(),</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">                            transactionEntity.getCsoStatusApproved() ? &quot;Y&quot; : &quot;N&quot;,</span>
+<span class="nc" id="L161">                            transactionEntity.getTadamonId(),</span>
+<span class="nc" id="L162">                            transactionEntity.getVeridianAid(),</span>
+<span class="nc" id="L163">                            formatDate(transactionEntity.getUndpSigningDate()),</span>
+<span class="nc" id="L164">                            formatDate(transactionEntity.getBeneficiarySigningDate()),</span>
+<span class="nc" id="L165">                            formatDate(transactionEntity.getCertificateCreationDate()),</span>
+<span class="nc" id="L166">                            transactionEntity.getCertificateDataHash(),</span>
+<span class="nc" id="L167">                            &quot;https://app.uverify.io/verify/&quot; + transactionEntity.getCertificateDataHash() + &quot;/1&quot;</span>
+                    )
+            );
+
+<span class="nc" id="L171">            final String range = &quot;Sheet1!A&quot; + row + &quot;:M&quot; + row;</span>
+
+<span class="nc" id="L173">            HttpEntity&lt;String&gt; request = new HttpEntity&lt;&gt;(requestBody, headers);</span>
+<span class="nc" id="L174">            String apiUrl = &quot;https://sheets.googleapis.com/v4/spreadsheets/&quot; + spreadsheetId + &quot;/values/&quot; + range + &quot;?valueInputOption=RAW&quot;;</span>
+<span class="nc" id="L175">            restTemplate.exchange(apiUrl, HttpMethod.PUT, request, String.class);</span>
+<span class="nc" id="L176">        } catch (Exception e) {</span>
+<span class="nc" id="L177">            throw new RuntimeException(e);</span>
+<span class="nc" id="L178">        }</span>
+<span class="nc" id="L179">    }</span>
+
+    public int findRowByDataHash() {
+<span class="nc" id="L182">        return findRowByDataHash(null);</span>
+    }
+    public int findRowByDataHash(String dataHash) {
+<span class="nc" id="L185">        String accessToken = null;</span>
+        try {
+<span class="nc" id="L187">            accessToken = getAccessToken();</span>
+<span class="nc" id="L188">            HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L189">            headers.setBearerAuth(accessToken);</span>
+
+<span class="nc" id="L191">            HttpEntity&lt;String&gt; request = new HttpEntity&lt;&gt;(headers);</span>
+<span class="nc" id="L192">            String apiUrl = &quot;https://sheets.googleapis.com/v4/spreadsheets/&quot; + spreadsheetId + &quot;/values/Sheet1!L:L&quot;;</span>
+<span class="nc" id="L193">            ResponseEntity&lt;String&gt; response = restTemplate.exchange(apiUrl, HttpMethod.GET, request, String.class);</span>
+<span class="nc" id="L194">            String responseBody = response.getBody();</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">            if (dataHash == null) {</span>
+<span class="nc" id="L196">                return parseFirstEmptyRow(responseBody);</span>
+            } else {
+<span class="nc" id="L198">                return findExistingRowOrAppend(responseBody, dataHash);</span>
+            }
+<span class="nc" id="L200">        } catch (Exception e) {</span>
+<span class="nc" id="L201">            throw new RuntimeException(&quot;Failed to get the first empty row&quot;, e);</span>
+        }
+    }
+
+    private int parseFirstEmptyRow(String responseBody) {
+        try {
+<span class="nc" id="L207">            ObjectMapper objectMapper = new ObjectMapper();</span>
+<span class="nc" id="L208">            JsonNode rootNode = objectMapper.readTree(responseBody);</span>
+<span class="nc" id="L209">            JsonNode valuesNode = rootNode.path(&quot;values&quot;);</span>
+<span class="nc bnc" id="L210" title="All 4 branches missed.">            if (valuesNode.isMissingNode() || !valuesNode.isArray()) {</span>
+<span class="nc" id="L211">                return 1;</span>
+            }
+<span class="nc" id="L213">            return valuesNode.size() + 1;</span>
+<span class="nc" id="L214">        } catch (Exception e) {</span>
+<span class="nc" id="L215">            throw new RuntimeException(&quot;Failed to parse the response for the first empty row&quot;, e);</span>
+        }
+    }
+
+    private int findExistingRowOrAppend(String responseBody, String searchString) {
+        try {
+<span class="nc" id="L221">            ObjectMapper objectMapper = new ObjectMapper();</span>
+<span class="nc" id="L222">            JsonNode rootNode = objectMapper.readTree(responseBody);</span>
+
+<span class="nc" id="L224">            JsonNode valuesNode = rootNode.path(&quot;values&quot;);</span>
+<span class="nc bnc" id="L225" title="All 4 branches missed.">            if (valuesNode.isMissingNode() || !valuesNode.isArray()) {</span>
+<span class="nc" id="L226">                return 1;</span>
+            }
+
+<span class="nc bnc" id="L229" title="All 2 branches missed.">            for (int i = 0; i &lt; valuesNode.size(); i++) {</span>
+<span class="nc" id="L230">                JsonNode row = valuesNode.get(i);</span>
+<span class="nc bnc" id="L231" title="All 4 branches missed.">                if (row.isArray() &amp;&amp; row.size() &gt; 0) {</span>
+<span class="nc" id="L232">                    String cellValue = row.get(0).asText();</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">                    if (searchString.equals(cellValue)) {</span>
+<span class="nc" id="L234">                        return i + 1;</span>
+                    }
+                }
+            }
+
+<span class="nc" id="L239">            return valuesNode.size() + 1;</span>
+<span class="nc" id="L240">        } catch (Exception e) {</span>
+<span class="nc" id="L241">            throw new RuntimeException(&quot;Failed to parse the response for the row by string or first empty row&quot;, e);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

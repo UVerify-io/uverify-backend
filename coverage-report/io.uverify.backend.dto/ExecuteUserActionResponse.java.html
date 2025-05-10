@@ -18,20 +18,18 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.springframework.http.HttpStatus;
 
-<span class="fc" id="L25">@AllArgsConstructor</span>
-<span class="fc" id="L26">@NoArgsConstructor</span>
-@Getter
-<span class="fc" id="L28">@Setter</span>
-<span class="pc" id="L29">@Builder</span>
+<span class="nc bnc" id="L26" title="All 38 branches missed.">@Data</span>
+<span class="pc" id="L27">@Builder</span>
 public class ExecuteUserActionResponse {
-<span class="fc" id="L31">    private UserState state;</span>
-<span class="fc" id="L32">    private HttpStatus status;</span>
-<span class="fc" id="L33">    private String error;</span>
-    @JsonProperty(&quot;unsigned_transaction&quot;)
-<span class="fc" id="L35">    private String unsignedTransaction;</span>
+<span class="fc" id="L29">    private UserState state;</span>
+<span class="fc" id="L30">    private HttpStatus status;</span>
+<span class="fc" id="L31">    private String error;</span>
+    @JsonAlias({&quot;unsignedTransaction&quot;, &quot;unsigned_transaction&quot;})
+<span class="fc" id="L33">    private String unsignedTransaction;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

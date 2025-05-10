@@ -18,29 +18,24 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
-@Getter
-<span class="nc" id="L28">@Setter</span>
-<span class="nc" id="L29">@NoArgsConstructor</span>
-<span class="nc" id="L30">@AllArgsConstructor</span>
+<span class="nc bnc" id="L25" title="All 78 branches missed.">@Data</span>
 public class CertificateResponse {
-<span class="nc" id="L32">    private String hash;</span>
-<span class="nc" id="L33">    private String address;</span>
-    @JsonProperty(&quot;block_hash&quot;)
-<span class="nc" id="L35">    private String blockHash;</span>
-    @JsonProperty(&quot;block_number&quot;)
-<span class="nc" id="L37">    private Long blockNumber;</span>
-    @JsonProperty(&quot;transaction_hash&quot;)
-<span class="nc" id="L39">    private String transactionHash;</span>
-<span class="nc" id="L40">    private Long slot;</span>
-    @JsonProperty(&quot;creation_time&quot;)
-<span class="nc" id="L42">    private Long creationTime;</span>
-<span class="nc" id="L43">    private String metadata;</span>
-<span class="nc" id="L44">    private String issuer;</span>
+<span class="nc" id="L27">    private String hash;</span>
+<span class="nc" id="L28">    private String address;</span>
+    @JsonAlias({&quot;blockHash&quot;, &quot;block_hash&quot;})
+<span class="nc" id="L30">    private String blockHash;</span>
+    @JsonAlias({&quot;blockNumber&quot;, &quot;block_number&quot;})
+<span class="nc" id="L32">    private Long blockNumber;</span>
+    @JsonAlias({&quot;transactionHash&quot;, &quot;transaction_hash&quot;})
+<span class="nc" id="L34">    private String transactionHash;</span>
+<span class="nc" id="L35">    private Long slot;</span>
+    @JsonAlias({&quot;creationTime&quot;, &quot;creation_time&quot;})
+<span class="nc" id="L37">    private Long creationTime;</span>
+<span class="nc" id="L38">    private String metadata;</span>
+<span class="nc" id="L39">    private String issuer;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

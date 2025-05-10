@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TadamonService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.service</a> &gt; <span class="el_source">TadamonService.java</span></div><h1>TadamonService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.service;
+
+import co.nstant.in.cbor.model.Map;
+import com.bloxbean.cardano.client.address.Address;
+import com.bloxbean.cardano.client.api.exception.ApiException;
+import com.bloxbean.cardano.client.api.model.Result;
+import com.bloxbean.cardano.client.common.cbor.CborSerializationUtil;
+import com.bloxbean.cardano.client.exception.CborDeserializationException;
+import com.bloxbean.cardano.client.exception.CborSerializationException;
+import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.client.transaction.spec.TransactionOutput;
+import com.bloxbean.cardano.client.transaction.spec.TransactionWitnessSet;
+import com.bloxbean.cardano.client.util.HexUtil;
+import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import io.uverify.backend.extension.UVerifyServiceExtension;
+import io.uverify.backend.extension.dto.TadamonTransactionRequest;
+import io.uverify.backend.extension.entity.TadamonTransactionEntity;
+import io.uverify.backend.extension.repository.TadamonTransactionRepository;
+import io.uverify.backend.model.StateDatum;
+import io.uverify.backend.model.UVerifyCertificate;
+import io.uverify.backend.service.CardanoBlockchainService;
+import io.uverify.backend.util.ValidatorUtils;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+
+@Service
+<span class="nc" id="L53">@Slf4j</span>
+<span class="nc" id="L54">@AllArgsConstructor</span>
+@ConditionalOnProperty(value = &quot;extensions.tadamon.enabled&quot;, havingValue = &quot;true&quot;)
+public class TadamonService implements UVerifyServiceExtension {
+
+    @Autowired
+    private final CardanoBlockchainService cardanoBlockchainService;
+
+    @Autowired
+    private final TadamonTransactionRepository tadamonTransactionRepository;
+
+    @Autowired
+    private final TadamonGoogleSheetsService tadamonGoogleSheetsService;
+
+    @Value(&quot;${extensions.tadamon.allowed-addresses}&quot;)
+    private final List&lt;String&gt; allowedAddresses;
+
+    @Override
+    public void processAddressUtxos(List&lt;AddressUtxo&gt; addressUtxos) {
+
+<span class="nc" id="L73">    }</span>
+
+    @Override
+    public void handleRollbackToSlot(long slot) {
+<span class="nc" id="L77">        List&lt;TadamonTransactionEntity&gt; transactionEntities = tadamonTransactionRepository.findBySlotGreaterThan(slot);</span>
+
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        for (TadamonTransactionEntity transactionEntity : transactionEntities) {</span>
+<span class="nc" id="L80">            log.info(&quot;Handle rollback for tadamon certificate {} to slot {} for transaction {}&quot;,</span>
+<span class="nc" id="L81">                    transactionEntity.getCertificateDataHash(),</span>
+<span class="nc" id="L82">                    slot,</span>
+<span class="nc" id="L83">                    transactionEntity.getTransactionId());</span>
+            try {
+<span class="nc" id="L85">                Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(transactionEntity.getTransactionHex()));</span>
+<span class="nc" id="L86">                Result&lt;String&gt; result = cardanoBlockchainService.submitTransaction(transaction);</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">                if (result.isSuccessful()) {</span>
+<span class="nc" id="L88">                    log.info(&quot;Transaction {} rolled back successfully and is now {}&quot;, transactionEntity.getTransactionId(), result.getResponse());</span>
+<span class="nc" id="L89">                    transactionEntity.setTransactionId(result.getResponse());</span>
+<span class="nc" id="L90">                    transactionEntity.setCertificateCreationDate(LocalDateTime.now());</span>
+<span class="nc" id="L91">                    transactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());</span>
+<span class="nc" id="L92">                    tadamonTransactionRepository.save(transactionEntity);</span>
+
+<span class="nc" id="L94">                    int row = tadamonGoogleSheetsService.findRowByDataHash(transactionEntity.getCertificateDataHash());</span>
+<span class="nc" id="L95">                    tadamonGoogleSheetsService.writeRowToSheet(transactionEntity, row);</span>
+<span class="nc" id="L96">                } else {</span>
+<span class="nc" id="L97">                    log.error(&quot;Failed to roll back transaction {}: {}&quot;, transactionEntity.getTransactionId(), result.getResponse());</span>
+                }
+<span class="nc" id="L99">            } catch (Exception e) {</span>
+<span class="nc" id="L100">                log.error(&quot;Error while rolling back transaction {}: {}&quot;, transactionEntity.getTransactionId(), e.getMessage());</span>
+<span class="nc" id="L101">            }</span>
+<span class="nc" id="L102">        }</span>
+<span class="nc" id="L103">    }</span>
+
+    public Result&lt;?&gt; submit(TadamonTransactionRequest request) throws CborDeserializationException, CborSerializationException, ApiException {
+<span class="nc" id="L106">        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(request.getTransaction()));</span>
+<span class="nc bnc" id="L107" title="All 4 branches missed.">        if (request.getWitnessSet() != null &amp;&amp; !request.getWitnessSet().isEmpty()) {</span>
+<span class="nc" id="L108">            TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(request.getWitnessSet())));</span>
+<span class="nc" id="L109">            transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());</span>
+        }
+
+<span class="nc bnc" id="L112" title="All 4 branches missed.">        if (transaction.getWitnessSet() == null || transaction.getWitnessSet().getVkeyWitnesses().isEmpty()) {</span>
+<span class="nc" id="L113">            return Result.error(&quot;Transaction witness set is empty. Make sure either the transaction is signed or the witness set is provided&quot;);</span>
+        }
+
+<span class="nc" id="L116">        boolean signedByAllowedAddress = transaction.getWitnessSet().getVkeyWitnesses().stream().anyMatch(</span>
+                vkeyWitness -&gt; {
+<span class="nc bnc" id="L118" title="All 2 branches missed.">                    for (String address : allowedAddresses) {</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">                        if (Arrays.equals(vkeyWitness.getVkey(), new Address(address).getPaymentCredentialHash().orElse(null))) {</span>
+<span class="nc" id="L120">                            return true;</span>
+                        }
+<span class="nc" id="L122">                    }</span>
+<span class="nc" id="L123">                    return false;</span>
+                }
+        );
+
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        if (!signedByAllowedAddress) {</span>
+<span class="nc" id="L128">            return Result.error(&quot;Transaction not signed by whitelisted address&quot;);</span>
+        }
+
+<span class="nc" id="L131">        TadamonTransactionEntity tadamonTransactionEntity = new TadamonTransactionEntity();</span>
+<span class="nc" id="L132">        tadamonTransactionEntity.setTransactionHex(transaction.serializeToHex());</span>
+<span class="nc" id="L133">        tadamonTransactionEntity.setCsoName(request.getCso().getName());</span>
+<span class="nc" id="L134">        tadamonTransactionEntity.setCsoEmail(request.getCso().getEmail());</span>
+<span class="nc" id="L135">        tadamonTransactionEntity.setCsoOrganizationType(request.getCso().getOrganizationType());</span>
+<span class="nc" id="L136">        tadamonTransactionEntity.setCsoStatusApproved(request.getCso().getStatusApproved());</span>
+<span class="nc" id="L137">        tadamonTransactionEntity.setCsoRegistrationCountry(request.getCso().getRegistrationCountry());</span>
+<span class="nc" id="L138">        tadamonTransactionEntity.setCsoEstablishmentDate(request.getCso().getEstablishmentDate());</span>
+<span class="nc" id="L139">        tadamonTransactionEntity.setTadamonId(request.getTadamonId());</span>
+<span class="nc" id="L140">        tadamonTransactionEntity.setVeridianAid(request.getVeridianAid());</span>
+<span class="nc" id="L141">        tadamonTransactionEntity.setUndpSigningDate(request.getUndpSigningDate());</span>
+<span class="nc" id="L142">        tadamonTransactionEntity.setBeneficiarySigningDate(request.getBeneficiarySigningDate());</span>
+
+<span class="nc" id="L144">        TransactionOutput transactionOutput = transaction.getBody().getOutputs().stream().filter(</span>
+                ValidatorUtils::includesStateToken
+<span class="nc" id="L146">        ).findFirst().orElse(null);</span>
+
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (transactionOutput == null) {</span>
+<span class="nc" id="L149">            return Result.error(&quot;Transaction output does not contain a state token nor UVerify certificates&quot;);</span>
+        }
+
+<span class="nc" id="L152">        StateDatum stateDatum = StateDatum.fromUtxoDatum(transactionOutput.getInlineDatum().serializeToHex());</span>
+
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        if (stateDatum.getUVerifyCertificates().isEmpty()) {</span>
+<span class="nc" id="L155">            return Result.error(&quot;Transaction output does not contain UVerify certificates&quot;);</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">        } else if (stateDatum.getUVerifyCertificates().size() &gt; 1) {</span>
+<span class="nc" id="L157">            return Result.error(&quot;Transaction output contains multiple UVerify certificates. Only one is allowed&quot; +</span>
+                    &quot; for the Tadamon extension&quot;);
+        }
+
+<span class="nc" id="L161">        UVerifyCertificate certificate = stateDatum.getUVerifyCertificates().get(0);</span>
+<span class="nc" id="L162">        tadamonTransactionEntity.setCertificateDataHash(certificate.getHash());</span>
+
+<span class="nc" id="L164">        Result&lt;String&gt; result = cardanoBlockchainService.submitTransaction(transaction);</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">        if (result.isSuccessful()) {</span>
+<span class="nc" id="L166">            tadamonTransactionEntity.setTransactionId(result.getResponse());</span>
+<span class="nc" id="L167">            tadamonTransactionEntity.setCertificateCreationDate(LocalDateTime.now());</span>
+<span class="nc" id="L168">            tadamonTransactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());</span>
+<span class="nc" id="L169">            tadamonTransactionRepository.save(tadamonTransactionEntity);</span>
+
+<span class="nc" id="L171">            int row = tadamonGoogleSheetsService.findRowByDataHash(tadamonTransactionEntity.getCertificateDataHash());</span>
+<span class="nc" id="L172">            tadamonGoogleSheetsService.writeRowToSheet(tadamonTransactionEntity, row);</span>
+        }
+
+<span class="nc" id="L175">        return result;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

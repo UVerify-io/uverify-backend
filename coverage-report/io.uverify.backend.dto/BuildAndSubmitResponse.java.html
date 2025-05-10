@@ -18,19 +18,16 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
-@Getter
-<span class="nc" id="L25">@Setter</span>
-<span class="nc" id="L26">@NoArgsConstructor</span>
-<span class="nc" id="L27">@AllArgsConstructor</span>
-<span class="nc" id="L28">@Builder</span>
+<span class="nc bnc" id="L25" title="All 34 branches missed.">@Data</span>
 public class BuildAndSubmitResponse {
-<span class="nc" id="L30">    private boolean successful;</span>
-<span class="nc" id="L31">    private String message;</span>
-<span class="nc" id="L32">    private String value;</span>
-    @JsonProperty(&quot;bearer_token&quot;)
-<span class="nc" id="L34">    private String bearerToken;</span>
+<span class="nc" id="L27">    private boolean successful;</span>
+<span class="nc" id="L28">    private String message;</span>
+<span class="nc" id="L29">    private String value;</span>
+    @JsonAlias({&quot;bearerToken&quot;, &quot;bearer_token&quot;})
+<span class="nc" id="L31">    private String bearerToken;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

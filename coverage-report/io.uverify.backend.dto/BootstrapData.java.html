@@ -21,7 +21,7 @@ package io.uverify.backend.dto;
 import com.bloxbean.cardano.client.address.AddressProvider;
 import com.bloxbean.cardano.client.address.Credential;
 import com.bloxbean.cardano.client.util.HexUtil;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.UserCredentialEntity;
@@ -32,46 +32,45 @@ import java.util.List;
 
 import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 
-@Getter
-<span class="fc" id="L36">@Setter</span>
-<span class="fc" id="L37">@NoArgsConstructor</span>
-<span class="fc" id="L38">@AllArgsConstructor</span>
-<span class="pc" id="L39">@Builder</span>
+<span class="pc bnc" id="L35" title="All 70 branches missed.">@Data</span>
+<span class="pc" id="L36">@Builder</span>
+<span class="fc" id="L37">@AllArgsConstructor</span>
+<span class="fc" id="L38">@NoArgsConstructor</span>
 public class BootstrapData {
-<span class="fc" id="L41">    private String name;</span>
-    @JsonProperty(&quot;whitelisted_addresses&quot;)
-<span class="fc" id="L43">    private List&lt;String&gt; whitelistedAddresses;</span>
-<span class="fc" id="L44">    private Integer fee;</span>
-    @JsonProperty(&quot;fee_interval&quot;)
-<span class="fc" id="L46">    private Integer feeInterval;</span>
-    @JsonProperty(&quot;fee_receiver_addresses&quot;)
-<span class="fc" id="L48">    private List&lt;String&gt; feeReceiverAddresses;</span>
-<span class="fc" id="L49">    private Long ttl;</span>
-    @JsonProperty(&quot;transaction_limit&quot;)
-<span class="fc" id="L51">    private Integer transactionLimit;</span>
-    @JsonProperty(&quot;batch_size&quot;)
-<span class="fc" id="L53">    private Integer batchSize;</span>
+<span class="fc" id="L40">    private String name;</span>
+    @JsonAlias({&quot;whitelistedAddresses&quot;, &quot;whitelisted_addresses&quot;})
+<span class="fc" id="L42">    private List&lt;String&gt; whitelistedAddresses;</span>
+<span class="fc" id="L43">    private Integer fee;</span>
+    @JsonAlias({&quot;feeInterval&quot;, &quot;fee_interval&quot;})
+<span class="fc" id="L45">    private Integer feeInterval;</span>
+    @JsonAlias({&quot;feeReceiverAddresses&quot;, &quot;fee_receiver_addresses&quot;})
+<span class="fc" id="L47">    private List&lt;String&gt; feeReceiverAddresses;</span>
+<span class="fc" id="L48">    private Long ttl;</span>
+    @JsonAlias({&quot;transactionLimit&quot;, &quot;transaction_limit&quot;})
+<span class="fc" id="L50">    private Integer transactionLimit;</span>
+    @JsonAlias({&quot;batchSize&quot;, &quot;batch_size&quot;})
+<span class="fc" id="L52">    private Integer batchSize;</span>
 
     public static BootstrapData fromBootstrapDatumEntity(BootstrapDatumEntity bootstrapDatumEntity, CardanoNetwork network) {
-<span class="fc" id="L56">        BootstrapData bootstrapData = new BootstrapData();</span>
-<span class="fc" id="L57">        bootstrapData.setName(bootstrapDatumEntity.getTokenName());</span>
-<span class="fc" id="L58">        bootstrapData.setWhitelistedAddresses(bootstrapDatumEntity.getAllowedCredentials().stream()</span>
-<span class="fc" id="L59">                .map(UserCredentialEntity::getCredential)</span>
-<span class="fc" id="L60">                .map(HexUtil::decodeHexString)</span>
-<span class="pc" id="L61">                .map(credential -&gt; AddressProvider.getEntAddress(Credential.fromKey(credential), fromCardanoNetwork(network)).getAddress())</span>
-<span class="fc" id="L62">                .toList());</span>
+<span class="fc" id="L55">        BootstrapData bootstrapData = new BootstrapData();</span>
+<span class="fc" id="L56">        bootstrapData.setName(bootstrapDatumEntity.getTokenName());</span>
+<span class="fc" id="L57">        bootstrapData.setWhitelistedAddresses(bootstrapDatumEntity.getAllowedCredentials().stream()</span>
+<span class="fc" id="L58">                .map(UserCredentialEntity::getCredential)</span>
+<span class="fc" id="L59">                .map(HexUtil::decodeHexString)</span>
+<span class="pc" id="L60">                .map(credential -&gt; AddressProvider.getEntAddress(Credential.fromKey(credential), fromCardanoNetwork(network)).getAddress())</span>
+<span class="fc" id="L61">                .toList());</span>
 
-<span class="fc" id="L64">        bootstrapData.setFee(bootstrapDatumEntity.getFee());</span>
-<span class="fc" id="L65">        bootstrapData.setFeeInterval(bootstrapDatumEntity.getFeeInterval());</span>
-<span class="fc" id="L66">        bootstrapData.setFeeReceiverAddresses(bootstrapDatumEntity.getFeeReceivers().stream()</span>
-<span class="fc" id="L67">                .map(FeeReceiverEntity::getCredential)</span>
-<span class="fc" id="L68">                .map(HexUtil::decodeHexString)</span>
-<span class="fc" id="L69">                .map(credential -&gt; AddressProvider.getEntAddress(Credential.fromKey(credential), fromCardanoNetwork(network)).getAddress()).toList());</span>
+<span class="fc" id="L63">        bootstrapData.setFee(bootstrapDatumEntity.getFee());</span>
+<span class="fc" id="L64">        bootstrapData.setFeeInterval(bootstrapDatumEntity.getFeeInterval());</span>
+<span class="fc" id="L65">        bootstrapData.setFeeReceiverAddresses(bootstrapDatumEntity.getFeeReceivers().stream()</span>
+<span class="fc" id="L66">                .map(FeeReceiverEntity::getCredential)</span>
+<span class="fc" id="L67">                .map(HexUtil::decodeHexString)</span>
+<span class="fc" id="L68">                .map(credential -&gt; AddressProvider.getEntAddress(Credential.fromKey(credential), fromCardanoNetwork(network)).getAddress()).toList());</span>
 
-<span class="fc" id="L71">        bootstrapData.setTtl(bootstrapDatumEntity.getTtl());</span>
-<span class="fc" id="L72">        bootstrapData.setTransactionLimit(bootstrapDatumEntity.getTransactionLimit());</span>
-<span class="fc" id="L73">        bootstrapData.setBatchSize(bootstrapDatumEntity.getBatchSize());</span>
-<span class="fc" id="L74">        return bootstrapData;</span>
+<span class="fc" id="L70">        bootstrapData.setTtl(bootstrapDatumEntity.getTtl());</span>
+<span class="fc" id="L71">        bootstrapData.setTransactionLimit(bootstrapDatumEntity.getTransactionLimit());</span>
+<span class="fc" id="L72">        bootstrapData.setBatchSize(bootstrapDatumEntity.getBatchSize());</span>
+<span class="fc" id="L73">        return bootstrapData;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

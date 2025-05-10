@@ -565,5 +565,9 @@ public class CardanoBlockchainService {
 <span class="nc" id="L565">                .withRequiredSigners(userAddress)</span>
 <span class="nc" id="L566">                .build();</span>
     }
+
+    public Long getLatestSlot() throws ApiException {
+<span class="nc" id="L570">        return CardanoUtils.getLatestSlot(backendService);</span>
+    }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

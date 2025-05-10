@@ -18,19 +18,17 @@
 
 package io.uverify.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.util.List;
 
-<span class="fc" id="L26">@AllArgsConstructor</span>
-<span class="fc" id="L27">@NoArgsConstructor</span>
-@Getter
-<span class="fc" id="L29">@Setter</span>
-<span class="pc" id="L30">@Builder</span>
+<span class="nc bnc" id="L27" title="All 22 branches missed.">@Data</span>
+<span class="pc" id="L28">@Builder</span>
 public class UserState {
-    @JsonProperty(&quot;bootstrap_datums&quot;)
-<span class="fc" id="L33">    private List&lt;BootstrapData&gt; bootstrapDatums;</span>
-<span class="fc" id="L34">    private List&lt;StateData&gt; states;</span>
+    @JsonAlias({&quot;bootstrapDatums&quot;, &quot;bootstrap_datums&quot;})
+<span class="fc" id="L31">    private List&lt;BootstrapData&gt; bootstrapDatums;</span>
+<span class="fc" id="L32">    private List&lt;StateData&gt; states;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
