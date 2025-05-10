@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -45,6 +46,7 @@ import java.util.Map;
 
 @Service
 @Slf4j
+@ConditionalOnProperty(value = "extensions.tadamon.enabled", havingValue = "true")
 public class TadamonGoogleSheetsService {
 
     private final String spreadsheetId;
