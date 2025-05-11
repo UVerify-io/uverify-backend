@@ -24,7 +24,7 @@ jobs:
         - name: Checkout release branch
           if: steps.release-please.outputs.prs != '[]'
           run: |
-            BRANCH=$(echo "${{ steps.release-please.outputs.pr }}" | jq -r '.headBranchName')
+            BRANCH=$(echo "${{ steps.release-please.outputs.prs }}" | jq -r '.[0].headBranchName')
             git fetch origin $BRANCH
             git checkout $BRANCH
 
