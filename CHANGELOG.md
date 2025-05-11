@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/UVerify-io/uverify-backend/compare/v1.3.0...v1.4.0) (2025-05-11)
+
+
+### Features
+
+* **transaction:** make witness set optional if vkey witness is included in the transaction ([3c80e73](https://github.com/UVerify-io/uverify-backend/commit/3c80e73241f0ed74a51fd9a5e24e2d86fc03969d))
+
 ## [1.3.0](https://github.com/UVerify-io/uverify-backend/compare/v1.2.0...v1.3.0) (2025-05-10)
 
 
