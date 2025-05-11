@@ -7,7 +7,7 @@
         {
           "type": "xml",
           "path": "pom.xml",
-          "xpath": "//*[local-name()='project']/*[local-name()='version']"
+          "xpath": "//project/version"
         }
       ]
     }
