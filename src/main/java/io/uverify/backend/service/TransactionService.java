@@ -52,10 +52,13 @@ public class TransactionService {
     private final CardanoBlockchainService cardanoBlockchainService;
 
     public Result<String> submit(String transactionHex, String witnessSetHex) throws CborDeserializationException, CborSerializationException, ApiException {
-        TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(witnessSetHex)));
         Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(transactionHex));
-        transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());
 
+        if (witnessSetHex != null && !witnessSetHex.isEmpty()) {
+            TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(witnessSetHex)));
+            transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());
+        }
+        
         return cardanoBlockchainService.submitTransaction(transaction);
     }
 
