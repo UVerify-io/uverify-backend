@@ -52,96 +52,99 @@ public class TransactionService {
     private final CardanoBlockchainService cardanoBlockchainService;
 
     public Result&lt;String&gt; submit(String transactionHex, String witnessSetHex) throws CborDeserializationException, CborSerializationException, ApiException {
-<span class="nc" id="L55">        TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(witnessSetHex)));</span>
-<span class="nc" id="L56">        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(transactionHex));</span>
-<span class="nc" id="L57">        transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());</span>
+<span class="nc" id="L55">        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(transactionHex));</span>
 
-<span class="nc" id="L59">        return cardanoBlockchainService.submitTransaction(transaction);</span>
+<span class="nc bnc" id="L57" title="All 4 branches missed.">        if (witnessSetHex != null &amp;&amp; !witnessSetHex.isEmpty()) {</span>
+<span class="nc" id="L58">            TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(witnessSetHex)));</span>
+<span class="nc" id="L59">            transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());</span>
+        }
+        
+<span class="nc" id="L62">        return cardanoBlockchainService.submitTransaction(transaction);</span>
     }
 
     public BuildTransactionResponse buildUVerifyTransaction(List&lt;CertificateData&gt; certificates, String address) throws ApiException, CborSerializationException {
-<span class="fc" id="L63">        List&lt;UVerifyCertificate&gt; uVerifyCertificates = certificates.stream()</span>
-<span class="fc" id="L64">                .map(certificate -&gt; UVerifyCertificate.fromCertificateData(certificate, address))</span>
-<span class="fc" id="L65">                .toList();</span>
+<span class="fc" id="L66">        List&lt;UVerifyCertificate&gt; uVerifyCertificates = certificates.stream()</span>
+<span class="fc" id="L67">                .map(certificate -&gt; UVerifyCertificate.fromCertificateData(certificate, address))</span>
+<span class="fc" id="L68">                .toList();</span>
         try {
-<span class="fc" id="L67">            Transaction transaction = cardanoBlockchainService.persistUVerifyCertificates(address, uVerifyCertificates);</span>
-<span class="fc" id="L68">            return BuildTransactionResponse.builder()</span>
-<span class="fc" id="L69">                    .unsignedTransaction(transaction.serializeToHex())</span>
-<span class="fc" id="L70">                    .status(BuildStatus.builder()</span>
-<span class="fc" id="L71">                            .code(BuildStatusCode.SUCCESS)</span>
-<span class="fc" id="L72">                            .build())</span>
-<span class="fc" id="L73">                    .type(TransactionType.DEFAULT)</span>
-<span class="fc" id="L74">                    .build();</span>
-<span class="nc" id="L75">        } catch (Exception exception) {</span>
-<span class="nc" id="L76">            return BuildTransactionResponse.builder()</span>
-<span class="nc" id="L77">                    .status(BuildStatus.builder()</span>
-<span class="nc" id="L78">                            .code(BuildStatusCode.ERROR)</span>
-<span class="nc" id="L79">                            .message(exception.getMessage())</span>
-<span class="nc" id="L80">                            .build())</span>
-<span class="nc" id="L81">                    .type(TransactionType.DEFAULT)</span>
-<span class="nc" id="L82">                    .build();</span>
+<span class="fc" id="L70">            Transaction transaction = cardanoBlockchainService.persistUVerifyCertificates(address, uVerifyCertificates);</span>
+<span class="fc" id="L71">            return BuildTransactionResponse.builder()</span>
+<span class="fc" id="L72">                    .unsignedTransaction(transaction.serializeToHex())</span>
+<span class="fc" id="L73">                    .status(BuildStatus.builder()</span>
+<span class="fc" id="L74">                            .code(BuildStatusCode.SUCCESS)</span>
+<span class="fc" id="L75">                            .build())</span>
+<span class="fc" id="L76">                    .type(TransactionType.DEFAULT)</span>
+<span class="fc" id="L77">                    .build();</span>
+<span class="nc" id="L78">        } catch (Exception exception) {</span>
+<span class="nc" id="L79">            return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L80">                    .status(BuildStatus.builder()</span>
+<span class="nc" id="L81">                            .code(BuildStatusCode.ERROR)</span>
+<span class="nc" id="L82">                            .message(exception.getMessage())</span>
+<span class="nc" id="L83">                            .build())</span>
+<span class="nc" id="L84">                    .type(TransactionType.DEFAULT)</span>
+<span class="nc" id="L85">                    .build();</span>
         }
     }
 
     public BuildTransactionResponse buildBootstrapDatum(BootstrapData bootstrapData) throws ApiException, CborSerializationException {
-<span class="fc" id="L87">        BootstrapDatum bootstrapDatum = BootstrapDatum.fromBootstrapData(bootstrapData);</span>
+<span class="fc" id="L90">        BootstrapDatum bootstrapDatum = BootstrapDatum.fromBootstrapData(bootstrapData);</span>
         try {
-<span class="fc" id="L89">            Transaction transaction = cardanoBlockchainService.initializeBootstrapDatum(bootstrapDatum);</span>
-<span class="fc" id="L90">            return BuildTransactionResponse.builder()</span>
-<span class="fc" id="L91">                    .status(BuildStatus.builder()</span>
-<span class="fc" id="L92">                            .code(BuildStatusCode.SUCCESS)</span>
-<span class="fc" id="L93">                            .build())</span>
-<span class="fc" id="L94">                    .unsignedTransaction(transaction.serializeToHex())</span>
-<span class="fc" id="L95">                    .type(TransactionType.BOOTSTRAP)</span>
-<span class="fc" id="L96">                    .build();</span>
-<span class="nc" id="L97">        } catch (Exception exception) {</span>
-<span class="nc" id="L98">            return BuildTransactionResponse.builder()</span>
-<span class="nc" id="L99">                    .status(BuildStatus.builder()</span>
-<span class="nc" id="L100">                            .code(BuildStatusCode.ERROR)</span>
-<span class="nc" id="L101">                            .message(exception.getMessage())</span>
-<span class="nc" id="L102">                            .build())</span>
-<span class="nc" id="L103">                    .type(TransactionType.BOOTSTRAP)</span>
-<span class="nc" id="L104">                    .build();</span>
+<span class="fc" id="L92">            Transaction transaction = cardanoBlockchainService.initializeBootstrapDatum(bootstrapDatum);</span>
+<span class="fc" id="L93">            return BuildTransactionResponse.builder()</span>
+<span class="fc" id="L94">                    .status(BuildStatus.builder()</span>
+<span class="fc" id="L95">                            .code(BuildStatusCode.SUCCESS)</span>
+<span class="fc" id="L96">                            .build())</span>
+<span class="fc" id="L97">                    .unsignedTransaction(transaction.serializeToHex())</span>
+<span class="fc" id="L98">                    .type(TransactionType.BOOTSTRAP)</span>
+<span class="fc" id="L99">                    .build();</span>
+<span class="nc" id="L100">        } catch (Exception exception) {</span>
+<span class="nc" id="L101">            return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L102">                    .status(BuildStatus.builder()</span>
+<span class="nc" id="L103">                            .code(BuildStatusCode.ERROR)</span>
+<span class="nc" id="L104">                            .message(exception.getMessage())</span>
+<span class="nc" id="L105">                            .build())</span>
+<span class="nc" id="L106">                    .type(TransactionType.BOOTSTRAP)</span>
+<span class="nc" id="L107">                    .build();</span>
         }
     }
 
     public BuildTransactionResponse buildCustomTransaction(List&lt;CertificateData&gt; certificates, String address, String bootstrapDatumName) {
-<span class="nc" id="L109">        List&lt;UVerifyCertificate&gt; uVerifyCertificates = certificates.stream()</span>
-<span class="nc" id="L110">                .map(certificate -&gt; UVerifyCertificate.fromCertificateData(certificate, address))</span>
-<span class="nc" id="L111">                .toList();</span>
-<span class="nc bnc" id="L112" title="All 4 branches missed.">        if (bootstrapDatumName != null &amp;&amp; !bootstrapDatumName.isEmpty()) {</span>
+<span class="nc" id="L112">        List&lt;UVerifyCertificate&gt; uVerifyCertificates = certificates.stream()</span>
+<span class="nc" id="L113">                .map(certificate -&gt; UVerifyCertificate.fromCertificateData(certificate, address))</span>
+<span class="nc" id="L114">                .toList();</span>
+<span class="nc bnc" id="L115" title="All 4 branches missed.">        if (bootstrapDatumName != null &amp;&amp; !bootstrapDatumName.isEmpty()) {</span>
             try {
-<span class="nc" id="L114">                Transaction transaction = cardanoBlockchainService.updateStateDatum(address, uVerifyCertificates, bootstrapDatumName);</span>
-<span class="nc" id="L115">                return BuildTransactionResponse.builder()</span>
-<span class="nc" id="L116">                        .unsignedTransaction(transaction.serializeToHex())</span>
-<span class="nc" id="L117">                        .status(BuildStatus.builder()</span>
-<span class="nc" id="L118">                                .code(BuildStatusCode.SUCCESS)</span>
-<span class="nc" id="L119">                                .build())</span>
-<span class="nc" id="L120">                        .type(TransactionType.CUSTOM)</span>
-<span class="nc" id="L121">                        .build();</span>
-<span class="nc" id="L122">            } catch (Exception exception) {</span>
-<span class="nc" id="L123">                return BuildTransactionResponse.builder()</span>
-<span class="nc" id="L124">                        .status(BuildStatus.builder()</span>
-<span class="nc" id="L125">                                .code(BuildStatusCode.ERROR)</span>
-<span class="nc" id="L126">                                .message(exception.getMessage())</span>
-<span class="nc" id="L127">                                .build())</span>
-<span class="nc" id="L128">                        .type(TransactionType.CUSTOM)</span>
-<span class="nc" id="L129">                        .build();</span>
+<span class="nc" id="L117">                Transaction transaction = cardanoBlockchainService.updateStateDatum(address, uVerifyCertificates, bootstrapDatumName);</span>
+<span class="nc" id="L118">                return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L119">                        .unsignedTransaction(transaction.serializeToHex())</span>
+<span class="nc" id="L120">                        .status(BuildStatus.builder()</span>
+<span class="nc" id="L121">                                .code(BuildStatusCode.SUCCESS)</span>
+<span class="nc" id="L122">                                .build())</span>
+<span class="nc" id="L123">                        .type(TransactionType.CUSTOM)</span>
+<span class="nc" id="L124">                        .build();</span>
+<span class="nc" id="L125">            } catch (Exception exception) {</span>
+<span class="nc" id="L126">                return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L127">                        .status(BuildStatus.builder()</span>
+<span class="nc" id="L128">                                .code(BuildStatusCode.ERROR)</span>
+<span class="nc" id="L129">                                .message(exception.getMessage())</span>
+<span class="nc" id="L130">                                .build())</span>
+<span class="nc" id="L131">                        .type(TransactionType.CUSTOM)</span>
+<span class="nc" id="L132">                        .build();</span>
             }
         }
 
         try {
-<span class="nc" id="L134">            BuildTransactionResponse buildTransactionResponse = buildUVerifyTransaction(certificates, address);</span>
-<span class="nc" id="L135">            buildTransactionResponse.setType(TransactionType.CUSTOM);</span>
-<span class="nc" id="L136">            return buildTransactionResponse;</span>
-<span class="nc" id="L137">        } catch (Exception exception) {</span>
-<span class="nc" id="L138">            return BuildTransactionResponse.builder()</span>
-<span class="nc" id="L139">                    .status(BuildStatus.builder()</span>
-<span class="nc" id="L140">                            .code(BuildStatusCode.ERROR)</span>
-<span class="nc" id="L141">                            .message(exception.getMessage())</span>
-<span class="nc" id="L142">                            .build())</span>
-<span class="nc" id="L143">                    .type(TransactionType.CUSTOM)</span>
-<span class="nc" id="L144">                    .build();</span>
+<span class="nc" id="L137">            BuildTransactionResponse buildTransactionResponse = buildUVerifyTransaction(certificates, address);</span>
+<span class="nc" id="L138">            buildTransactionResponse.setType(TransactionType.CUSTOM);</span>
+<span class="nc" id="L139">            return buildTransactionResponse;</span>
+<span class="nc" id="L140">        } catch (Exception exception) {</span>
+<span class="nc" id="L141">            return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L142">                    .status(BuildStatus.builder()</span>
+<span class="nc" id="L143">                            .code(BuildStatusCode.ERROR)</span>
+<span class="nc" id="L144">                            .message(exception.getMessage())</span>
+<span class="nc" id="L145">                            .build())</span>
+<span class="nc" id="L146">                    .type(TransactionType.CUSTOM)</span>
+<span class="nc" id="L147">                    .build();</span>
         }
     }
 }
