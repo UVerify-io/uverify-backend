@@ -23,6 +23,7 @@ jobs:
 
         - name: Checkout release branch
           if: steps.release-please.outputs.prs != '[]'
+          working-directory: ${{ github.workspace }}
           run: |
             BRANCH=$(echo "${{ steps.release-please.outputs.prs }}" | jq -r '.[0].headBranchName')
             git fetch origin $BRANCH
@@ -34,6 +35,7 @@ jobs:
 
         - name: Update pom.xml version
           if: steps.release-please.outputs.prs != '[]'
+          working-directory: ${{ github.workspace }}
           run: |
             NEW_VERSION=$(jq -r '.[ "." ]' .release-please-manifest.json)
             xmlstarlet ed -N m="http://maven.apache.org/POM/4.0.0" \
