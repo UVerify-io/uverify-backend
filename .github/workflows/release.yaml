@@ -29,6 +29,7 @@ jobs:
       - name: 🔄 Checkout Release Branch
         if: steps.release-please.outputs.prs != '[]'
         run: |
+          git fetch
           git checkout release-please--branches--main
           git pull
 
