@@ -22,11 +22,12 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      - name: 📥 Checkout Code
+      - name: 📥 Checkout
         if: steps.release-please.outputs.prs != '[]'
-        uses: actions/setup-node@v4
+        uses: actions/checkout@v3
 
       - name: 👀 Read Branch Name
+        if: steps.release-please.outputs.prs != '[]'
         id: read-branch
         run: |
           echo "branch=$(echo '${{ steps.release-please.outputs.prs }}' | jq -r '.[0].headBranchName')" >> $GITHUB_OUTPUT
