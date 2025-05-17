@@ -26,13 +26,16 @@ jobs:
         if: steps.release-please.outputs.prs != '[]'
         uses: actions/setup-node@v4
 
+      - name: 👀 Read Branch Name
+        id: read-branch
+        run: |
+          echo "branch=$(echo '${{ steps.release-please.outputs.prs }}' | jq -r '.[0].headBranchName')" >> $GITHUB_OUTPUT
+
       - name: 🔄 Checkout Release Branch
         if: steps.release-please.outputs.prs != '[]'
-        env:
-          BRANCH: ${{ fromJson(steps.release-please.outputs.prs)[0].headBranchName }}
         run: |
-          git fetch origin $BRANCH
-          git checkout $BRANCH
+          git fetch origin ${{ steps.read-branch.outputs.branch }}
+          git checkout ${{ steps.read-branch.outputs.branch }}
 
       - name: 🛠️ Install XML Tools
         if: steps.release-please.outputs.prs != '[]'
