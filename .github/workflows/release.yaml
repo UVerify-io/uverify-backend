@@ -33,12 +33,18 @@ jobs:
           git checkout release-please--branches--main
           git pull
 
+      - name: 🛠️ Install XML Tools
+        if: steps.release-please.outputs.prs != '[]'
+        run: sudo apt-get install -y xmlstarlet
+
       - name: 📝 Update POM Version
         if: steps.release-please.outputs.prs != '[]'
         run: |
           NEW_VERSION=$(jq -r '.[ "." ]' .release-please-manifest.json)
           git checkout origin/main -- pom.xml
-          sed -i '/<project/,/<\/project>/ s/<version>[0-9].*<\/version>/<version>'"$NEW_VERSION"'<\/version>/' pom.xml
+          xmlstarlet ed -N m="http://maven.apache.org/POM/4.0.0" \
+          -u "/m:project/m:version" -v "$NEW_VERSION" pom.xml > pom.xml.tmp
+          mv pom.xml.tmp pom.xml
           git add pom.xml
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
