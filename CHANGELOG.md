@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/UVerify-io/uverify-backend/compare/v1.4.0...v1.4.1) (2025-05-17)
+
+
+### Bug Fixes
+
+* repair release and build pipeline ([9ac9036](https://github.com/UVerify-io/uverify-backend/commit/9ac9036c3bf189145effd6fbeb1d4e3e81265723))
+
 ## [1.4.0](https://github.com/UVerify-io/uverify-backend/compare/v1.3.0...v1.4.0) (2025-05-17)
 
 
