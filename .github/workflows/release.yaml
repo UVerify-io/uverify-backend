@@ -3,7 +3,6 @@ name: 📦 Create a new Release
 on:
   push:
     branches: ['main']
-
   workflow_dispatch:
 
 permissions:
@@ -15,32 +14,36 @@ jobs:
   create_release:
     runs-on: ubuntu-latest
     steps:
-        - uses: googleapis/release-please-action@v4
-          with:
-            token: ${{ secrets.GITHUB_TOKEN }}
-            config-file: release-please-config.json
-            manifest-file: .release-please-manifest.json
+      - name: 🎉 Create Release PR
+        uses: googleapis/release-please-action@v4
+        id: release-please
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
-        - name: Checkout release branch
-          if: steps.release-please.outputs.prs != '[]'
-          working-directory: ${{ github.workspace }}
-          run: |
-            BRANCH=$(echo "${{ steps.release-please.outputs.prs }}" | jq -r '.[0].headBranchName')
-            git fetch origin $BRANCH
-            git checkout $BRANCH
+      - name: 📥 Checkout Code
+        if: steps.release-please.outputs.prs != '[]'
+        uses: actions/setup-node@v4
 
-        - name: Install xmlstarlet
-          if: steps.release-please.outputs.prs != '[]'
-          run: sudo apt-get install -y xmlstarlet
+      - name: 🔄 Checkout Release Branch
+        if: steps.release-please.outputs.prs != '[]'
+        run: |
+          BRANCH=$(echo "${{ steps.release-please.outputs.prs }}" | jq -r '.[0].headBranchName')
+          git fetch origin $BRANCH
+          git checkout $BRANCH
 
-        - name: Update pom.xml version
-          if: steps.release-please.outputs.prs != '[]'
-          working-directory: ${{ github.workspace }}
-          run: |
-            NEW_VERSION=$(jq -r '.[ "." ]' .release-please-manifest.json)
-            xmlstarlet ed -N m="http://maven.apache.org/POM/4.0.0" \
-              -u "/m:project/m:version" -v "$NEW_VERSION" pom.xml > pom.xml.tmp
-            mv pom.xml.tmp pom.xml
-            git add pom.xml
-            git commit -m "chore: update pom.xml to version $NEW_VERSION"
-            git push origin HEAD
+      - name: 🛠️ Install XML Tools
+        if: steps.release-please.outputs.prs != '[]'
+        run: sudo apt-get install -y xmlstarlet
+
+      - name: 📝 Update POM Version
+        if: steps.release-please.outputs.prs != '[]'
+        run: |
+          NEW_VERSION=$(jq -r '.[ "." ]' .release-please-manifest.json)
+          xmlstarlet ed -N m="http://maven.apache.org/POM/4.0.0" \
+            -u "/m:project/m:version" -v "$NEW_VERSION" pom.xml > pom.xml.tmp
+          mv pom.xml.tmp pom.xml
+          git add pom.xml
+          git commit -m "chore: update pom.xml to version $NEW_VERSION"
+          git push origin HEAD
