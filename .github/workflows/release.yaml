@@ -26,17 +26,11 @@ jobs:
         if: steps.release-please.outputs.prs != '[]'
         uses: actions/checkout@v3
 
-      - name: 👀 Read Branch Name
-        if: steps.release-please.outputs.prs != '[]'
-        id: read-branch
-        run: |
-          echo "branch=$(echo '${{ steps.release-please.outputs.prs }}' | jq -r '.[0].headBranchName')" >> $GITHUB_OUTPUT
-
       - name: 🔄 Checkout Release Branch
         if: steps.release-please.outputs.prs != '[]'
         run: |
-          git fetch origin ${{ steps.read-branch.outputs.branch }}
-          git checkout ${{ steps.read-branch.outputs.branch }}
+          git checkout release-please--branches--main
+          git pull
 
       - name: 🛠️ Install XML Tools
         if: steps.release-please.outputs.prs != '[]'
@@ -50,5 +44,7 @@ jobs:
             -u "/m:project/m:version" -v "$NEW_VERSION" pom.xml > pom.xml.tmp
           mv pom.xml.tmp pom.xml
           git add pom.xml
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: update pom.xml to version $NEW_VERSION"
           git push origin HEAD
