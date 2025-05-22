@@ -18,6 +18,10 @@
 
 package io.uverify.backend.extension;
 
+import com.bloxbean.cardano.client.address.Address;
+import com.bloxbean.cardano.client.crypto.Blake2bUtil;
+import com.bloxbean.cardano.client.transaction.spec.VkeyWitness;
+import com.bloxbean.cardano.client.util.HexUtil;
 import io.uverify.backend.extension.entity.TadamonTransactionEntity;
 import io.uverify.backend.extension.service.TadamonGoogleSheetsService;
 import org.junit.jupiter.api.Assertions;
@@ -27,6 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit.jupiter.EnabledIf;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 
 @SpringBootTest
 @EnabledIf(
@@ -58,6 +63,19 @@ public class TadamonExtensionTest {
                 .transactionHex("abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
                 .build();
         tadamonGoogleSheetsService.writeRowToSheet(tadamonTransactionEntity, 5);
+    }
+
+    @Test
+    void compareKeys() {
+        String vkey = "51dbae874ef94ba4a42d6bc935696e50b545eb8dc0cd0bb8d3c7ddb2699fa581";
+        String addressStr = "addr_test1qpftcj63cky29z6xq69hm454c4ru0tyq89aqcm5kd65wzsevvxgywp50vfnt0raqf0p6y9rq07y4rsrc4fu3k528rc0q8gvagn";
+        Address address = new Address(addressStr);
+
+        String paymentCredHash = HexUtil.encodeHexString(address.getPaymentCredentialHash().get());
+        byte[] vkeyHash = Blake2bUtil.blake2bHash224(HexUtil.decodeHexString(vkey));
+        String vkeyHashHex = HexUtil.encodeHexString(vkeyHash);
+
+        Assertions.assertEquals(paymentCredHash, vkeyHashHex);
     }
 
     @Test

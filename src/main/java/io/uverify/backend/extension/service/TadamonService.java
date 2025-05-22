@@ -23,6 +23,7 @@ import com.bloxbean.cardano.client.address.Address;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.common.cbor.CborSerializationUtil;
+import com.bloxbean.cardano.client.crypto.Blake2bUtil;
 import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
@@ -48,6 +49,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -115,9 +117,14 @@ public class TadamonService implements UVerifyServiceExtension {
 
         boolean signedByAllowedAddress = transaction.getWitnessSet().getVkeyWitnesses().stream().anyMatch(
                 vkeyWitness -> {
+                    String vkeyHash = HexUtil.encodeHexString(Blake2bUtil.blake2bHash224(vkeyWitness.getVkey()));
                     for (String address : allowedAddresses) {
-                        if (Arrays.equals(vkeyWitness.getVkey(), new Address(address).getPaymentCredentialHash().orElse(null))) {
-                            return true;
+                        Optional<byte[]> paymentCredential = new Address(address).getPaymentCredentialHash();
+                        if (paymentCredential.isPresent()) {
+                            String paymentCredentialHash = HexUtil.encodeHexString(paymentCredential.get());
+                            if (paymentCredentialHash.equalsIgnoreCase(vkeyHash)) {
+                                return true;
+                            }
                         }
                     }
                     return false;
