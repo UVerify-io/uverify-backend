@@ -22,22 +22,19 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      - name: Debug Release Outputs
-        run: echo "${{ toJson(steps.release.outputs) }}"
-
       - name: 📥 Checkout
-        if: ${{ steps.release.outputs.release_created == 'true' }}
+        if: ${{ steps.release.outputs.releases_created }}
         uses: actions/checkout@v3
 
       - name: 🔄 Checkout Release Branch
-        if: ${{ steps.release.outputs.release_created == 'true' }}
+        if: ${{ steps.release.outputs.releases_created }}
         run: |
           git fetch
           git checkout release-please--branches--main
           git pull
 
       - name: 📝 Update POM Version
-        if: ${{ steps.release.outputs.release_created == 'true' }}
+        if: ${{ steps.release.outputs.releases_created }}
         run: |
           NEW_VERSION=$(jq -r '.[ "." ]' .release-please-manifest.json)
           git checkout origin/main -- pom.xml
