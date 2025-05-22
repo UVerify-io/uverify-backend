@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/UVerify-io/uverify-backend/compare/v1.4.1...v1.4.2) (2025-05-22)
+
+
+### Bug Fixes
+
+* **tadamon:** apply blake2b hash function before comparing vkey witness ([880682c](https://github.com/UVerify-io/uverify-backend/commit/880682c82bab2f04af2cea92ececd59a136a6642))
+
 ## [1.4.1](https://github.com/UVerify-io/uverify-backend/compare/v1.4.0...v1.4.1) (2025-05-17)
 
 
