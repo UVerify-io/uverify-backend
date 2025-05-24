@@ -23,18 +23,18 @@ jobs:
           manifest-file: .release-please-manifest.json
 
       - name: 📥 Checkout
-        if: ${{ steps.release.outputs.releases_created }}
+        if: ${{ steps.release.outputs.prs_created }}
         uses: actions/checkout@v3
 
       - name: 🔄 Checkout Release Branch
-        if: ${{ steps.release.outputs.releases_created }}
+        if: ${{ steps.release.outputs.prs_created }}
         run: |
           git fetch
           git checkout release-please--branches--main
           git pull
 
       - name: 📝 Update POM Version
-        if: ${{ steps.release.outputs.releases_created }}
+        if: ${{ steps.release.outputs.prs_created }}
         run: |
           NEW_VERSION=$(jq -r '.[ "." ]' .release-please-manifest.json)
           git checkout origin/main -- pom.xml
