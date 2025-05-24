@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/UVerify-io/uverify-backend/compare/v1.4.2...v1.4.3) (2025-05-24)
+
+
+### Bug Fixes
+
+* store transaction id from value instead of a message coming from the response ([ae2280b](https://github.com/UVerify-io/uverify-backend/commit/ae2280b0b8f317899ea62d500c3f23a40bea0189))
+
 ## [1.4.2](https://github.com/UVerify-io/uverify-backend/compare/v1.4.1...v1.4.2) (2025-05-22)
 
 
