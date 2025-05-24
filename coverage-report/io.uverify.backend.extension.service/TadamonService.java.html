@@ -88,7 +88,7 @@ public class TadamonService implements UVerifyServiceExtension {
 <span class="nc" id="L88">                Result&lt;String&gt; result = cardanoBlockchainService.submitTransaction(transaction);</span>
 <span class="nc bnc" id="L89" title="All 2 branches missed.">                if (result.isSuccessful()) {</span>
 <span class="nc" id="L90">                    log.info(&quot;Transaction {} rolled back successfully and is now {}&quot;, transactionEntity.getTransactionId(), result.getResponse());</span>
-<span class="nc" id="L91">                    transactionEntity.setTransactionId(result.getResponse());</span>
+<span class="nc" id="L91">                    transactionEntity.setTransactionId(result.getValue());</span>
 <span class="nc" id="L92">                    transactionEntity.setCertificateCreationDate(LocalDateTime.now());</span>
 <span class="nc" id="L93">                    transactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());</span>
 <span class="nc" id="L94">                    tadamonTransactionRepository.save(transactionEntity);</span>
@@ -170,7 +170,7 @@ public class TadamonService implements UVerifyServiceExtension {
 
 <span class="nc" id="L171">        Result&lt;String&gt; result = cardanoBlockchainService.submitTransaction(transaction);</span>
 <span class="nc bnc" id="L172" title="All 2 branches missed.">        if (result.isSuccessful()) {</span>
-<span class="nc" id="L173">            tadamonTransactionEntity.setTransactionId(result.getResponse());</span>
+<span class="nc" id="L173">            tadamonTransactionEntity.setTransactionId(result.getValue());</span>
 <span class="nc" id="L174">            tadamonTransactionEntity.setCertificateCreationDate(LocalDateTime.now());</span>
 <span class="nc" id="L175">            tadamonTransactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());</span>
 <span class="nc" id="L176">            tadamonTransactionRepository.save(tadamonTransactionEntity);</span>
