@@ -88,7 +88,7 @@ public class TadamonService implements UVerifyServiceExtension {
                 Result<String> result = cardanoBlockchainService.submitTransaction(transaction);
                 if (result.isSuccessful()) {
                     log.info("Transaction {} rolled back successfully and is now {}", transactionEntity.getTransactionId(), result.getResponse());
-                    transactionEntity.setTransactionId(result.getResponse());
+                    transactionEntity.setTransactionId(result.getValue());
                     transactionEntity.setCertificateCreationDate(LocalDateTime.now());
                     transactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());
                     tadamonTransactionRepository.save(transactionEntity);
@@ -170,7 +170,7 @@ public class TadamonService implements UVerifyServiceExtension {
 
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction);
         if (result.isSuccessful()) {
-            tadamonTransactionEntity.setTransactionId(result.getResponse());
+            tadamonTransactionEntity.setTransactionId(result.getValue());
             tadamonTransactionEntity.setCertificateCreationDate(LocalDateTime.now());
             tadamonTransactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());
             tadamonTransactionRepository.save(tadamonTransactionEntity);

@@ -37,10 +37,16 @@ jobs:
         if: ${{ steps.release.outputs.prs_created == 'true' }}
         run: |
           NEW_VERSION=$(jq -r '.[ "." ]' .release-please-manifest.json)
+          
           git checkout origin/main -- pom.xml
           sed -i '/<project/,/<version>/ s/<version>.*<\/version>/<version>'"$NEW_VERSION"'<\/version>/' pom.xml
           git add pom.xml
+          
+          git checkout origin/main -- README.md
+          sed -i 's/uverify-backend-[0-9]\+\.[0-9]\+\.[0-9]\+\.jar/uverify-backend-'"$NEW_VERSION"'.jar/' README.md
+          git add README.md
+          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: update pom.xml to version $NEW_VERSION"
+          git commit -m "chore: update pom.xml and README.md to version $NEW_VERSION"
           git push origin HEAD
