@@ -28,6 +28,43 @@ UVerify makes blockchain technology accessible to everyone, regardless of prior 
 - Java 17 or higher
 - Maven 3.8+
 - Git
+- Docker (optional, for containerized setup)
+
+## 🐳 Running with Docker
+
+You can run the backend as a Docker container without installing Java or Maven locally.
+
+1. Copy and configure your environment file:
+   ```zsh
+   cp src/main/resources/.env.example .env
+   ```
+   Edit `.env` as needed.
+
+2. Run the backend container:
+   ```zsh
+   docker run --env-file .env -p 9090:9090 uverify/uverify-backend:latest
+   ```
+   The backend will be available at [http://localhost:9090](http://localhost:9090).
+
+## 🏗️ Running Full Stack with Docker Compose
+
+To run the backend, ui, and database together, you can use Docker Compose.  
+An example `docker-compose.yml` is available [here](https://github.com/UVerify-io/.github/blob/main/scripts/docker-compose.yml).
+
+1. Download the example compose file:
+   ```zsh
+   curl -O https://raw.githubusercontent.com/UVerify-io/.github/main/scripts/docker-compose.yml
+   ```
+2. Copy and configure your environment file as above.
+
+3. Start all services:
+   ```zsh
+   docker compose up
+   ```
+   This will start the backend, ui, and database containers.
+   By default, the frontend will be available at [http://localhost:3000](http://localhost:3000) and the backend at [http://localhost:9090](http://localhost:9090).
+
+> **Tip:** You can customize the services and ports in the `docker-compose.yml` file as needed.
 
 ### Installation
 
