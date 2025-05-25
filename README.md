@@ -38,16 +38,16 @@ UVerify makes blockchain technology accessible to everyone, regardless of prior 
     ```
 
 2. Configure environment variables:
-    - Copy the example.env file to .env:
+    - Copy the .env.example file to .env:
       ```zsh
-      cp src/main/resources/example.env .env
+      cp src/main/resources/.env.example .env
       ```
     - Edit the .env file with your configuration (see [Environment Variables](#-environment-variables) section)
 
 3. Build and run the application:
    ```zsh
    mvn clean package
-   java -jar target/uverify-backend-1.4.1.jar
+   java -jar target/uverify-backend-1.4.3.jar
    ```
 
 ## 🔧 Environment Variables
