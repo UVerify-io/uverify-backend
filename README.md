@@ -20,16 +20,64 @@
   <a href="https://cla-assistant.io/UVerify-io/uverify-backend"><img src="https://cla-assistant.io/readme/badge/UVerify-io/uverify-backend" alt="CLA assistant" /></a>
 </p>
 
-UVerify makes blockchain technology accessible to everyone, regardless of prior experience. Effortlessly secure your file or text hashes on the Cardano blockchain. Want to try it out before diving into the code? Visit [app.uverify.io](app.uverify.io) to explore the app.
+UVerify makes blockchain technology accessible to everyone, regardless of prior experience. Effortlessly secure your file or text hashes on the Cardano blockchain. Want to try it out before diving into the code? Visit [app.uverify.io](https://app.uverify.io) to explore the app.
 
 ## 🚀 Getting Started
 
-To get started, clone the repository and run the following commands:
+### Prerequisites
+- Java 17 or higher
+- Maven 3.8+
+- Git
 
-```zsh
-mvn clean package
-java -jar target/uverify-backend-1.4.1.jar
-```
+### Installation
+
+1. Clone the repository:
+   ```zsh
+   git clone https://github.com/UVerify-io/uverify-backend.git
+   cd uverify-backend
+    ```
+
+2. Configure environment variables:
+    - Copy the example.env file to .env:
+      ```zsh
+      cp src/main/resources/example.env .env
+      ```
+    - Edit the .env file with your configuration (see [Environment Variables](#-environment-variables) section)
+
+3. Build and run the application:
+   ```zsh
+   mvn clean package
+   java -jar target/uverify-backend-1.4.1.jar
+   ```
+
+## 🔧 Environment Variables
+
+The application requires a `.env` file either in the same folder as the JAR file or in the `src/main/resources` folder when running with IntelliJ.
+
+| Variable                               | Description                                                       | Example                                       | Required |
+|----------------------------------------|-------------------------------------------------------------------|-----------------------------------------------|----------|
+| SPRING_ACTIVE_PROFILES                 | Active Spring profiles (h2/postgres, mainnet/preprod, https)      | preprod,h2                                    | Yes      |
+| CORS_ALLOWED_ORIGINS                   | Allowed origins for CORS                                          | http://localhost:3000                         | No       |
+| KEY_STORE_PASSWORD                     | Password for the keystore (required when https profile is active) | password123                                   | No\*     |
+| DB_URL                                 | Database connection URL when using H2                             | jdbc:h2:./data/db                             | No       |
+| SERVICE_USER_ADDRESS                   | The wallet address for the service                                | addr_test1qqgmew8y57fsfc3...                  | Yes      |
+| SERVICE_ACCOUNT_MNEMONIC               | The testnet account mnemonic (for testing purposes)               | word1 word2 ... word24                        | No       |
+| FACILITATOR_ACCOUNT_MNEMONIC           | Mnemonic to sign authentication messages for state queries        | word1 word2 ... word24                        | No       |
+| BLOCKFROST_PROJECT_ID                  | Your Blockfrost project ID                                        | preprod123abc                                 | Yes\**   |
+| BLOCKFROST_BASE_URL                    | Blockfrost API base URL                                           | https://cardano-preprod.blockfrost.io/api/v0/ | Yes\**   |
+| CARDANO_BACKEND_TYPE                   | Backend type (koios or blockfrost)                                | blockfrost                                    | Yes      |
+| CARDANO_NETWORK                        | Cardano network to use (PREPROD or MAINNET)                       | PREPROD                                       | Yes      |
+| CONNECTED_GOODS_EXTENSION_ENABLED      | Enable Connected Goods extension                                  | false                                         | No       |
+| CONNECTED_GOODS_SERVICE_WALLET_ADDRESS | Address for testing Connected Goods extension                     | addr_test1...                                 | No       |
+| CONNECTED_GOODS_ENCRYPTION_SALT        | Salt for double encryption of user data                           | randomsalt123                                 | No       |
+| TADAMON_EXTENSION_ENABLED              | Enable Tadamon extension                                          | false                                         | No       |
+| TADAMON_ALLOWED_ADDRESSES              | Addresses allowed to use Tadamon extension                        | addr1,addr2                                   | No       |
+| TADAMON_GOOGLE_SHEETS_PRIVATE_KEY      | Google Sheets API private key                                     | -----BEGIN PRIVATE KEY-----\\n...             | No       |
+| TADAMON_GOOGLE_SHEETS_SERVICE_ACCOUNT  | Google Sheets service account email                               | account@project.iam.gserviceaccount.com       | No       |
+| TADAMON_GOOGLE_SHEETS_ID               | Google Sheets ID                                                  | 1FZZA0N...AaaAVe                              | No       |
+
+\* Only required if you use the `https` profile.
+\** Only required if you use the `blockfrost` backend type.
 
 ## 💙 Contributing
 
@@ -46,6 +94,7 @@ We welcome all contributions! Please read our [Contributing Guidelines](CONTRIBU
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Security](SECURITY.md)
 - [Contributor License Agreement (CLA)](./CLA.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
 
 ## 📜 License
 
