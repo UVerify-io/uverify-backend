@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.4](https://github.com/UVerify-io/uverify-backend/compare/v1.4.3...v1.4.4) (2025-05-26)
+
+
+### Bug Fixes
+
+* **tadamon:** make beneficiary signing date optional ([820158a](https://github.com/UVerify-io/uverify-backend/commit/820158ac9ae7e02891879e8fbfad33a3caf43503))
+
 ## [1.4.3](https://github.com/UVerify-io/uverify-backend/compare/v1.4.2...v1.4.3) (2025-05-24)
 
 
