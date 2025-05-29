@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.5](https://github.com/UVerify-io/uverify-backend/compare/v1.4.4...v1.4.5) (2025-05-29)
+
+
+### Bug Fixes
+
+* add log level configuration and log error in tadamon controller ([7054eab](https://github.com/UVerify-io/uverify-backend/commit/7054eabff771f6bdaabbe01b97e57d15c9994333))
+
 ## [1.4.4](https://github.com/UVerify-io/uverify-backend/compare/v1.4.3...v1.4.4) (2025-05-26)
 
 
