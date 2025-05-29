@@ -27,6 +27,8 @@ springdoc:
 apiPrefix: /api/v1
 
 logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
   file:
     name: ./logs/uverify-backend.log
 

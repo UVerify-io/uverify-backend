@@ -22,13 +22,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.uverify.backend.dto.SubmitTransactionRequest;
-import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.extension.dto.TadamonTransactionRequest;
 import io.uverify.backend.extension.service.TadamonService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -65,6 +62,7 @@ public class TadamonController {
         try {
             return ResponseEntity.ok(tadamonService.submit(request));
         } catch (Exception e) {
+            log.error("Error submitting transaction: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
