@@ -161,7 +161,7 @@ public class TadamonGoogleSheetsService {
                             transactionEntity.getTadamonId(),
                             transactionEntity.getVeridianAid(),
                             formatDate(transactionEntity.getUndpSigningDate()),
-                            formatDate(transactionEntity.getBeneficiarySigningDate()),
+                            // formatDate(transactionEntity.getBeneficiarySigningDate()),
                             formatDate(transactionEntity.getCertificateCreationDate()),
                             transactionEntity.getCertificateDataHash(),
                             "https://app.uverify.io/verify/" + transactionEntity.getCertificateDataHash() + "/1"
