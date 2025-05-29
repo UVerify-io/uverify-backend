@@ -79,7 +79,10 @@ public class TadamonGoogleSheetsService {
         }
     }
     public String formatDate(LocalDateTime dateTime) {
-        return dateTime.format(FORMATTER);
+        if (dateTime != null) {
+            return dateTime.format(FORMATTER);
+        }
+        return null;
     }
     private String createRequestBodyFromList(List<String> values) {
         StringBuilder json = new StringBuilder("{\"values\": [[");
