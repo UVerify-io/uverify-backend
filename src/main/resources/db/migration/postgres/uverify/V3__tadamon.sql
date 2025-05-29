@@ -14,7 +14,7 @@ CREATE TABLE tadamon_transaction (
     tadamon_id VARCHAR(64) not null,
     veridian_aid VARCHAR(64) not null,
     undp_signing_date TIMESTAMP not null,
-    beneficiary_signing_date TIMESTAMP not null,
+    beneficiary_signing_date TIMESTAMP,
     certificate_creation_date TIMESTAMP not null,
     certificate_data_hash VARCHAR(64) not null
 );
