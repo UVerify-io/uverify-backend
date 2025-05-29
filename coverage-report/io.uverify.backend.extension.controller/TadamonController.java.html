@@ -22,13 +22,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.uverify.backend.dto.SubmitTransactionRequest;
-import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.extension.dto.TadamonTransactionRequest;
 import io.uverify.backend.extension.service.TadamonService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,7 +33,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-<span class="nc" id="L39">@Slf4j</span>
+<span class="nc" id="L36">@Slf4j</span>
 @ConditionalOnProperty(value = &quot;extensions.tadamon.enabled&quot;, havingValue = &quot;true&quot;)
 @RestController
 @SuppressWarnings(&quot;unused&quot;)
@@ -46,9 +43,9 @@ public class TadamonController {
     @Autowired
     private final TadamonService tadamonService;
 
-<span class="nc" id="L49">    public TadamonController(TadamonService tadamonService) {</span>
-<span class="nc" id="L50">        this.tadamonService = tadamonService;</span>
-<span class="nc" id="L51">    }</span>
+<span class="nc" id="L46">    public TadamonController(TadamonService tadamonService) {</span>
+<span class="nc" id="L47">        this.tadamonService = tadamonService;</span>
+<span class="nc" id="L48">    }</span>
 
     @PostMapping(&quot;/tx/submit&quot;)
     @Operation(
@@ -63,9 +60,10 @@ public class TadamonController {
     })
     public ResponseEntity&lt;?&gt; submitTransaction(@RequestBody TadamonTransactionRequest request) {
         try {
-<span class="nc" id="L66">            return ResponseEntity.ok(tadamonService.submit(request));</span>
-<span class="nc" id="L67">        } catch (Exception e) {</span>
-<span class="nc" id="L68">            return ResponseEntity.internalServerError().build();</span>
+<span class="nc" id="L63">            return ResponseEntity.ok(tadamonService.submit(request));</span>
+<span class="nc" id="L64">        } catch (Exception e) {</span>
+<span class="nc" id="L65">            log.error(&quot;Error submitting transaction: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L66">            return ResponseEntity.internalServerError().build();</span>
         }
     }
 }
