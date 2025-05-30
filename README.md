@@ -94,6 +94,8 @@ The application requires a `.env` file either in the same folder as the JAR file
 | Variable                               | Description                                                       | Example                                       | Required |
 |----------------------------------------|-------------------------------------------------------------------|-----------------------------------------------|----------|
 | SPRING_ACTIVE_PROFILES                 | Active Spring profiles (h2/postgres, mainnet/preprod, https)      | preprod,h2                                    | Yes      |
+| LOG_LEVEL                              | Logging level for the application                                 | INFO                                          | No       |
+| LOG_FILE                               | Log file path (if not set, logs to console)                       | ./logs/uverify.log                            | No       |
 | CORS_ALLOWED_ORIGINS                   | Allowed origins for CORS                                          | http://localhost:3000                         | No       |
 | KEY_STORE_PASSWORD                     | Password for the keystore (required when https profile is active) | password123                                   | No\*     |
 | DB_URL                                 | Database connection URL when using H2                             | jdbc:h2:./data/db                             | No       |

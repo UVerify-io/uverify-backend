@@ -30,7 +30,7 @@ logging:
   level:
     root: ${LOG_LEVEL:INFO}
   file:
-    name: ./logs/uverify-backend.log
+    name: ${LOG_FILE:}
 
 management:
   endpoints:
