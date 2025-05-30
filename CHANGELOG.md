@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/UVerify-io/uverify-backend/compare/v1.4.6...v1.5.0) (2025-05-30)
+
+
+### Features
+
+* make file logging optional ([dd6d442](https://github.com/UVerify-io/uverify-backend/commit/dd6d442bbcbc3ee7d3d894892834ae7ce16d0aa9))
+
 ## [1.4.6](https://github.com/UVerify-io/uverify-backend/compare/v1.4.5...v1.4.6) (2025-05-30)
 
 
