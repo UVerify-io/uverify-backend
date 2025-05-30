@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.6](https://github.com/UVerify-io/uverify-backend/compare/v1.4.5...v1.4.6) (2025-05-30)
+
+
+### Bug Fixes
+
+* exclude BeneficiarySigningDate from google sheet ([66459dd](https://github.com/UVerify-io/uverify-backend/commit/66459dd30a9c90defa995a4e1cb527cf8e06e961))
+* exclude BeneficiarySigningDate from google sheet ([00e5227](https://github.com/UVerify-io/uverify-backend/commit/00e52275599008b87d7330ab502796ffc55dfb79))
+* formatDate process nullable ([fd70b90](https://github.com/UVerify-io/uverify-backend/commit/fd70b90a5867451afaa3768b42743e738ebb1fef))
+* set BeneficiarySigningDate as nullable ([b756576](https://github.com/UVerify-io/uverify-backend/commit/b756576c4dd985f70779ee6a071083d7f2d5c63e))
+* sql table to have nullable ([49d24f5](https://github.com/UVerify-io/uverify-backend/commit/49d24f52b777e4031db5d907354b996666757e76))
+
 ## [1.4.5](https://github.com/UVerify-io/uverify-backend/compare/v1.4.4...v1.4.5) (2025-05-29)
 
 
