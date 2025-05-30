@@ -73,7 +73,7 @@ public class TadamonTransactionEntity {
     @Column(name = "undp_signing_date", nullable = false)
     private LocalDateTime undpSigningDate;
 
-    @Column(name = "beneficiary_signing_date", nullable = false)
+    @Column(name = "beneficiary_signing_date", nullable = true)
     private LocalDateTime beneficiarySigningDate;
 
     @Column(name = "certificate_creation_date", nullable = false)

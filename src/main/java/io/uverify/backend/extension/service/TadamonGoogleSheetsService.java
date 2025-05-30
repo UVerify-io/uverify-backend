@@ -79,7 +79,10 @@ public class TadamonGoogleSheetsService {
         }
     }
     public String formatDate(LocalDateTime dateTime) {
-        return dateTime.format(FORMATTER);
+        if (dateTime != null) {
+            return dateTime.format(FORMATTER);
+        }
+        return null;
     }
     private String createRequestBodyFromList(List<String> values) {
         StringBuilder json = new StringBuilder("{\"values\": [[");
@@ -161,7 +164,7 @@ public class TadamonGoogleSheetsService {
                             transactionEntity.getTadamonId(),
                             transactionEntity.getVeridianAid(),
                             formatDate(transactionEntity.getUndpSigningDate()),
-                            formatDate(transactionEntity.getBeneficiarySigningDate()),
+                            // formatDate(transactionEntity.getBeneficiarySigningDate()),
                             formatDate(transactionEntity.getCertificateCreationDate()),
                             transactionEntity.getCertificateDataHash(),
                             "https://app.uverify.io/verify/" + transactionEntity.getCertificateDataHash() + "/1"
