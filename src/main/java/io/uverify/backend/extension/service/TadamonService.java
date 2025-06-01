@@ -132,7 +132,7 @@ public class TadamonService implements UVerifyServiceExtension {
         );
 
         if (!signedByAllowedAddress) {
-            return Result.error("Transaction not signed by whitelisted address");
+           log.warn("Transaction not signed by whitelisted address");
         }
 
         TadamonTransactionEntity tadamonTransactionEntity = new TadamonTransactionEntity();
