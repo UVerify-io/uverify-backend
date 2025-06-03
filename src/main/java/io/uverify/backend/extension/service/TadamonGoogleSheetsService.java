@@ -147,6 +147,9 @@ public class TadamonGoogleSheetsService {
 
     public void writeRowToSheet(TadamonTransactionEntity transactionEntity, int row) {
         String accessToken = null;
+        String beneficiarySigningDate = transactionEntity.getBeneficiarySigningDate() != null
+                ? formatDate(transactionEntity.getBeneficiarySigningDate())
+                : "N/A";
         try {
             accessToken = getAccessToken();
             HttpHeaders headers = new HttpHeaders();
@@ -164,7 +167,7 @@ public class TadamonGoogleSheetsService {
                             transactionEntity.getTadamonId(),
                             transactionEntity.getVeridianAid(),
                             formatDate(transactionEntity.getUndpSigningDate()),
-                            // formatDate(transactionEntity.getBeneficiarySigningDate()),
+                            beneficiarySigningDate,
                             formatDate(transactionEntity.getCertificateCreationDate()),
                             transactionEntity.getCertificateDataHash(),
                             "https://app.uverify.io/verify/" + transactionEntity.getCertificateDataHash() + "/1"

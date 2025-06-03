@@ -20,7 +20,6 @@ package io.uverify.backend.extension;
 
 import com.bloxbean.cardano.client.address.Address;
 import com.bloxbean.cardano.client.crypto.Blake2bUtil;
-import com.bloxbean.cardano.client.transaction.spec.VkeyWitness;
 import com.bloxbean.cardano.client.util.HexUtil;
 import io.uverify.backend.extension.entity.TadamonTransactionEntity;
 import io.uverify.backend.extension.service.TadamonGoogleSheetsService;
@@ -31,7 +30,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit.jupiter.EnabledIf;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 
 @SpringBootTest
 @EnabledIf(
@@ -49,7 +47,6 @@ public class TadamonExtensionTest {
         TadamonTransactionEntity tadamonTransactionEntity = TadamonTransactionEntity.builder()
                 .tadamonId("1234567890")
                 .transactionId("abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
-                .beneficiarySigningDate(LocalDateTime.of(2023, 10, 1, 12, 0))
                 .certificateDataHash("abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
                 .csoName("Test CSO 1")
                 .csoEmail("test@csotest.tld")
