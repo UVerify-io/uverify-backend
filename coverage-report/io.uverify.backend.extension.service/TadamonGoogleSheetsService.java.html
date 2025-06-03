@@ -147,101 +147,104 @@ public class TadamonGoogleSheetsService {
 
     public void writeRowToSheet(TadamonTransactionEntity transactionEntity, int row) {
 <span class="nc" id="L149">        String accessToken = null;</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        String beneficiarySigningDate = transactionEntity.getBeneficiarySigningDate() != null</span>
+<span class="nc" id="L151">                ? formatDate(transactionEntity.getBeneficiarySigningDate())</span>
+<span class="nc" id="L152">                : &quot;N/A&quot;;</span>
         try {
-<span class="nc" id="L151">            accessToken = getAccessToken();</span>
-<span class="nc" id="L152">            HttpHeaders headers = new HttpHeaders();</span>
-<span class="nc" id="L153">            headers.setContentType(MediaType.APPLICATION_JSON);</span>
-<span class="nc" id="L154">            headers.setBearerAuth(accessToken);</span>
+<span class="nc" id="L154">            accessToken = getAccessToken();</span>
+<span class="nc" id="L155">            HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L156">            headers.setContentType(MediaType.APPLICATION_JSON);</span>
+<span class="nc" id="L157">            headers.setBearerAuth(accessToken);</span>
 
-<span class="nc" id="L156">            String requestBody = createRequestBodyFromList(</span>
-<span class="nc" id="L157">                    List.of(</span>
-<span class="nc" id="L158">                            transactionEntity.getCsoName(),</span>
-<span class="nc" id="L159">                            transactionEntity.getCsoEmail(),</span>
-<span class="nc" id="L160">                            formatDate(transactionEntity.getCsoEstablishmentDate()),</span>
-<span class="nc" id="L161">                            transactionEntity.getCsoOrganizationType(),</span>
-<span class="nc" id="L162">                            transactionEntity.getCsoRegistrationCountry(),</span>
-<span class="nc bnc" id="L163" title="All 2 branches missed.">                            transactionEntity.getCsoStatusApproved() ? &quot;Y&quot; : &quot;N&quot;,</span>
-<span class="nc" id="L164">                            transactionEntity.getTadamonId(),</span>
-<span class="nc" id="L165">                            transactionEntity.getVeridianAid(),</span>
-<span class="nc" id="L166">                            formatDate(transactionEntity.getUndpSigningDate()),</span>
-                            // formatDate(transactionEntity.getBeneficiarySigningDate()),
-<span class="nc" id="L168">                            formatDate(transactionEntity.getCertificateCreationDate()),</span>
-<span class="nc" id="L169">                            transactionEntity.getCertificateDataHash(),</span>
-<span class="nc" id="L170">                            &quot;https://app.uverify.io/verify/&quot; + transactionEntity.getCertificateDataHash() + &quot;/1&quot;</span>
+<span class="nc" id="L159">            String requestBody = createRequestBodyFromList(</span>
+<span class="nc" id="L160">                    List.of(</span>
+<span class="nc" id="L161">                            transactionEntity.getCsoName(),</span>
+<span class="nc" id="L162">                            transactionEntity.getCsoEmail(),</span>
+<span class="nc" id="L163">                            formatDate(transactionEntity.getCsoEstablishmentDate()),</span>
+<span class="nc" id="L164">                            transactionEntity.getCsoOrganizationType(),</span>
+<span class="nc" id="L165">                            transactionEntity.getCsoRegistrationCountry(),</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">                            transactionEntity.getCsoStatusApproved() ? &quot;Y&quot; : &quot;N&quot;,</span>
+<span class="nc" id="L167">                            transactionEntity.getTadamonId(),</span>
+<span class="nc" id="L168">                            transactionEntity.getVeridianAid(),</span>
+<span class="nc" id="L169">                            formatDate(transactionEntity.getUndpSigningDate()),</span>
+                            beneficiarySigningDate,
+<span class="nc" id="L171">                            formatDate(transactionEntity.getCertificateCreationDate()),</span>
+<span class="nc" id="L172">                            transactionEntity.getCertificateDataHash(),</span>
+<span class="nc" id="L173">                            &quot;https://app.uverify.io/verify/&quot; + transactionEntity.getCertificateDataHash() + &quot;/1&quot;</span>
                     )
             );
 
-<span class="nc" id="L174">            final String range = &quot;Sheet1!A&quot; + row + &quot;:M&quot; + row;</span>
+<span class="nc" id="L177">            final String range = &quot;Sheet1!A&quot; + row + &quot;:M&quot; + row;</span>
 
-<span class="nc" id="L176">            HttpEntity&lt;String&gt; request = new HttpEntity&lt;&gt;(requestBody, headers);</span>
-<span class="nc" id="L177">            String apiUrl = &quot;https://sheets.googleapis.com/v4/spreadsheets/&quot; + spreadsheetId + &quot;/values/&quot; + range + &quot;?valueInputOption=RAW&quot;;</span>
-<span class="nc" id="L178">            restTemplate.exchange(apiUrl, HttpMethod.PUT, request, String.class);</span>
-<span class="nc" id="L179">        } catch (Exception e) {</span>
-<span class="nc" id="L180">            throw new RuntimeException(e);</span>
-<span class="nc" id="L181">        }</span>
-<span class="nc" id="L182">    }</span>
+<span class="nc" id="L179">            HttpEntity&lt;String&gt; request = new HttpEntity&lt;&gt;(requestBody, headers);</span>
+<span class="nc" id="L180">            String apiUrl = &quot;https://sheets.googleapis.com/v4/spreadsheets/&quot; + spreadsheetId + &quot;/values/&quot; + range + &quot;?valueInputOption=RAW&quot;;</span>
+<span class="nc" id="L181">            restTemplate.exchange(apiUrl, HttpMethod.PUT, request, String.class);</span>
+<span class="nc" id="L182">        } catch (Exception e) {</span>
+<span class="nc" id="L183">            throw new RuntimeException(e);</span>
+<span class="nc" id="L184">        }</span>
+<span class="nc" id="L185">    }</span>
 
     public int findRowByDataHash() {
-<span class="nc" id="L185">        return findRowByDataHash(null);</span>
+<span class="nc" id="L188">        return findRowByDataHash(null);</span>
     }
     public int findRowByDataHash(String dataHash) {
-<span class="nc" id="L188">        String accessToken = null;</span>
+<span class="nc" id="L191">        String accessToken = null;</span>
         try {
-<span class="nc" id="L190">            accessToken = getAccessToken();</span>
-<span class="nc" id="L191">            HttpHeaders headers = new HttpHeaders();</span>
-<span class="nc" id="L192">            headers.setBearerAuth(accessToken);</span>
+<span class="nc" id="L193">            accessToken = getAccessToken();</span>
+<span class="nc" id="L194">            HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L195">            headers.setBearerAuth(accessToken);</span>
 
-<span class="nc" id="L194">            HttpEntity&lt;String&gt; request = new HttpEntity&lt;&gt;(headers);</span>
-<span class="nc" id="L195">            String apiUrl = &quot;https://sheets.googleapis.com/v4/spreadsheets/&quot; + spreadsheetId + &quot;/values/Sheet1!L:L&quot;;</span>
-<span class="nc" id="L196">            ResponseEntity&lt;String&gt; response = restTemplate.exchange(apiUrl, HttpMethod.GET, request, String.class);</span>
-<span class="nc" id="L197">            String responseBody = response.getBody();</span>
-<span class="nc bnc" id="L198" title="All 2 branches missed.">            if (dataHash == null) {</span>
-<span class="nc" id="L199">                return parseFirstEmptyRow(responseBody);</span>
+<span class="nc" id="L197">            HttpEntity&lt;String&gt; request = new HttpEntity&lt;&gt;(headers);</span>
+<span class="nc" id="L198">            String apiUrl = &quot;https://sheets.googleapis.com/v4/spreadsheets/&quot; + spreadsheetId + &quot;/values/Sheet1!L:L&quot;;</span>
+<span class="nc" id="L199">            ResponseEntity&lt;String&gt; response = restTemplate.exchange(apiUrl, HttpMethod.GET, request, String.class);</span>
+<span class="nc" id="L200">            String responseBody = response.getBody();</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">            if (dataHash == null) {</span>
+<span class="nc" id="L202">                return parseFirstEmptyRow(responseBody);</span>
             } else {
-<span class="nc" id="L201">                return findExistingRowOrAppend(responseBody, dataHash);</span>
+<span class="nc" id="L204">                return findExistingRowOrAppend(responseBody, dataHash);</span>
             }
-<span class="nc" id="L203">        } catch (Exception e) {</span>
-<span class="nc" id="L204">            throw new RuntimeException(&quot;Failed to get the first empty row&quot;, e);</span>
+<span class="nc" id="L206">        } catch (Exception e) {</span>
+<span class="nc" id="L207">            throw new RuntimeException(&quot;Failed to get the first empty row&quot;, e);</span>
         }
     }
 
     private int parseFirstEmptyRow(String responseBody) {
         try {
-<span class="nc" id="L210">            ObjectMapper objectMapper = new ObjectMapper();</span>
-<span class="nc" id="L211">            JsonNode rootNode = objectMapper.readTree(responseBody);</span>
-<span class="nc" id="L212">            JsonNode valuesNode = rootNode.path(&quot;values&quot;);</span>
-<span class="nc bnc" id="L213" title="All 4 branches missed.">            if (valuesNode.isMissingNode() || !valuesNode.isArray()) {</span>
-<span class="nc" id="L214">                return 1;</span>
+<span class="nc" id="L213">            ObjectMapper objectMapper = new ObjectMapper();</span>
+<span class="nc" id="L214">            JsonNode rootNode = objectMapper.readTree(responseBody);</span>
+<span class="nc" id="L215">            JsonNode valuesNode = rootNode.path(&quot;values&quot;);</span>
+<span class="nc bnc" id="L216" title="All 4 branches missed.">            if (valuesNode.isMissingNode() || !valuesNode.isArray()) {</span>
+<span class="nc" id="L217">                return 1;</span>
             }
-<span class="nc" id="L216">            return valuesNode.size() + 1;</span>
-<span class="nc" id="L217">        } catch (Exception e) {</span>
-<span class="nc" id="L218">            throw new RuntimeException(&quot;Failed to parse the response for the first empty row&quot;, e);</span>
+<span class="nc" id="L219">            return valuesNode.size() + 1;</span>
+<span class="nc" id="L220">        } catch (Exception e) {</span>
+<span class="nc" id="L221">            throw new RuntimeException(&quot;Failed to parse the response for the first empty row&quot;, e);</span>
         }
     }
 
     private int findExistingRowOrAppend(String responseBody, String searchString) {
         try {
-<span class="nc" id="L224">            ObjectMapper objectMapper = new ObjectMapper();</span>
-<span class="nc" id="L225">            JsonNode rootNode = objectMapper.readTree(responseBody);</span>
+<span class="nc" id="L227">            ObjectMapper objectMapper = new ObjectMapper();</span>
+<span class="nc" id="L228">            JsonNode rootNode = objectMapper.readTree(responseBody);</span>
 
-<span class="nc" id="L227">            JsonNode valuesNode = rootNode.path(&quot;values&quot;);</span>
-<span class="nc bnc" id="L228" title="All 4 branches missed.">            if (valuesNode.isMissingNode() || !valuesNode.isArray()) {</span>
-<span class="nc" id="L229">                return 1;</span>
+<span class="nc" id="L230">            JsonNode valuesNode = rootNode.path(&quot;values&quot;);</span>
+<span class="nc bnc" id="L231" title="All 4 branches missed.">            if (valuesNode.isMissingNode() || !valuesNode.isArray()) {</span>
+<span class="nc" id="L232">                return 1;</span>
             }
 
-<span class="nc bnc" id="L232" title="All 2 branches missed.">            for (int i = 0; i &lt; valuesNode.size(); i++) {</span>
-<span class="nc" id="L233">                JsonNode row = valuesNode.get(i);</span>
-<span class="nc bnc" id="L234" title="All 4 branches missed.">                if (row.isArray() &amp;&amp; row.size() &gt; 0) {</span>
-<span class="nc" id="L235">                    String cellValue = row.get(0).asText();</span>
-<span class="nc bnc" id="L236" title="All 2 branches missed.">                    if (searchString.equals(cellValue)) {</span>
-<span class="nc" id="L237">                        return i + 1;</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">            for (int i = 0; i &lt; valuesNode.size(); i++) {</span>
+<span class="nc" id="L236">                JsonNode row = valuesNode.get(i);</span>
+<span class="nc bnc" id="L237" title="All 4 branches missed.">                if (row.isArray() &amp;&amp; row.size() &gt; 0) {</span>
+<span class="nc" id="L238">                    String cellValue = row.get(0).asText();</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">                    if (searchString.equals(cellValue)) {</span>
+<span class="nc" id="L240">                        return i + 1;</span>
                     }
                 }
             }
 
-<span class="nc" id="L242">            return valuesNode.size() + 1;</span>
-<span class="nc" id="L243">        } catch (Exception e) {</span>
-<span class="nc" id="L244">            throw new RuntimeException(&quot;Failed to parse the response for the row by string or first empty row&quot;, e);</span>
+<span class="nc" id="L245">            return valuesNode.size() + 1;</span>
+<span class="nc" id="L246">        } catch (Exception e) {</span>
+<span class="nc" id="L247">            throw new RuntimeException(&quot;Failed to parse the response for the row by string or first empty row&quot;, e);</span>
         }
     }
 }
