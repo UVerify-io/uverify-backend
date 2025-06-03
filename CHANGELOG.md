@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/UVerify-io/uverify-backend/compare/v1.5.0...v1.5.1) (2025-06-03)
+
+
+### Bug Fixes
+
+* write N/A to spreadsheet if beneficiary signing date is empty ([f944217](https://github.com/UVerify-io/uverify-backend/commit/f944217410838fdc7e9809d670213df24949ef83))
+
 ## [1.5.0](https://github.com/UVerify-io/uverify-backend/compare/v1.4.6...v1.5.0) (2025-05-30)
 
 
