@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StatisticsService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.service</a> &gt; <span class="el_source">StatisticsService.java</span></div><h1>StatisticsService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.service;
+
+import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.events.internal.CommitEvent;
+import com.bloxbean.cardano.yaci.store.transaction.storage.impl.model.TxnEntity;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.uverify.backend.dto.UsageStatistics;
+import io.uverify.backend.entity.UVerifyCertificateEntity;
+import io.uverify.backend.enums.UseCaseCategory;
+import io.uverify.backend.extension.ExtensionManager;
+import io.uverify.backend.repository.CertificateRepository;
+import io.uverify.backend.repository.TransactionRepository;
+import io.uverify.backend.storage.UVerifyStorage;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+@Service
+<span class="fc" id="L45">@Slf4j</span>
+public class StatisticsService {
+
+    @Autowired
+    private final CertificateRepository certificateRepository;
+
+    @Autowired
+    private final ExtensionManager extensionManager;
+
+    @Autowired
+    private final TransactionRepository transactionRepository;
+
+    @Autowired
+<span class="fc" id="L58">    public StatisticsService(CertificateRepository certificateRepository, UVerifyStorage uVerifyStorage, ExtensionManager extensionManager, TransactionRepository transactionRepository) {</span>
+<span class="fc" id="L59">        this.certificateRepository = certificateRepository;</span>
+<span class="fc" id="L60">        this.extensionManager = extensionManager;</span>
+<span class="fc" id="L61">        this.transactionRepository = transactionRepository;</span>
+<span class="fc" id="L62">    }</span>
+
+    public Map&lt;String, Integer&gt; getTotalUVerifyCertificates() {
+<span class="nc" id="L65">        List&lt;UVerifyCertificateEntity&gt; certificates = certificateRepository.findAll();</span>
+
+<span class="nc" id="L67">        final ObjectMapper mapper = new ObjectMapper();</span>
+<span class="nc" id="L68">        UsageStatistics usageStatistics = new UsageStatistics();</span>
+
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        for (UVerifyCertificateEntity certificate : certificates) {</span>
+<span class="nc bnc" id="L71" title="All 4 branches missed.">            if (certificate.getExtra() == null || certificate.getExtra().isEmpty()) {</span>
+<span class="nc" id="L72">                usageStatistics.addCertificateToCategory(UseCaseCategory.NOTARY);</span>
+            } else {
+                try {
+<span class="nc" id="L75">                    JsonNode root = mapper.readTree(certificate.getExtra());</span>
+<span class="nc" id="L76">                    JsonNode templateId = root.get(&quot;uverify_template_id&quot;);</span>
+
+<span class="nc bnc" id="L78" title="All 4 branches missed.">                    if (templateId == null || templateId.isNull()) {</span>
+<span class="nc" id="L79">                        usageStatistics.addCertificateToCategory(UseCaseCategory.NOTARY);</span>
+                    } else {
+<span class="nc bnc" id="L81" title="All 4 branches missed.">                        switch (templateId.asText()) {</span>
+<span class="nc" id="L82">                            case &quot;tadamon&quot; -&gt; usageStatistics.addCertificateToCategory(UseCaseCategory.IDENTITY);</span>
+<span class="nc" id="L83">                            case &quot;socialHub&quot;, &quot;linktree&quot; -&gt; usageStatistics.addCertificateToCategory(UseCaseCategory.CONNECTED_GOODS);</span>
+<span class="nc" id="L84">                            case &quot;diploma&quot; -&gt; usageStatistics.addCertificateToCategory(UseCaseCategory.STUDENT_CERTIFICATION);</span>
+<span class="nc" id="L85">                            default -&gt; usageStatistics.addCertificateToCategory(UseCaseCategory.NOTARY);</span>
+                        }
+                    }
+<span class="nc" id="L88">                } catch (Exception exception) {</span>
+<span class="nc" id="L89">                    log.debug(&quot;Error parsing metadata for certificate with hash: {}&quot;, certificate.getHash(), exception);</span>
+<span class="nc" id="L90">                    usageStatistics.addCertificateToCategory(UseCaseCategory.NOTARY);</span>
+<span class="nc" id="L91">                }</span>
+            }
+<span class="nc" id="L93">        }</span>
+
+<span class="nc" id="L95">        extensionManager.addUsageStatistics(usageStatistics);</span>
+<span class="nc" id="L96">        return usageStatistics.getUseCaseStatistics();</span>
+    }
+
+    public Long getTransactionFees() {
+<span class="nc" id="L100">        List&lt;UVerifyCertificateEntity&gt; certificates = certificateRepository.findAll();</span>
+<span class="nc" id="L101">        BigInteger totalFees = BigInteger.ZERO;</span>
+
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        for (UVerifyCertificateEntity certificate : certificates) {</span>
+<span class="nc" id="L104">            Optional&lt;TxnEntity&gt; transaction = transactionRepository.findById(certificate.getTransactionId());</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">            if (transaction.isPresent()) {</span>
+<span class="nc" id="L106">                totalFees = totalFees.add(transaction.get().getFee());</span>
+            } else {
+<span class="nc" id="L108">                log.warn(&quot;Transaction not found for UTXO with hash: {}&quot;, certificate.getTransactionId());</span>
+            }
+<span class="nc" id="L110">        }</span>
+
+<span class="nc" id="L112">        totalFees = extensionManager.addTransactionFees(totalFees);</span>
+<span class="nc" id="L113">        return totalFees.longValue();</span>
+    }
+
+    @EventListener
+    @Transactional
+    @SuppressWarnings({&quot;unused&quot;, &quot;rawtypes&quot;})
+    public void reactOnCommitEvent(CommitEvent commitEvent) {
+<span class="nc" id="L120">        transactionRepository.deleteIrrelevantTransactions();</span>
+<span class="nc" id="L121">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

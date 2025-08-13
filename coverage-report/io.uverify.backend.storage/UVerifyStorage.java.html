@@ -19,6 +19,7 @@
 package io.uverify.backend.storage;
 
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.common.domain.TxInput;
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.UtxoCache;
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.UtxoStorageImpl;
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.TxInputRepository;
@@ -32,7 +33,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @SuppressWarnings(&quot;unused&quot;)
@@ -46,24 +50,33 @@ public class UVerifyStorage extends UtxoStorageImpl {
     private final ExtensionManager extensionManager;
 
     public UVerifyStorage(UtxoRepository utxoRepository, TxInputRepository spentOutputRepository, DSLContext dsl, UtxoCache utxoCache, PlatformTransactionManager transactionManager, CardanoBlockchainService cardanoBlockchainService, ExtensionManager extensionManager) {
-<span class="fc" id="L49">        super(utxoRepository, spentOutputRepository, dsl, utxoCache, transactionManager);</span>
-<span class="fc" id="L50">        this.cardanoBlockchainService = cardanoBlockchainService;</span>
-<span class="fc" id="L51">        this.extensionManager = extensionManager;</span>
-<span class="fc" id="L52">    }</span>
+<span class="fc" id="L53">        super(utxoRepository, spentOutputRepository, dsl, utxoCache, transactionManager);</span>
+<span class="fc" id="L54">        this.cardanoBlockchainService = cardanoBlockchainService;</span>
+<span class="fc" id="L55">        this.extensionManager = extensionManager;</span>
+<span class="fc" id="L56">    }</span>
 
     @Override
     public void saveUnspent(List&lt;AddressUtxo&gt; addressUtxoList) {
-<span class="nc" id="L56">        cardanoBlockchainService.processAddressUtxos(addressUtxoList);</span>
-<span class="nc" id="L57">        extensionManager.processAddressUtxos(addressUtxoList);</span>
-<span class="nc" id="L58">    }</span>
+<span class="nc" id="L60">        List&lt;AddressUtxo&gt; processedByUVerifyCore = cardanoBlockchainService.processAddressUtxos(addressUtxoList);</span>
+<span class="nc" id="L61">        List&lt;AddressUtxo&gt; processedByExtensions = extensionManager.processAddressUtxos(addressUtxoList);</span>
+<span class="nc" id="L62">        Set&lt;AddressUtxo&gt; allProcessedUtxos = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L63">        allProcessedUtxos.addAll(processedByUVerifyCore);</span>
+<span class="nc" id="L64">        allProcessedUtxos.addAll(processedByExtensions);</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (!allProcessedUtxos.isEmpty()) {</span>
+<span class="nc" id="L66">            super.saveUnspent(new ArrayList&lt;&gt;(allProcessedUtxos));</span>
+        }
+<span class="nc" id="L68">    }</span>
+
+    @Override
+    public void saveSpent(List&lt;TxInput&gt; inputs) {
+<span class="nc" id="L72">    }</span>
 
     @Transactional
     @Override
     public int deleteUnspentBySlotGreaterThan(Long slot) {
-<span class="nc" id="L63">        cardanoBlockchainService.handleRollbackToSlot(slot);</span>
-<span class="nc" id="L64">        extensionManager.handleRollbackToSlot(slot);</span>
-<span class="nc" id="L65">        return 0;</span>
+<span class="nc" id="L77">        cardanoBlockchainService.handleRollbackToSlot(slot);</span>
+<span class="nc" id="L78">        extensionManager.handleRollbackToSlot(slot);</span>
+<span class="nc" id="L79">        return 0;</span>
     }
-
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

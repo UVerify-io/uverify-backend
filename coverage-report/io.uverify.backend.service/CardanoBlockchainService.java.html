@@ -464,110 +464,116 @@ public class CardanoBlockchainService {
 <span class="nc" id="L464">                .build();</span>
     }
 
-    public void processAddressUtxos(List&lt;AddressUtxo&gt; addressUtxos) {
-<span class="fc bfc" id="L468" title="All 2 branches covered.">        for (AddressUtxo addressUtxo : addressUtxos) {</span>
-<span class="fc bfc" id="L469" title="All 2 branches covered.">            if (includesBootstrapToken(addressUtxo, network)) {</span>
-<span class="pc bpc" id="L470" title="1 of 2 branches missed.">                if (isMintingTransaction(addressUtxo, ValidatorUtils.getMintOrBurnAuthTokenHash(network))) {</span>
-<span class="fc" id="L471">                    BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromAddressUtxo(addressUtxo, network);</span>
-<span class="fc" id="L472">                    bootstrapDatumService.save(bootstrapDatumEntity);</span>
-<span class="pc bnc" id="L473" title="All 2 branches missed.">                } else if (isBurningTransaction(addressUtxo, ValidatorUtils.getMintOrBurnAuthTokenHash(network))) {</span>
-<span class="nc" id="L474">                    bootstrapDatumService.markAsInvalid(getBootstrapTokenName(addressUtxo, network), addressUtxo.getSlot());</span>
+    public List&lt;AddressUtxo&gt; processAddressUtxos(List&lt;AddressUtxo&gt; addressUtxos) {
+<span class="fc" id="L468">        List&lt;AddressUtxo&gt; processedUtxos = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L469" title="All 2 branches covered.">        for (AddressUtxo addressUtxo : addressUtxos) {</span>
+<span class="fc bfc" id="L470" title="All 2 branches covered.">            if (includesBootstrapToken(addressUtxo, network)) {</span>
+<span class="pc bpc" id="L471" title="1 of 2 branches missed.">                if (isMintingTransaction(addressUtxo, ValidatorUtils.getMintOrBurnAuthTokenHash(network))) {</span>
+<span class="fc" id="L472">                    BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromAddressUtxo(addressUtxo, network);</span>
+<span class="fc" id="L473">                    bootstrapDatumService.save(bootstrapDatumEntity);</span>
+<span class="fc" id="L474">                    processedUtxos.add(addressUtxo);</span>
+<span class="pc bnc" id="L475" title="All 2 branches missed.">                } else if (isBurningTransaction(addressUtxo, ValidatorUtils.getMintOrBurnAuthTokenHash(network))) {</span>
+<span class="nc" id="L476">                    bootstrapDatumService.markAsInvalid(getBootstrapTokenName(addressUtxo, network), addressUtxo.getSlot());</span>
+<span class="nc" id="L477">                    processedUtxos.add(addressUtxo);</span>
                 } else {
-<span class="nc" id="L476">                    throw new IllegalArgumentException(&quot;Invalid bootstrap token transaction amount!&quot;);</span>
+<span class="nc" id="L479">                    throw new IllegalArgumentException(&quot;Invalid bootstrap token transaction amount!&quot;);</span>
                 }
-<span class="fc bfc" id="L478" title="All 2 branches covered.">            } else if (includesStateToken(addressUtxo, network)) {</span>
-<span class="fc" id="L479">                StateDatum stateDatum = StateDatum.fromUtxoDatum(addressUtxo.getInlineDatum());</span>
-<span class="fc" id="L480">                Optional&lt;StateDatumEntity&gt; optionalStateDatumEntity = stateDatumService.findByAddressUtxo(addressUtxo);</span>
+<span class="fc bfc" id="L481" title="All 2 branches covered.">            } else if (includesStateToken(addressUtxo, network)) {</span>
+<span class="fc" id="L482">                StateDatum stateDatum = StateDatum.fromUtxoDatum(addressUtxo.getInlineDatum());</span>
+<span class="fc" id="L483">                Optional&lt;StateDatumEntity&gt; optionalStateDatumEntity = stateDatumService.findByAddressUtxo(addressUtxo);</span>
 
-<span class="pc bpc" id="L482" title="1 of 2 branches missed.">                if (isBurningTransaction(addressUtxo, ValidatorUtils.getMintStateTokenHash(network))) {</span>
-<span class="nc" id="L483">                    stateDatumService.invalidateStateDatum(stateDatum.getId(), addressUtxo.getSlot());</span>
+<span class="pc bpc" id="L485" title="1 of 2 branches missed.">                if (isBurningTransaction(addressUtxo, ValidatorUtils.getMintStateTokenHash(network))) {</span>
+<span class="nc" id="L486">                    stateDatumService.invalidateStateDatum(stateDatum.getId(), addressUtxo.getSlot());</span>
+<span class="nc" id="L487">                    processedUtxos.add(addressUtxo);</span>
                 } else {
                     final StateDatumEntity stateDatumEntity;
-<span class="fc bfc" id="L486" title="All 2 branches covered.">                    if (optionalStateDatumEntity.isEmpty()) {</span>
-<span class="fc" id="L487">                        BootstrapDatumEntity bootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(stateDatum.getBootstrapDatumName())</span>
-<span class="pc" id="L488">                                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Bootstrap datum not found&quot;));</span>
-<span class="fc" id="L489">                        stateDatumEntity = StateDatumEntity.fromAddressUtxo(addressUtxo, bootstrapDatumEntity);</span>
-<span class="fc" id="L490">                        stateDatumService.save(stateDatumEntity);</span>
-<span class="fc" id="L491">                    } else {</span>
-<span class="fc" id="L492">                        stateDatumEntity = optionalStateDatumEntity.get();</span>
-<span class="fc" id="L493">                        stateDatumEntity.setTransactionId(addressUtxo.getTxHash());</span>
-<span class="fc" id="L494">                        stateDatumEntity.setCountdown(stateDatum.getCountdown());</span>
-<span class="fc" id="L495">                        stateDatumService.updateStateDatum(stateDatumEntity, addressUtxo.getSlot());</span>
+<span class="fc bfc" id="L490" title="All 2 branches covered.">                    if (optionalStateDatumEntity.isEmpty()) {</span>
+<span class="fc" id="L491">                        BootstrapDatumEntity bootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(stateDatum.getBootstrapDatumName())</span>
+<span class="pc" id="L492">                                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Bootstrap datum not found&quot;));</span>
+<span class="fc" id="L493">                        stateDatumEntity = StateDatumEntity.fromAddressUtxo(addressUtxo, bootstrapDatumEntity);</span>
+<span class="fc" id="L494">                        stateDatumService.save(stateDatumEntity);</span>
+<span class="fc" id="L495">                    } else {</span>
+<span class="fc" id="L496">                        stateDatumEntity = optionalStateDatumEntity.get();</span>
+<span class="fc" id="L497">                        stateDatumEntity.setTransactionId(addressUtxo.getTxHash());</span>
+<span class="fc" id="L498">                        stateDatumEntity.setCountdown(stateDatum.getCountdown());</span>
+<span class="fc" id="L499">                        stateDatumService.updateStateDatum(stateDatumEntity, addressUtxo.getSlot());</span>
                     }
 
-<span class="fc" id="L498">                    List&lt;UVerifyCertificate&gt; uVerifyCertificates = stateDatum.getUVerifyCertificates();</span>
-<span class="fc" id="L499">                    List&lt;UVerifyCertificateEntity&gt; uVerifyCertificatesEntities = new ArrayList&lt;&gt;();</span>
-<span class="fc bfc" id="L500" title="All 2 branches covered.">                    for (UVerifyCertificate uVerifyCertificate : uVerifyCertificates) {</span>
-<span class="fc" id="L501">                        UVerifyCertificateEntity uVerifyCertificateEntity = UVerifyCertificateEntity.fromUVerifyCertificate(uVerifyCertificate);</span>
-<span class="fc" id="L502">                        uVerifyCertificateEntity.setSlot(addressUtxo.getSlot());</span>
-<span class="fc" id="L503">                        uVerifyCertificateEntity.setStateDatum(stateDatumEntity);</span>
-<span class="fc" id="L504">                        uVerifyCertificateEntity.setTransactionId(addressUtxo.getTxHash());</span>
-<span class="fc" id="L505">                        uVerifyCertificateEntity.setOutputIndex(addressUtxo.getOutputIndex());</span>
-<span class="fc" id="L506">                        uVerifyCertificateEntity.setBlockHash(addressUtxo.getBlockHash());</span>
-<span class="fc" id="L507">                        uVerifyCertificateEntity.setBlockNumber(addressUtxo.getBlockNumber());</span>
-<span class="fc" id="L508">                        uVerifyCertificateEntity.setCreationTime(new Date(addressUtxo.getBlockTime() * 1000));</span>
-<span class="fc" id="L509">                        uVerifyCertificatesEntities.add(uVerifyCertificateEntity);</span>
-<span class="fc" id="L510">                    }</span>
-<span class="fc" id="L511">                    uVerifyCertificateService.saveAllCertificates(uVerifyCertificatesEntities);</span>
+<span class="fc" id="L502">                    List&lt;UVerifyCertificate&gt; uVerifyCertificates = stateDatum.getUVerifyCertificates();</span>
+<span class="fc" id="L503">                    List&lt;UVerifyCertificateEntity&gt; uVerifyCertificatesEntities = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L504" title="All 2 branches covered.">                    for (UVerifyCertificate uVerifyCertificate : uVerifyCertificates) {</span>
+<span class="fc" id="L505">                        UVerifyCertificateEntity uVerifyCertificateEntity = UVerifyCertificateEntity.fromUVerifyCertificate(uVerifyCertificate);</span>
+<span class="fc" id="L506">                        uVerifyCertificateEntity.setSlot(addressUtxo.getSlot());</span>
+<span class="fc" id="L507">                        uVerifyCertificateEntity.setStateDatum(stateDatumEntity);</span>
+<span class="fc" id="L508">                        uVerifyCertificateEntity.setTransactionId(addressUtxo.getTxHash());</span>
+<span class="fc" id="L509">                        uVerifyCertificateEntity.setOutputIndex(addressUtxo.getOutputIndex());</span>
+<span class="fc" id="L510">                        uVerifyCertificateEntity.setBlockHash(addressUtxo.getBlockHash());</span>
+<span class="fc" id="L511">                        uVerifyCertificateEntity.setBlockNumber(addressUtxo.getBlockNumber());</span>
+<span class="fc" id="L512">                        uVerifyCertificateEntity.setCreationTime(new Date(addressUtxo.getBlockTime() * 1000));</span>
+<span class="fc" id="L513">                        uVerifyCertificatesEntities.add(uVerifyCertificateEntity);</span>
+<span class="fc" id="L514">                    }</span>
+<span class="fc" id="L515">                    uVerifyCertificateService.saveAllCertificates(uVerifyCertificatesEntities);</span>
+<span class="fc" id="L516">                    processedUtxos.add(addressUtxo);</span>
                 }
             }
-<span class="fc" id="L514">        }</span>
-<span class="fc" id="L515">    }</span>
+<span class="fc" id="L519">        }</span>
+<span class="fc" id="L520">        return processedUtxos;</span>
+    }
 
     public void handleRollbackToSlot(long slot) {
-<span class="fc" id="L518">        bootstrapDatumService.undoInvalidationBeforeSlot(slot);</span>
-<span class="fc" id="L519">        uVerifyCertificateService.deleteAllCertificatesAfterSlot(slot);</span>
-<span class="fc" id="L520">        stateDatumService.undoInvalidationBeforeSlot(slot);</span>
-<span class="fc" id="L521">        stateDatumService.handleRollbackToSlot(slot);</span>
-<span class="fc" id="L522">        bootstrapDatumService.deleteAllAfterSlot(slot);</span>
-<span class="fc" id="L523">    }</span>
+<span class="fc" id="L524">        bootstrapDatumService.undoInvalidationBeforeSlot(slot);</span>
+<span class="fc" id="L525">        uVerifyCertificateService.deleteAllCertificatesAfterSlot(slot);</span>
+<span class="fc" id="L526">        stateDatumService.undoInvalidationBeforeSlot(slot);</span>
+<span class="fc" id="L527">        stateDatumService.handleRollbackToSlot(slot);</span>
+<span class="fc" id="L528">        bootstrapDatumService.deleteAllAfterSlot(slot);</span>
+<span class="fc" id="L529">    }</span>
 
     public Transaction invalidateStates(Address userAddress, List&lt;String&gt; transactionIds) throws ApiException {
-<span class="nc" id="L526">        Optional&lt;byte[]&gt; optionalUserPaymentCredential = userAddress.getPaymentCredentialHash();</span>
+<span class="nc" id="L532">        Optional&lt;byte[]&gt; optionalUserPaymentCredential = userAddress.getPaymentCredentialHash();</span>
 
-<span class="nc bnc" id="L528" title="All 2 branches missed.">        if (optionalUserPaymentCredential.isEmpty()) {</span>
-<span class="nc" id="L529">            throw new IllegalArgumentException(&quot;Invalid Cardano payment address&quot;);</span>
+<span class="nc bnc" id="L534" title="All 2 branches missed.">        if (optionalUserPaymentCredential.isEmpty()) {</span>
+<span class="nc" id="L535">            throw new IllegalArgumentException(&quot;Invalid Cardano payment address&quot;);</span>
         }
 
-<span class="nc" id="L532">        byte[] userAccountCredential = optionalUserPaymentCredential.get();</span>
-<span class="nc" id="L533">        String unit = getMintStateTokenHash(network) + Hex.encodeHexString(userAccountCredential);</span>
+<span class="nc" id="L538">        byte[] userAccountCredential = optionalUserPaymentCredential.get();</span>
+<span class="nc" id="L539">        String unit = getMintStateTokenHash(network) + Hex.encodeHexString(userAccountCredential);</span>
 
-<span class="nc" id="L535">        PlutusScript updateTestStateTokenScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getUpdateStateTokenCode(network), PlutusVersion.v3);</span>
-<span class="nc" id="L536">        PlutusScript mintStateTokenScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getMintStateTokenCode(network), PlutusVersion.v3);</span>
-<span class="nc" id="L537">        Asset userStateToken = Asset.builder()</span>
-<span class="nc" id="L538">                .name(&quot;0x&quot; + Hex.encodeHexString(userAccountCredential))</span>
-<span class="nc" id="L539">                .value(BigInteger.valueOf(-1))</span>
-<span class="nc" id="L540">                .build();</span>
+<span class="nc" id="L541">        PlutusScript updateTestStateTokenScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getUpdateStateTokenCode(network), PlutusVersion.v3);</span>
+<span class="nc" id="L542">        PlutusScript mintStateTokenScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getMintStateTokenCode(network), PlutusVersion.v3);</span>
+<span class="nc" id="L543">        Asset userStateToken = Asset.builder()</span>
+<span class="nc" id="L544">                .name(&quot;0x&quot; + Hex.encodeHexString(userAccountCredential))</span>
+<span class="nc" id="L545">                .value(BigInteger.valueOf(-1))</span>
+<span class="nc" id="L546">                .build();</span>
 
-<span class="nc" id="L542">        List&lt;ScriptTx&gt; invalidateStateTransactions = new ArrayList&lt;&gt;();</span>
-<span class="nc bnc" id="L543" title="All 2 branches missed.">        for (String transactionId : transactionIds) {</span>
-<span class="nc" id="L544">            Optional&lt;Utxo&gt; optionalUtxo = ValidatorUtils.getUtxoByTransactionAndUnit(transactionId, unit, backendService);</span>
-<span class="nc bnc" id="L545" title="All 2 branches missed.">            if (optionalUtxo.isEmpty()) {</span>
-<span class="nc" id="L546">                throw new IllegalArgumentException(&quot;State token not found in transaction outputs&quot;);</span>
+<span class="nc" id="L548">        List&lt;ScriptTx&gt; invalidateStateTransactions = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L549" title="All 2 branches missed.">        for (String transactionId : transactionIds) {</span>
+<span class="nc" id="L550">            Optional&lt;Utxo&gt; optionalUtxo = ValidatorUtils.getUtxoByTransactionAndUnit(transactionId, unit, backendService);</span>
+<span class="nc bnc" id="L551" title="All 2 branches missed.">            if (optionalUtxo.isEmpty()) {</span>
+<span class="nc" id="L552">                throw new IllegalArgumentException(&quot;State token not found in transaction outputs&quot;);</span>
             }
-<span class="nc" id="L548">            Utxo utxo = optionalUtxo.get();</span>
+<span class="nc" id="L554">            Utxo utxo = optionalUtxo.get();</span>
 
-<span class="nc" id="L550">            invalidateStateTransactions.add(new ScriptTx()</span>
-<span class="nc" id="L551">                    .collectFrom(utxo, PlutusData.unit())</span>
-<span class="nc" id="L552">                    .attachSpendingValidator(updateTestStateTokenScript)</span>
-<span class="nc" id="L553">                    .mintAsset(mintStateTokenScript, List.of(userStateToken), PlutusData.unit()));</span>
-<span class="nc" id="L554">        }</span>
+<span class="nc" id="L556">            invalidateStateTransactions.add(new ScriptTx()</span>
+<span class="nc" id="L557">                    .collectFrom(utxo, PlutusData.unit())</span>
+<span class="nc" id="L558">                    .attachSpendingValidator(updateTestStateTokenScript)</span>
+<span class="nc" id="L559">                    .mintAsset(mintStateTokenScript, List.of(userStateToken), PlutusData.unit()));</span>
+<span class="nc" id="L560">        }</span>
 
-<span class="nc" id="L556">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
-<span class="nc" id="L557">        long validFrom = currentSlot - 10;</span>
-<span class="nc" id="L558">        long transactionTtl = currentSlot + 600; // 10 minutes</span>
+<span class="nc" id="L562">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
+<span class="nc" id="L563">        long validFrom = currentSlot - 10;</span>
+<span class="nc" id="L564">        long transactionTtl = currentSlot + 600; // 10 minutes</span>
 
-<span class="nc" id="L560">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
-<span class="nc" id="L561">        return quickTxBuilder.compose(invalidateStateTransactions.toArray(new ScriptTx[0]))</span>
-<span class="nc" id="L562">                .validFrom(validFrom)</span>
-<span class="nc" id="L563">                .validTo(transactionTtl)</span>
-<span class="nc" id="L564">                .feePayer(userAddress.getAddress())</span>
-<span class="nc" id="L565">                .withRequiredSigners(userAddress)</span>
-<span class="nc" id="L566">                .build();</span>
+<span class="nc" id="L566">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
+<span class="nc" id="L567">        return quickTxBuilder.compose(invalidateStateTransactions.toArray(new ScriptTx[0]))</span>
+<span class="nc" id="L568">                .validFrom(validFrom)</span>
+<span class="nc" id="L569">                .validTo(transactionTtl)</span>
+<span class="nc" id="L570">                .feePayer(userAddress.getAddress())</span>
+<span class="nc" id="L571">                .withRequiredSigners(userAddress)</span>
+<span class="nc" id="L572">                .build();</span>
     }
 
     public Long getLatestSlot() throws ApiException {
-<span class="nc" id="L570">        return CardanoUtils.getLatestSlot(backendService);</span>
+<span class="nc" id="L576">        return CardanoUtils.getLatestSlot(backendService);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

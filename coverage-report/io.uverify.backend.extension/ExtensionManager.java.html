@@ -19,26 +19,44 @@
 package io.uverify.backend.extension;
 
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import io.uverify.backend.dto.UsageStatistics;
 import org.springframework.stereotype.Service;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-<span class="fc" id="L28">public class ExtensionManager {</span>
+<span class="fc" id="L30">public class ExtensionManager {</span>
 
-<span class="fc" id="L30">    private final List&lt;UVerifyServiceExtension&gt; extensions = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L32">    private final List&lt;UVerifyServiceExtension&gt; extensions = new ArrayList&lt;&gt;();</span>
 
     public void registerExtension(UVerifyServiceExtension extension) {
-<span class="fc" id="L33">        extensions.add(extension);</span>
-<span class="fc" id="L34">    }</span>
+<span class="fc" id="L35">        extensions.add(extension);</span>
+<span class="fc" id="L36">    }</span>
 
-    public void processAddressUtxos(List&lt;AddressUtxo&gt; addressUtxos) {
-<span class="fc" id="L37">        extensions.forEach(extension -&gt; extension.processAddressUtxos(addressUtxos));</span>
-<span class="fc" id="L38">    }</span>
+    public List&lt;AddressUtxo&gt; processAddressUtxos(List&lt;AddressUtxo&gt; addressUtxos) {
+<span class="fc" id="L39">        List&lt;AddressUtxo&gt; processedUtxos = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        for (UVerifyServiceExtension extension : extensions) {</span>
+<span class="fc" id="L41">            processedUtxos.addAll(extension.processAddressUtxos(addressUtxos));</span>
+<span class="fc" id="L42">        }</span>
+<span class="fc" id="L43">        return processedUtxos;</span>
+    }
 
     public void handleRollbackToSlot(long slot) {
-<span class="nc" id="L41">        extensions.forEach(extension -&gt; extension.handleRollbackToSlot(slot));</span>
-<span class="nc" id="L42">    }</span>
+<span class="nc" id="L47">        extensions.forEach(extension -&gt; extension.handleRollbackToSlot(slot));</span>
+<span class="nc" id="L48">    }</span>
+
+    public void addUsageStatistics(UsageStatistics usageStatistics) {
+<span class="nc" id="L51">        extensions.forEach(extension -&gt; extension.addUsageStatistics(usageStatistics));</span>
+<span class="nc" id="L52">    }</span>
+
+    public BigInteger addTransactionFees(BigInteger totalFees) {
+<span class="nc" id="L55">        BigInteger total = totalFees;</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        for (UVerifyServiceExtension extension : extensions) {</span>
+<span class="nc" id="L57">            total = total.add(extension.addTransactionFees(total));</span>
+<span class="nc" id="L58">        }</span>
+<span class="nc" id="L59">        return total;</span>
+    }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransactionController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.controller</a> &gt; <span class="el_source">TransactionController.java</span></div><h1>TransactionController.java</h1><pre class="source lang-java linenums">/*
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UVerifyTransactionController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.controller</a> &gt; <span class="el_source">UVerifyTransactionController.java</span></div><h1>UVerifyTransactionController.java</h1><pre class="source lang-java linenums">/*
  * UVerify Backend
  * Copyright (C) 2025 Fabian Bormann
  *
@@ -29,7 +29,7 @@ import io.uverify.backend.dto.BuildTransactionResponse;
 import io.uverify.backend.dto.SubmitTransactionRequest;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
-import io.uverify.backend.service.TransactionService;
+import io.uverify.backend.service.UVerifyTransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,9 +41,9 @@ import org.springframework.web.bind.annotation.RestController;
 @SuppressWarnings(&quot;unused&quot;)
 @RequestMapping(&quot;/api/v1/transaction&quot;)
 @Tag(name = &quot;Transaction Management&quot;, description = &quot;Endpoints for building and submitting UVerify certificate transactions to the Cardano blockchain.&quot;)
-<span class="fc" id="L44">public class TransactionController {</span>
+<span class="fc" id="L44">public class UVerifyTransactionController {</span>
     @Autowired
-    private TransactionService transactionService;
+    private UVerifyTransactionService transactionService;
 
     @PostMapping(&quot;/build&quot;)
     @Operation(
