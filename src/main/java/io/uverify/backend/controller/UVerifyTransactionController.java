@@ -29,7 +29,7 @@ import io.uverify.backend.dto.BuildTransactionResponse;
 import io.uverify.backend.dto.SubmitTransactionRequest;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
-import io.uverify.backend.service.TransactionService;
+import io.uverify.backend.service.UVerifyTransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,9 +41,9 @@ import org.springframework.web.bind.annotation.RestController;
 @SuppressWarnings("unused")
 @RequestMapping("/api/v1/transaction")
 @Tag(name = "Transaction Management", description = "Endpoints for building and submitting UVerify certificate transactions to the Cardano blockchain.")
-public class TransactionController {
+public class UVerifyTransactionController {
     @Autowired
-    private TransactionService transactionService;
+    private UVerifyTransactionService transactionService;
 
     @PostMapping("/build")
     @Operation(

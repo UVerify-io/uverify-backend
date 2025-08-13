@@ -41,7 +41,11 @@ import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.transaction.storage.impl.model.TxnEntity;
+import io.uverify.backend.dto.UsageStatistics;
+import io.uverify.backend.entity.UVerifyCertificateEntity;
 import io.uverify.backend.enums.CardanoNetwork;
+import io.uverify.backend.enums.UseCaseCategory;
 import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.extension.UVerifyServiceExtension;
 import io.uverify.backend.extension.dto.Item;
@@ -61,6 +65,7 @@ import io.uverify.backend.extension.validators.converter.ConnectedGoodsDatumConv
 import io.uverify.backend.extension.validators.converter.ConnectedGoodsDatumItemConverter;
 import io.uverify.backend.extension.validators.converter.SocialHubDatumConverter;
 import io.uverify.backend.extension.validators.converter.SocialHubRedeemerConverter;
+import io.uverify.backend.repository.TransactionRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -97,6 +102,10 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
     private final ConnectedGoodUpdateRepository connectedGoodUpdateRepository;
     @Autowired
     private final SocialHubRepository socialHubRepository;
+
+    @Autowired
+    private final TransactionRepository transactionRepository;
+
     private final Network network;
     private final String salt;
     private BackendService backendService;
@@ -109,10 +118,12 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
             @Value("${extensions.connected-goods.encryption.salt}") String salt,
             @Value("${cardano.network}") String network,
             ConnectedGoodsRepository connectedGoodsRepository, SocialHubRepository socialHubRepository,
-            @Autowired ExtensionManager extensionManager, ConnectedGoodUpdateRepository connectedGoodUpdateRepository) {
+            @Autowired ExtensionManager extensionManager, ConnectedGoodUpdateRepository connectedGoodUpdateRepository,
+            @Autowired TransactionRepository transactionRepository) {
         this.connectedGoodsRepository = connectedGoodsRepository;
         this.connectedGoodUpdateRepository = connectedGoodUpdateRepository;
         this.socialHubRepository = socialHubRepository;
+        this.transactionRepository = transactionRepository;
         this.salt = salt;
         this.network = fromCardanoNetwork(CardanoNetwork.valueOf(network));
         extensionManager.registerExtension(this);
@@ -144,7 +155,8 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
         return socialHubEntity.orElse(null);
     }
 
-    public void processAddressUtxos(List<AddressUtxo> addressUtxos) {
+    public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos) {
+        List<AddressUtxo> processedUtxos = new ArrayList<>();
         for (AddressUtxo addressUtxo : addressUtxos) {
             try {
                 if (includesConnectedGoodsToken(addressUtxo)) {
@@ -184,6 +196,7 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
 
                     }
                     connectedGoodsRepository.save(connectedGoodEntity);
+                    processedUtxos.add(addressUtxo);
                 }
 
                 if (includesSocialHubToken(addressUtxo)) {
@@ -208,6 +221,7 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
                             socialHubEntity.setAssetId(previousSocialHubEntity.getAssetId());
                             socialHubEntity.setConnectedGood(previousSocialHubEntity.getConnectedGood());
                             socialHubRepository.save(socialHubEntity);
+                            processedUtxos.add(addressUtxo);
                         } else {
                             log.warn("SocialHub not found for batchId: {} and tokenName: {}", batchId, tokenName);
                         }
@@ -217,12 +231,36 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
                 e.printStackTrace();
             }
         }
+        return processedUtxos;
     }
 
     public void handleRollbackToSlot(long slot) {
         connectedGoodsRepository.deleteAllAfterSlot(slot);
         connectedGoodUpdateRepository.deleteAllAfterSlot(slot);
         socialHubRepository.deleteAllAfterSlot(slot);
+    }
+
+    @Override
+    public void addUsageStatistics(UsageStatistics usageStatistics) {
+        List<ConnectedGoodEntity> registeredBatches = connectedGoodsRepository.findAll();
+        List<ConnectedGoodUpdateEntity> claimedItems = connectedGoodUpdateRepository.findAll();
+        usageStatistics.addCertificatesToCategory(UseCaseCategory.CONNECTED_GOODS, registeredBatches.size() + claimedItems.size());
+    }
+
+    @Override
+    public BigInteger addTransactionFees(BigInteger totalFees) {
+        // registered batches are already included in the certificate transaction fee itself
+        List<ConnectedGoodUpdateEntity> claimedItems = connectedGoodUpdateRepository.findAll();
+        for (ConnectedGoodUpdateEntity claimedItem : claimedItems) {
+            Optional<TxnEntity> transaction = transactionRepository.findById(claimedItem.getTransactionId());
+            if (transaction.isPresent()) {
+                totalFees = totalFees.add(transaction.get().getFee());
+            } else {
+                log.warn("Transaction not found for UTXO with hash: {}", claimedItem.getTransactionId());
+            }
+        }
+
+        return totalFees;
     }
 
     private SecretKey generateKey(String key) throws Exception {

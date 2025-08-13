@@ -19,6 +19,7 @@
 package io.uverify.backend.storage;
 
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.common.domain.TxInput;
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.UtxoCache;
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.UtxoStorageImpl;
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.TxInputRepository;
@@ -32,7 +33,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @SuppressWarnings("unused")
@@ -53,8 +57,18 @@ public class UVerifyStorage extends UtxoStorageImpl {
 
     @Override
     public void saveUnspent(List<AddressUtxo> addressUtxoList) {
-        cardanoBlockchainService.processAddressUtxos(addressUtxoList);
-        extensionManager.processAddressUtxos(addressUtxoList);
+        List<AddressUtxo> processedByUVerifyCore = cardanoBlockchainService.processAddressUtxos(addressUtxoList);
+        List<AddressUtxo> processedByExtensions = extensionManager.processAddressUtxos(addressUtxoList);
+        Set<AddressUtxo> allProcessedUtxos = new HashSet<>();
+        allProcessedUtxos.addAll(processedByUVerifyCore);
+        allProcessedUtxos.addAll(processedByExtensions);
+        if (!allProcessedUtxos.isEmpty()) {
+            super.saveUnspent(new ArrayList<>(allProcessedUtxos));
+        }
+    }
+
+    @Override
+    public void saveSpent(List<TxInput> inputs) {
     }
 
     @Transactional
@@ -64,5 +78,4 @@ public class UVerifyStorage extends UtxoStorageImpl {
         extensionManager.handleRollbackToSlot(slot);
         return 0;
     }
-
 }

@@ -46,7 +46,7 @@ import java.util.List;
 @Service
 @Slf4j
 @AllArgsConstructor
-public class TransactionService {
+public class UVerifyTransactionService {
 
     @Autowired
     private final CardanoBlockchainService cardanoBlockchainService;

@@ -53,8 +53,8 @@
         <version.springdoc-openapi>2.6.0</version.springdoc-openapi>
         <version.lombok>1.18.32</version.lombok>
         <version.spring-dotenv>4.0.0</version.spring-dotenv>
-        <version.cardano-client-lib>0.6.2</version.cardano-client-lib>
-        <version.yaci-store>0.1.0</version.yaci-store>
+        <version.cardano-client-lib>0.6.6</version.cardano-client-lib>
+        <version.yaci-store>0.1.4</version.yaci-store>
         <version.yaci-cardano-test>0.1.0</version.yaci-cardano-test>
         <version.scalus-bloxbean-cardano-client-lib>0.8.2</version.scalus-bloxbean-cardano-client-lib>
         <version.zxing>3.5.3</version.zxing>
@@ -149,10 +149,15 @@
             <version>${version.yaci-store}</version>
         </dependency>
 
-        <!-- Yaci Store script spring boot starter -->
         <dependency>
             <groupId>com.bloxbean.cardano</groupId>
             <artifactId>yaci-store-utxo-spring-boot-starter</artifactId>
+            <version>${version.yaci-store}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.bloxbean.cardano</groupId>
+            <artifactId>yaci-store-transaction-spring-boot-starter</artifactId>
             <version>${version.yaci-store}</version>
         </dependency>
 

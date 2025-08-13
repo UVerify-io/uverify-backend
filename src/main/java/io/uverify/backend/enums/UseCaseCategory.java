@@ -16,20 +16,21 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.extension;
+package io.uverify.backend.enums;
 
-import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
-import io.uverify.backend.dto.UsageStatistics;
+public enum UseCaseCategory {
+    IDENTITY("Identity"),
+    CONNECTED_GOODS("Connected Goods"),
+    NOTARY("Notary"),
+    STUDENT_CERTIFICATION("Student Certification");
 
-import java.math.BigInteger;
-import java.util.List;
+    private final String displayName;
 
-public interface UVerifyServiceExtension {
-    public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos);
+    UseCaseCategory(String displayName) {
+        this.displayName = displayName;
+    }
 
-    public void handleRollbackToSlot(long slot);
-
-    void addUsageStatistics(UsageStatistics usageStatistics);
-
-    BigInteger addTransactionFees(BigInteger totalFees);
+    public String getDisplayName() {
+        return displayName;
+    }
 }

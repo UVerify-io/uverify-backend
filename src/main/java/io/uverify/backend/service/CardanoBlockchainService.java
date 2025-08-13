@@ -464,14 +464,17 @@ public class CardanoBlockchainService {
                 .build();
     }
 
-    public void processAddressUtxos(List<AddressUtxo> addressUtxos) {
+    public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos) {
+        List<AddressUtxo> processedUtxos = new ArrayList<>();
         for (AddressUtxo addressUtxo : addressUtxos) {
             if (includesBootstrapToken(addressUtxo, network)) {
                 if (isMintingTransaction(addressUtxo, ValidatorUtils.getMintOrBurnAuthTokenHash(network))) {
                     BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromAddressUtxo(addressUtxo, network);
                     bootstrapDatumService.save(bootstrapDatumEntity);
+                    processedUtxos.add(addressUtxo);
                 } else if (isBurningTransaction(addressUtxo, ValidatorUtils.getMintOrBurnAuthTokenHash(network))) {
                     bootstrapDatumService.markAsInvalid(getBootstrapTokenName(addressUtxo, network), addressUtxo.getSlot());
+                    processedUtxos.add(addressUtxo);
                 } else {
                     throw new IllegalArgumentException("Invalid bootstrap token transaction amount!");
                 }
@@ -481,6 +484,7 @@ public class CardanoBlockchainService {
 
                 if (isBurningTransaction(addressUtxo, ValidatorUtils.getMintStateTokenHash(network))) {
                     stateDatumService.invalidateStateDatum(stateDatum.getId(), addressUtxo.getSlot());
+                    processedUtxos.add(addressUtxo);
                 } else {
                     final StateDatumEntity stateDatumEntity;
                     if (optionalStateDatumEntity.isEmpty()) {
@@ -509,9 +513,11 @@ public class CardanoBlockchainService {
                         uVerifyCertificatesEntities.add(uVerifyCertificateEntity);
                     }
                     uVerifyCertificateService.saveAllCertificates(uVerifyCertificatesEntities);
+                    processedUtxos.add(addressUtxo);
                 }
             }
         }
+        return processedUtxos;
     }
 
     public void handleRollbackToSlot(long slot) {

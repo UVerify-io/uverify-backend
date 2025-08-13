@@ -31,6 +31,7 @@ import com.bloxbean.cardano.client.transaction.spec.TransactionOutput;
 import com.bloxbean.cardano.client.transaction.spec.TransactionWitnessSet;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import io.uverify.backend.dto.UsageStatistics;
 import io.uverify.backend.extension.UVerifyServiceExtension;
 import io.uverify.backend.extension.dto.TadamonTransactionRequest;
 import io.uverify.backend.extension.entity.TadamonTransactionEntity;
@@ -46,8 +47,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.math.BigInteger;
 import java.time.LocalDateTime;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,8 +72,14 @@ public class TadamonService implements UVerifyServiceExtension {
     private final List<String> allowedAddresses;
 
     @Override
-    public void processAddressUtxos(List<AddressUtxo> addressUtxos) {
+    public BigInteger addTransactionFees(BigInteger totalFees) {
+        // Tadamon service does not add any additional fees
+        return totalFees;
+    }
 
+    @Override
+    public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos) {
+        return new ArrayList<>();
     }
 
     @Override
@@ -103,6 +111,9 @@ public class TadamonService implements UVerifyServiceExtension {
             }
         }
     }
+
+    @Override
+    public void addUsageStatistics(UsageStatistics usageStatistics) {}
 
     public Result<?> submit(TadamonTransactionRequest request) throws CborDeserializationException, CborSerializationException, ApiException {
         Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(request.getTransaction()));

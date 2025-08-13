@@ -19,8 +19,10 @@
 package io.uverify.backend.extension;
 
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import io.uverify.backend.dto.UsageStatistics;
 import org.springframework.stereotype.Service;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,11 +35,27 @@ public class ExtensionManager {
         extensions.add(extension);
     }
 
-    public void processAddressUtxos(List<AddressUtxo> addressUtxos) {
-        extensions.forEach(extension -> extension.processAddressUtxos(addressUtxos));
+    public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos) {
+        List<AddressUtxo> processedUtxos = new ArrayList<>();
+        for (UVerifyServiceExtension extension : extensions) {
+            processedUtxos.addAll(extension.processAddressUtxos(addressUtxos));
+        }
+        return processedUtxos;
     }
 
     public void handleRollbackToSlot(long slot) {
         extensions.forEach(extension -> extension.handleRollbackToSlot(slot));
+    }
+
+    public void addUsageStatistics(UsageStatistics usageStatistics) {
+        extensions.forEach(extension -> extension.addUsageStatistics(usageStatistics));
+    }
+
+    public BigInteger addTransactionFees(BigInteger totalFees) {
+        BigInteger total = totalFees;
+        for (UVerifyServiceExtension extension : extensions) {
+            total = total.add(extension.addTransactionFees(total));
+        }
+        return total;
     }
 }

@@ -16,20 +16,23 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.extension;
+package io.uverify.backend.repository;
 
-import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
-import io.uverify.backend.dto.UsageStatistics;
+import com.bloxbean.cardano.yaci.store.transaction.storage.impl.model.TxnEntity;
+import jakarta.transaction.Transactional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 
-import java.math.BigInteger;
-import java.util.List;
+public interface TransactionRepository extends JpaRepository<TxnEntity, String> {
 
-public interface UVerifyServiceExtension {
-    public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos);
-
-    public void handleRollbackToSlot(long slot);
-
-    void addUsageStatistics(UsageStatistics usageStatistics);
-
-    BigInteger addTransactionFees(BigInteger totalFees);
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("""
+    DELETE FROM TxnEntity t
+    WHERE t.txHash NOT IN (
+        SELECT a.txHash FROM AddressUtxoEntity a
+    )
+    """)
+    void deleteIrrelevantTransactions();
 }

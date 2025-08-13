@@ -44,14 +44,33 @@ management:
 store:
   sync-auto-start: ${YACI_STORE_AUTO_START:true}
   cardano:
-    host: ${REMOTE_NODE_URL:backbone.cardano.iog.io}
+    host: ${REMOTE_NODE_URL:backbone.mainnet.cardanofoundation.org}
     port: ${REMOTE_NODE_PORT:3001}
     protocol-magic: 764824073
     sync-start-slot: 153422988
     sync-start-blockhash: c6b1c0eebd697a25bbcc429f4d66258b83db07ad060b13065612e50410bda7b2
     sync-auto-start: ${YACI_STORE_AUTO_START:true}
   blocks:
-    epoch-calculation-interval=14400:  # 14400 = 4 hours
+    enabled: false
+  assets:
+    enabled: false
+  metadata:
+    enabled: false
+  mir:
+    enabled: false
+  script:
+    enabled: false
+  epoch:
+    enabled: false
+  staking:
+    enabled: false
+  transaction:
+    enabled: true
+    api-enabled: false
+    save-witness: false
+  utxo:
+    api-enabled: false
+    enabled: true
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
