@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.6.0](https://github.com/UVerify-io/uverify-backend/compare/v1.5.1...v1.6.0) (2025-08-13)
+
+
+### Features
+
+* Just store the important utxos and transactions. This decreases the space needed from >13GB to ~5MB.
+
+* add statistics endpoint to collect UVerify total fees and certificate use-cases ([1a6234a](https://github.com/UVerify-io/uverify-backend/commit/1a6234ae320545c5d6ebb0d3583fd70861d57160))
+
 ## [1.5.1](https://github.com/UVerify-io/uverify-backend/compare/v1.5.0...v1.5.1) (2025-06-03)
 
 
