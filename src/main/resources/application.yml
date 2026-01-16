@@ -80,6 +80,9 @@ cardano:
   facilitator:
     user:
       mnemonic: ${FACILITATOR_ACCOUNT_MNEMONIC:}
+  intent:
+    user:
+      mnemonic: ${INTENT_USER_MNEMONIC:}
   test:
     user:
       mnemonic: ${TEST_USER_MNEMONIC:}

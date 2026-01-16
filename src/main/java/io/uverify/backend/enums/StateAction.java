@@ -16,16 +16,12 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.dto;
+package io.uverify.backend.enums;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import io.uverify.backend.enums.UserAction;
-import lombok.*;
-
-@Data
-public class UserActionRequest {
-    private String address;
-    private UserAction action;
-    @JsonAlias({"stateId", "state_id"})
-    private String stateId;
+public enum StateAction {
+    MINT_BOOTSTRAP,
+    MINT_STATE,
+    UPDATE_STATE,
+    BURN_STATE,
+    BURN_BOOTSTRAP
 }

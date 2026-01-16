@@ -19,13 +19,17 @@
 package io.uverify.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import io.uverify.backend.enums.UserAction;
-import lombok.*;
+import lombok.Builder;
+import lombok.Data;
+import org.springframework.http.HttpStatus;
 
 @Data
-public class UserActionRequest {
-    private String address;
-    private UserAction action;
-    @JsonAlias({"stateId", "state_id"})
-    private String stateId;
+@Builder
+public class IntentResponse {
+    @JsonAlias({"intentId", "intent_id"})
+    private String intentId;
+    private HttpStatus status;
+    private String message;
+    @JsonAlias({"transactionId", "transaction_id"})
+    private String transactionId;
 }

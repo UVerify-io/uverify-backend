@@ -19,13 +19,20 @@
 package io.uverify.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import io.uverify.backend.enums.UserAction;
-import lombok.*;
+import lombok.Builder;
+import lombok.Data;
+
+import java.util.List;
 
 @Data
-public class UserActionRequest {
-    private String address;
-    private UserAction action;
-    @JsonAlias({"stateId", "state_id"})
-    private String stateId;
+@Builder
+public class FeeProviderRequest {
+    @JsonAlias({"adminAddresses", "admin_addresses"})
+    List<String> adminAddresses;
+    @JsonAlias({"userAddresses", "user_addresses"})
+    List<String> userAddresses;
+    @JsonAlias({"topUpAmount", "top_up_amount"})
+    Long topUpAmount;
+    @JsonAlias({"topUpAddress", "top_up_address"})
+    String topUpAddress;
 }

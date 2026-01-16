@@ -43,7 +43,6 @@ import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.transaction.storage.impl.model.TxnEntity;
 import io.uverify.backend.dto.UsageStatistics;
-import io.uverify.backend.entity.UVerifyCertificateEntity;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.enums.UseCaseCategory;
 import io.uverify.backend.extension.ExtensionManager;

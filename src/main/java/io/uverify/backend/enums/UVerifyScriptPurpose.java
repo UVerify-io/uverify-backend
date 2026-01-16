@@ -18,33 +18,29 @@
 
 package io.uverify.backend.enums;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-
-public enum TransactionType {
-    DEFAULT("default"),
-    BOOTSTRAP("bootstrap"),
-    CUSTOM("custom"),
+public enum UVerifyScriptPurpose {
+    MINT_BOOTSTRAP("mint_bootstrap"),
+    BURN_BOOTSTRAP("burn_bootstrap"),
+    MINT_STATE("mint_state"),
+    RENEW_STATE("renew_state"),
     BURN_STATE("burn_state"),
-    BURN_BOOTSTRAP("burn_bootstrap");
+    UPDATE_STATE("update_state");
 
     private final String value;
 
-    TransactionType(String value) {
+    UVerifyScriptPurpose(String value) {
         this.value = value;
     }
 
-    @JsonCreator
-    public static TransactionType fromValue(String value) {
-        for (TransactionType type : values()) {
+    public static UVerifyScriptPurpose fromValue(String value) {
+        for (UVerifyScriptPurpose type : values()) {
             if (type.value.equalsIgnoreCase(value)) {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Invalid transaction type: " + value);
+        throw new IllegalArgumentException("Invalid UVerifyScriptPurpose type: " + value);
     }
 
-    @JsonValue
     public String getValue() {
         return value;
     }

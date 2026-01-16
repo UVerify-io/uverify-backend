@@ -19,13 +19,15 @@
 package io.uverify.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.uverify.backend.enums.TransactionType;
 import lombok.*;
 
 import java.util.List;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class BuildTransactionRequest {
     private List<CertificateData> certificates;
     private TransactionType type;

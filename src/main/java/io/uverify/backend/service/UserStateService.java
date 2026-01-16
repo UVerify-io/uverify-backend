@@ -140,7 +140,6 @@ public class UserStateService {
         if (optionalUserAddress.isEmpty()) {
             return false;
         }
-        // TODO: Check if timestamp is in validity range
 
         return edDSASigningProvider.verify(HexUtil.decodeHexString(actionRequest.getSignature()),
                 actionRequest.getMessage().getBytes(), facilitator.publicKeyBytes()) &&

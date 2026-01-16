@@ -42,7 +42,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-
 @Service
 @Slf4j
 @AllArgsConstructor
@@ -58,11 +57,11 @@ public class UVerifyTransactionService {
             TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(witnessSetHex)));
             transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());
         }
-        
+
         return cardanoBlockchainService.submitTransaction(transaction);
     }
 
-    public BuildTransactionResponse buildUVerifyTransaction(List<CertificateData> certificates, String address) throws ApiException, CborSerializationException {
+    public BuildTransactionResponse buildUVerifyTransaction(List<CertificateData> certificates, String address) {
         List<UVerifyCertificate> uVerifyCertificates = certificates.stream()
                 .map(certificate -> UVerifyCertificate.fromCertificateData(certificate, address))
                 .toList();
@@ -86,7 +85,7 @@ public class UVerifyTransactionService {
         }
     }
 
-    public BuildTransactionResponse buildBootstrapDatum(BootstrapData bootstrapData) throws ApiException, CborSerializationException {
+    public BuildTransactionResponse buildBootstrapDatum(BootstrapData bootstrapData) {
         BootstrapDatum bootstrapDatum = BootstrapDatum.fromBootstrapData(bootstrapData);
         try {
             Transaction transaction = cardanoBlockchainService.initializeBootstrapDatum(bootstrapDatum);
@@ -144,6 +143,28 @@ public class UVerifyTransactionService {
                             .message(exception.getMessage())
                             .build())
                     .type(TransactionType.CUSTOM)
+                    .build();
+        }
+    }
+
+    public BuildTransactionResponse mintProxyBootstrapToken(BootstrapData bootstrapData) {
+        BootstrapDatum bootstrapDatum = BootstrapDatum.fromBootstrapData(bootstrapData);
+        try {
+            Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
+            return BuildTransactionResponse.builder()
+                    .unsignedTransaction(transaction.serializeToHex())
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.SUCCESS)
+                            .build())
+                    .type(TransactionType.BOOTSTRAP)
+                    .build();
+        } catch (Exception exception) {
+            return BuildTransactionResponse.builder()
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.ERROR)
+                            .message(exception.getMessage())
+                            .build())
+                    .type(TransactionType.BOOTSTRAP)
                     .build();
         }
     }

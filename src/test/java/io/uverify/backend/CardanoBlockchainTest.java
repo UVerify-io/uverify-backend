@@ -21,7 +21,9 @@ package io.uverify.backend;
 import com.bloxbean.cardano.client.account.Account;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.common.model.Networks;
+import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.script.domain.TxScript;
 import com.bloxbean.cardano.yaci.test.Funding;
 import com.bloxbean.cardano.yaci.test.YaciCardanoContainer;
 import io.uverify.backend.extension.ExtensionManager;
@@ -53,6 +55,8 @@ public class CardanoBlockchainTest {
     protected final Account userAccount;
     protected final Account feeReceiverAccount;
 
+    protected final Account intentAccount;
+
     protected final Account facilitatorAccount;
     @Autowired
     protected final CardanoBlockchainService cardanoBlockchainService;
@@ -80,6 +84,7 @@ public class CardanoBlockchainTest {
                                  @Value("${cardano.test.user.mnemonic}") String testUserMnemonic,
                                  @Value("${cardano.service.fee.receiver.mnemonic}") String feeReceiverMnemonic,
                                  @Value("${cardano.facilitator.user.mnemonic}") String facilitatorMnemonic,
+                                 @Value("${cardano.intent.user.mnemonic}") String intentMnemonic,
                                  CardanoBlockchainService cardanoBlockchainService,
                                  StateDatumService stateDatumService,
                                  BootstrapDatumService bootstrapDatumService,
@@ -102,6 +107,7 @@ public class CardanoBlockchainTest {
         userAccount = new Account(Networks.testnet(), testUserMnemonic);
         feeReceiverAccount = new Account(Networks.testnet(), feeReceiverMnemonic);
         facilitatorAccount = new Account(Networks.testnet(), facilitatorMnemonic);
+        intentAccount = new Account(Networks.testnet(), intentMnemonic);
 
         if (!yaciCardanoContainer.isRunning()) {
             List<Funding> fundingList = new ArrayList<>();
@@ -114,6 +120,9 @@ public class CardanoBlockchainTest {
             fundingList.add(new Funding(userAccount.baseAddress(), 1000));
             fundingList.add(new Funding(facilitatorAccount.baseAddress(), 10000));
             fundingList.add(new Funding(facilitatorAccount.baseAddress(), 10));
+
+            fundingList.add(new Funding(intentAccount.baseAddress(), 25));
+            fundingList.add(new Funding(intentAccount.baseAddress(), 25));
 
             for (String address : additionalFundingAddresses) {
                 fundingList.add(new Funding(address, 200));
@@ -141,6 +150,20 @@ public class CardanoBlockchainTest {
     protected void simulateYaciStoreBehavior(String transactionId) throws InterruptedException, ApiException {
         List<AddressUtxo> addressUtxos = SimulationUtils.getAddressUtxos(transactionId, yaciCardanoContainer.getBackendService());
         cardanoBlockchainService.processAddressUtxos(addressUtxos);
+        extensionManager.processAddressUtxos(addressUtxos);
+        Thread.sleep(1000);
+    }
+
+    protected void simulateYaciStoreBehavior(String transactionId, Transaction transaction, String proxyTxHash, int proxyOutputIndex) throws InterruptedException, ApiException {
+        List<AddressUtxo> addressUtxos = SimulationUtils.getAddressUtxos(transactionId, yaciCardanoContainer.getBackendService());
+        List<TxScript> txScripts = SimulationUtils.getTxScripts(transactionId, yaciCardanoContainer.getBackendService(), transaction);
+        cardanoBlockchainService.processAddressUtxos(addressUtxos);
+        try {
+            cardanoBlockchainService.processTxScripts(txScripts, proxyTxHash, proxyOutputIndex);
+        } catch (Exception exception) {
+            log.error("Unable to process tx scripts: " + exception.getMessage());
+        }
+
         extensionManager.processAddressUtxos(addressUtxos);
         Thread.sleep(1000);
     }

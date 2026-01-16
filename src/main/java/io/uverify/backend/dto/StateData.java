@@ -22,7 +22,6 @@ import com.bloxbean.cardano.client.address.AddressProvider;
 import com.bloxbean.cardano.client.address.Credential;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.enums.CardanoNetwork;

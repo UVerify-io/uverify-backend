@@ -16,16 +16,32 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.dto;
+package io.uverify.backend.entity;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import io.uverify.backend.enums.UserAction;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.*;
 
-@Data
-public class UserActionRequest {
-    private String address;
-    private UserAction action;
-    @JsonAlias({"stateId", "state_id"})
-    private String stateId;
+@Entity
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "script_deployment")
+public class ScriptDeploymentEntity {
+    @Id
+    @Column(name = "id", nullable = false, unique = true)
+    // Script hash
+    private String id;
+    @Column(name = "transaction_id", nullable = false)
+    private String transactionId;
+
+    @Column(name = "slot", nullable = false)
+    private Long slot;
+
+    @Column(name = "output_index", nullable = false)
+    private int outputIndex;
 }

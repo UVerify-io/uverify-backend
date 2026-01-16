@@ -60,12 +60,17 @@ public class StateDatumEntity {
     @Column(name = "invalidation_slot")
     private Long invalidationSlot;
 
+    @Column(name = "version", nullable = false)
+    private Integer version;
+
     public static StateDatumEntity fromAddressUtxo(AddressUtxo addressUtxo, BootstrapDatumEntity bootstrapDatumEntity) {
-        StateDatum stateDatum = StateDatum.fromUtxoDatum(addressUtxo.getInlineDatum());
+        StateDatum stateDatum = StateDatum.fromLegacyUtxoDatum(addressUtxo.getInlineDatum());
         String transactionId = addressUtxo.getTxHash();
         long slot = addressUtxo.getSlot();
 
-        return StateDatumEntity.fromStateDatum(stateDatum, transactionId, bootstrapDatumEntity, slot);
+        StateDatumEntity stateDatumEntity = StateDatumEntity.fromStateDatum(stateDatum, transactionId, bootstrapDatumEntity, slot);
+        stateDatumEntity.setVersion(1);
+        return stateDatumEntity;
     }
 
     public static StateDatumEntity fromStateDatum(StateDatum stateDatum, String transactionId, BootstrapDatumEntity bootstrapDatumEntity, long slot) {
@@ -78,6 +83,7 @@ public class StateDatumEntity {
         );
         return StateDatumEntity.builder()
                 .id(stateDatum.getId())
+                .version(bootstrapDatumEntity.getVersion())
                 .owner(stateDatum.getOwner())
                 .countdown(stateDatum.getCountdown())
                 .creationSlot(slot)

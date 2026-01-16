@@ -16,27 +16,36 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.dto;
+package io.uverify.backend.enums;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import io.uverify.backend.enums.UserAction;
-import lombok.*;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
-@Data
-public class ExecuteUserActionRequest {
-    private String address;
-    private UserAction action;
+public enum IntentType {
+    BALANCE("balance"),
+    STATUS("status"),
+    CERTIFICATE("certificate"),
+    EXTENSION("extension");
 
-    @JsonAlias({"stateId", "state_id"})
-    private String stateId;
+    private final String value;
 
-    private String message;
-    private String signature;
+    IntentType(String value) {
+        this.value = value;
+    }
 
-    @JsonAlias({"userSignature", "user_signature"})
-    private String userSignature;
+    @JsonCreator
+    public static IntentType fromValue(String value) {
+        for (IntentType type : values()) {
+            if (type.value.equalsIgnoreCase(value)) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Invalid transaction type: " + value);
+    }
 
-    @JsonAlias({"userPublicKey", "user_public_key"})
-    private String userPublicKey;
-    private long timestamp;
+    @JsonValue
+    public String getValue() {
+        return value;
+    }
+
 }

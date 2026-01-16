@@ -16,16 +16,12 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.dto;
+package io.uverify.backend.model;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import io.uverify.backend.enums.UserAction;
-import lombok.*;
+import com.bloxbean.cardano.client.plutus.annotation.Constr;
 
-@Data
-public class UserActionRequest {
-    private String address;
-    private UserAction action;
-    @JsonAlias({"stateId", "state_id"})
-    private String stateId;
+@Constr
+public enum ProxyRedeemer {
+    USER_ACTION,
+    ADMIN_ACTION
 }

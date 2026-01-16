@@ -66,6 +66,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
             @Value("${cardano.service.fee.receiver.mnemonic}") String feeReceiverMnemonic,
             @Value("${cardano.facilitator.user.mnemonic}") String facilitatorMnemonic,
             @Value("${cardano.service.fee.partner.address}") String feeReceiverPartnerAddress,
+            @Value("${cardano.intent.user.mnemonic}") String intentMnemonic,
             CardanoBlockchainService cardanoBlockchainService,
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
@@ -74,7 +75,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
             ExtensionManager extensionManager) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager, List.of());
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, intentMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager, List.of());
         RestAssured.port = port;
         this.feeReceiverPartnerAddress = feeReceiverPartnerAddress;
     }

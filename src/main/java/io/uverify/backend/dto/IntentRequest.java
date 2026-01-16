@@ -19,13 +19,28 @@
 package io.uverify.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import io.uverify.backend.enums.UserAction;
-import lombok.*;
+import io.uverify.backend.enums.IntentType;
+import lombok.Builder;
+import lombok.Data;
+
+import java.util.Map;
 
 @Data
-public class UserActionRequest {
-    private String address;
-    private UserAction action;
-    @JsonAlias({"stateId", "state_id"})
-    private String stateId;
+@Builder
+public class IntentRequest {
+    IntentType type;
+    @JsonAlias({"certificateRequest", "certificate_request"})
+    BuildTransactionRequest certificateRequest;
+    @JsonAlias({"extensionMetadata", "extension_metadata"})
+    Map<String, String> extensionMetadata;
+    @JsonAlias({"unixTimestamp", "unix_timestamp"})
+    long unixTimestamp;
+    @JsonAlias({"feePotAddress", "fee_pot_address"})
+    String feePotAddress;
+    @JsonAlias({"intentSignature", "intent_signature"})
+    String intentSignature;
+    @JsonAlias({"signerPublicKey", "signer_public_key"})
+    String signerPublicKey;
+    @JsonAlias({"signerAddress", "signer_address"})
+    String signerAddress;
 }

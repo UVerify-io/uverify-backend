@@ -101,7 +101,7 @@ public class BootstrapDatum {
         return bootstrapDatum;
     }
 
-    public static BootstrapDatum fromUtxoDatum(String inlineDatum) {
+    public static BootstrapDatum fromLegancyUtxoDatum(String inlineDatum) {
         BootstrapDatum bootstrapDatum = new BootstrapDatum();
         try {
             List<PlutusData> datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();
@@ -119,6 +119,66 @@ public class BootstrapDatum {
         return bootstrapDatum;
     }
 
+    public static BootstrapDatum fromUtxoDatum(String inlineDatum) {
+        BootstrapDatum bootstrapDatum = new BootstrapDatum();
+        try {
+            List<PlutusData> datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();
+            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));
+            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(1)));
+            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(2)));
+            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(3)));
+            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(4)));
+            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(5)));
+            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(6)));
+            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(7)));
+        } catch (CborDeserializationException e) {
+            throw new RuntimeException(e);
+        }
+        return bootstrapDatum;
+    }
+
+    public static BootstrapDatum fromScriptTxDatum(String inlineDatum) {
+        BootstrapDatum bootstrapDatum = new BootstrapDatum();
+        try {
+            List<PlutusData> datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();
+            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));
+            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(1)));
+            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(2)));
+            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(3)));
+            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(4)));
+            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(5)));
+            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(6)));
+            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(7)));
+        } catch (CborDeserializationException e) {
+            throw new RuntimeException(e);
+        }
+        return bootstrapDatum;
+    }
+
+    public PlutusData toPlutusData() {
+        return ConstrPlutusData.of(0,
+                ListPlutusData.of(
+                        this.allowedCredentials.stream()
+                                .map(BytesPlutusData::of)
+                                .toList()
+                                .toArray(new PlutusData[0])
+                ),
+                BytesPlutusData.of(this.tokenName),
+                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),
+                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),
+                ListPlutusData.of(
+                        this.feeReceivers.stream()
+                                .map(BytesPlutusData::of)
+                                .toList()
+                                .toArray(new PlutusData[0])
+                ),
+                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),
+                BigIntPlutusData.of(BigInteger.valueOf(this.transactionLimit)),
+                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize))
+        );
+    }
+
+    @Deprecated(forRemoval = true)
     public PlutusData toPlutusData(CardanoNetwork network) {
         return ConstrPlutusData.of(0,
                 ListPlutusData.of(

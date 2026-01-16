@@ -34,6 +34,8 @@ import com.bloxbean.cardano.client.backend.koios.Constants;
 import com.bloxbean.cardano.client.backend.koios.KoiosBackendService;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
+import com.bloxbean.cardano.client.common.model.Networks;
+import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.plutus.blueprint.PlutusBlueprintUtil;
 import com.bloxbean.cardano.client.plutus.blueprint.model.PlutusVersion;
@@ -45,18 +47,21 @@ import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
+import com.bloxbean.cardano.yaci.core.model.RedeemerTag;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.script.domain.TxScript;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.entity.UVerifyCertificateEntity;
 import io.uverify.backend.enums.CardanoNetwork;
-import io.uverify.backend.model.BootstrapDatum;
-import io.uverify.backend.model.StateDatum;
-import io.uverify.backend.model.UVerifyCertificate;
+import io.uverify.backend.enums.UVerifyScriptPurpose;
+import io.uverify.backend.model.*;
+import io.uverify.backend.model.converter.ProxyRedeemerConverter;
 import io.uverify.backend.util.CardanoUtils;
 import io.uverify.backend.util.ValidatorUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,10 +71,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 import static io.uverify.backend.util.ValidatorUtils.*;
@@ -154,6 +156,10 @@ public class CardanoBlockchainService {
     }
 
     public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
+        return updateStateDatum(address, stateDatum, uVerifyCertificates, null, 0);
+    }
+
+    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates, String proxyTxHash, int proxyOutputIndex) throws ApiException {
         Address userAddress = new Address(address);
         Optional<byte[]> optionalUserPaymentCredential = userAddress.getPaymentCredentialHash();
 
@@ -163,7 +169,15 @@ public class CardanoBlockchainService {
 
         byte[] userAccountCredential = optionalUserPaymentCredential.get();
 
-        String unit = getMintStateTokenHash(network) + Hex.encodeHexString(userAccountCredential);
+        String unit;
+
+        if (stateDatum.getVersion() == 1) {
+            unit = getMintStateTokenHash(network) + Hex.encodeHexString(userAccountCredential);
+        } else if (stateDatum.getVersion() == 2) {
+            unit = getUverifyProxyContract(proxyTxHash, proxyOutputIndex) + stateDatum.getId();
+        } else {
+            throw new RuntimeException("State contract version " + stateDatum.getVersion() + " is not supported by this UVerify version yet. Make sure to upgrade the UVerify service to its latest version.");
+        }
 
         Optional<Utxo> optionalUtxo = ValidatorUtils.getUtxoByTransactionAndUnit(stateDatum.getTransactionId(), unit, backendService);
 
@@ -176,11 +190,12 @@ public class CardanoBlockchainService {
         PlutusScript updateTestStateTokenScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getUpdateStateTokenCode(network), PlutusVersion.v3);
         String updateTestStateScriptAddress = AddressProvider.getEntAddress(updateTestStateTokenScript, fromCardanoNetwork(network)).toBech32();
 
-        StateDatum nextStateDatum = StateDatum.fromPreviousStateDatum(utxo.getInlineDatum());
-        nextStateDatum.setUVerifyCertificates(uVerifyCertificates);
+        StateDatum nextStateDatum = StateDatum.fromPreviousLegacyStateDatum(utxo.getInlineDatum());
+        nextStateDatum.setCertificates(uVerifyCertificates);
+
         ScriptTx updateStateTokenTx = new ScriptTx()
                 .collectFrom(utxo, PlutusData.unit())
-                .payToContract(updateTestStateScriptAddress, utxo.getAmount(), nextStateDatum.toPlutusData(network))
+                .payToContract(updateTestStateScriptAddress, utxo.getAmount(), nextStateDatum.toLegacyPlutusData(network))
                 .attachSpendingValidator(updateTestStateTokenScript);
 
         BootstrapDatumEntity bootstrapDatum = stateDatum.getBootstrapDatum();
@@ -211,7 +226,7 @@ public class CardanoBlockchainService {
         List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address);
         if (stateDatumEntities.isEmpty()) {
             log.debug("No state datum found for address " + address + ". Start forking a new state datum.");
-            return forkStateDatum(address, uVerifyCertificate);
+            return forkLegacyStateDatum(address, uVerifyCertificate);
         } else {
             StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities);
             boolean needsToPayFee = stateDatumEntity.getCountdown() % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
@@ -223,7 +238,7 @@ public class CardanoBlockchainService {
                 if (optionalUserAccountCredential.isEmpty()) {
                     throw new IllegalArgumentException("Invalid Cardano payment address");
                 }
-                Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
+                Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get(), 1);
 
                 if (bootstrapDatum.isEmpty()) {
                     return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
@@ -233,7 +248,7 @@ public class CardanoBlockchainService {
                 double stateFeeEveryHundredTransactions = (100.0 / stateDatumEntity.getBootstrapDatum().getFeeInterval()) * stateDatumEntity.getBootstrapDatum().getFee();
                 if (bootstrapFeeEveryHundredTransactions < stateFeeEveryHundredTransactions) {
                     log.debug("Forking state datum with better conditions.");
-                    return forkStateDatum(address, uVerifyCertificate, bootstrapDatum.get().getTokenName());
+                    return forkLegacyStateDatum(address, uVerifyCertificate, bootstrapDatum.get().getTokenName());
                 } else {
                     log.debug("Updating state datum with current conditions.");
                     return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
@@ -245,7 +260,7 @@ public class CardanoBlockchainService {
         }
     }
 
-    public Transaction forkStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
+    public Transaction forkLegacyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
         Address userAddress = new Address(address);
         Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
 
@@ -253,16 +268,16 @@ public class CardanoBlockchainService {
             throw new IllegalArgumentException("Invalid Cardano payment address");
         }
 
-        Optional<BootstrapDatum> optionalBootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
+        Optional<BootstrapDatum> optionalBootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get(), 1);
 
         if (optionalBootstrapDatum.isEmpty()) {
             throw new IllegalArgumentException("No applicable bootstrap datum found for user account");
         }
 
-        return forkStateDatum(address, uVerifyCertificates, optionalBootstrapDatum.get().getTokenName());
+        return forkLegacyStateDatum(address, uVerifyCertificates, optionalBootstrapDatum.get().getTokenName());
     }
 
-    public Transaction forkStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
+    public Transaction forkLegacyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
         Optional<BootstrapDatumEntity> optionalBootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(bootstrapTokenName);
 
         if (optionalBootstrapDatumEntity.isEmpty()) {
@@ -291,8 +306,8 @@ public class CardanoBlockchainService {
         TxContentUtxoOutputs txContentUtxoOutput = optionalTxContentUtxoOutput.get();
         Utxo utxo = txContentUtxoOutput.toUtxos(bootstrapDatumEntity.getTransactionId());
 
-        StateDatum stateDatum = StateDatum.fromBootstrapDatum(utxo.getInlineDatum(), userAccountCredential);
-        stateDatum.setUVerifyCertificates(uVerifyCertificates);
+        StateDatum stateDatum = StateDatum.fromLegacyBootstrapDatum(utxo.getInlineDatum(), userAccountCredential);
+        stateDatum.setCertificates(uVerifyCertificates);
         stateDatum.setCountdown(stateDatum.getCountdown() - 1);
 
         PlutusScript mintStateTokenScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getMintStateTokenCode(network), PlutusVersion.v3);
@@ -322,7 +337,7 @@ public class CardanoBlockchainService {
         ScriptTx scriptTransaction = new ScriptTx()
                 .readFrom(utxo)
                 .collectFrom(userUtxo)
-                .mintAsset(mintStateTokenScript, List.of(userStateToken), PlutusData.unit(), updateTestStateScriptAddress, stateDatum.toPlutusData(network));
+                .mintAsset(mintStateTokenScript, List.of(userStateToken), PlutusData.unit(), updateTestStateScriptAddress, stateDatum.toLegacyPlutusData(network));
 
         if (bootstrapDatumEntity.getFee() > 0) {
             long fee = bootstrapDatumEntity.getFee() / stateDatum.getFeeReceivers().size();
@@ -398,6 +413,7 @@ public class CardanoBlockchainService {
                 .build();
     }
 
+    @Deprecated(forRemoval = true)
     public Transaction initializeBootstrapDatum(BootstrapDatum bootstrapDatum) throws ApiException {
         if (bootstrapDatumService.bootstrapDatumAlreadyExists(bootstrapDatum.getTokenName())) {
             throw new IllegalArgumentException("Bootstrap datum with name " + bootstrapDatum.getTokenName() + " already exists");
@@ -464,6 +480,114 @@ public class CardanoBlockchainService {
                 .build();
     }
 
+    public List<TxScript> processUVerifyProxyTransactions(List<TxScript> txScripts) throws CborDeserializationException {
+        // find UVerify proxy script hash in tx scripts
+        String proxyContractScriptHash = validatorToScriptHash(getUVerifyProxyContract());
+        Optional<TxScript> maybeProxyTransaction = txScripts.stream().findFirst().filter(txScript -> txScript.getScriptHash().equals(proxyContractScriptHash));
+        if (maybeProxyTransaction.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        TxScript proxyTransaction = maybeProxyTransaction.get();
+        Optional<ProxyDatum> maybeProxyDatum = ProxyDatum.fromCbor(proxyTransaction.getDatum());
+
+        if (maybeProxyDatum.isEmpty()) {
+            log.error("Failed to deserialize proxy datum from transaction " + proxyTransaction.getTxHash());
+            return Collections.emptyList();
+        }
+
+        ProxyDatum proxyDatum = maybeProxyDatum.get();
+        List<TxScript> txScriptsToProcess = txScripts.stream()
+                .filter(txScript -> proxyDatum.getScriptPointer().equals(txScript.getScriptHash())).toList();
+
+        return processTxScripts(txScripts);
+    }
+
+    public List<TxScript> processTxScripts(List<TxScript> txScripts) throws CborDeserializationException {
+        return processTxScripts(txScripts, PROXY_TX_HASH, PROXY_OUTPUT_INDEX);
+    }
+
+    private Optional<TxScript> findScriptTxByProxyRedeemer(List<TxScript> txScripts, ProxyRedeemer proxyRedeemer, com.bloxbean.cardano.yaci.core.model.RedeemerTag purpose) {
+        if (proxyRedeemer.equals(ProxyRedeemer.USER_ACTION)) {
+            if (purpose.equals(RedeemerTag.Mint) || purpose.equals(RedeemerTag.Spend)) {
+                return txScripts.stream().filter(txScript -> txScript.getPurpose().equals(RedeemerTag.Reward)).findFirst();
+            }
+        }
+        return Optional.empty();
+    }
+
+    public List<TxScript> processTxScripts(List<TxScript> txScripts, String proxyTxHash, int proxyOutputIndex) throws CborDeserializationException {
+        PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
+        final String uverifyProxyScriptHash = ValidatorUtils.validatorToScriptHash(uverifyProxyContract);
+        PlutusScript uverifyStateContract = getUVerifyStateContract(uverifyProxyScriptHash, getProxyStateTokenName(proxyTxHash, proxyOutputIndex));
+        final String uverifyStateScriptHash = ValidatorUtils.validatorToScriptHash(uverifyStateContract);
+
+        List<TxScript> processedTxScripts = new ArrayList<>();
+        ArrayList<TxScript> uverifyStateTransactions = new ArrayList<>(txScripts.stream().filter(txScript -> txScript.getScriptHash().equals(uverifyStateScriptHash)).toList());
+        for (TxScript txScript : txScripts) {
+            if (txScript.getScriptHash().equals(uverifyProxyScriptHash)) {
+                ProxyRedeemer proxyRedeemer = new ProxyRedeemerConverter().deserialize(HexUtil.decodeHexString(txScript.getRedeemerCbor()));
+
+                Optional<TxScript> maybeUverifyStateTx = findScriptTxByProxyRedeemer(uverifyStateTransactions, proxyRedeemer, txScript.getPurpose());
+                maybeUverifyStateTx.ifPresent(uverifyStateTransactions::remove);
+
+                if (maybeUverifyStateTx.isPresent()) {
+                    TxScript uverifyStateTx = maybeUverifyStateTx.get();
+                    PlutusData deserialize = PlutusData.deserialize(HexUtil.decodeHexString(uverifyStateTx.getRedeemerCbor()));
+                    StateRedeemer stateRedeemer = StateRedeemer.fromPlutusData(deserialize);
+
+                    if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.MINT_STATE) ||
+                            stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.RENEW_STATE)) {
+                        StateDatum stateDatum = StateDatum.fromTxScript(txScript, stateRedeemer);
+                        Optional<StateDatumEntity> optionalStateDatumEntity = stateDatumService.findById(stateDatum.getId());
+
+                        if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.RENEW_STATE)) {
+                            stateDatumService.invalidateStateDatum(stateDatum.getId(), uverifyStateTx.getSlot());
+                            processedTxScripts.add(uverifyStateTx);
+                        }
+
+                        final StateDatumEntity stateDatumEntity;
+                        if (optionalStateDatumEntity.isEmpty()) {
+                            BootstrapDatumEntity bootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(stateDatum.getBootstrapDatumName())
+                                    .orElseThrow(() -> new IllegalArgumentException("Bootstrap datum not found"));
+                            stateDatumEntity = StateDatumEntity.fromStateDatum(stateDatum, uverifyStateTx.getTxHash(), bootstrapDatumEntity, uverifyStateTx.getSlot());
+                            stateDatumService.save(stateDatumEntity);
+                        } else {
+                            stateDatumEntity = optionalStateDatumEntity.get();
+                            stateDatumEntity.setTransactionId(uverifyStateTx.getTxHash());
+                            stateDatumEntity.setCountdown(stateRedeemer.getCountdown());
+                            stateDatumService.updateStateDatum(stateDatumEntity, uverifyStateTx.getSlot());
+                        }
+
+                        List<UVerifyCertificate> uVerifyCertificates = stateDatum.getCertificates();
+                        List<UVerifyCertificateEntity> uVerifyCertificatesEntities = new ArrayList<>();
+                        for (UVerifyCertificate uVerifyCertificate : uVerifyCertificates) {
+                            UVerifyCertificateEntity uVerifyCertificateEntity = UVerifyCertificateEntity.fromUVerifyCertificate(uVerifyCertificate);
+                            uVerifyCertificateEntity.setSlot(uverifyStateTx.getSlot());
+                            uVerifyCertificateEntity.setStateDatum(stateDatumEntity);
+                            uVerifyCertificateEntity.setTransactionId(uverifyStateTx.getTxHash());
+                            uVerifyCertificateEntity.setBlockHash(uverifyStateTx.getBlockHash());
+                            uVerifyCertificateEntity.setBlockNumber(uverifyStateTx.getBlockNumber());
+                            uVerifyCertificateEntity.setCreationTime(new Date(uverifyStateTx.getBlockTime() * 1000));
+                            uVerifyCertificatesEntities.add(uVerifyCertificateEntity);
+                        }
+                        uVerifyCertificateService.saveAllCertificates(uVerifyCertificatesEntities);
+                        processedTxScripts.add(uverifyStateTx);
+                    } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.MINT_BOOTSTRAP)) {
+                        BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromTxScript(txScript, network);
+                        bootstrapDatumService.save(bootstrapDatumEntity);
+                        processedTxScripts.add(uverifyStateTx);
+                    } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.BURN_BOOTSTRAP)) {
+                        BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromTxScript(uverifyStateTx, network);
+                        bootstrapDatumService.markAsInvalid(bootstrapDatumEntity.getTokenName(), uverifyStateTx.getSlot());
+                        processedTxScripts.add(uverifyStateTx);
+                    }
+                }
+            }
+        }
+        return processedTxScripts;
+    }
+
     public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos) {
         List<AddressUtxo> processedUtxos = new ArrayList<>();
         for (AddressUtxo addressUtxo : addressUtxos) {
@@ -479,7 +603,7 @@ public class CardanoBlockchainService {
                     throw new IllegalArgumentException("Invalid bootstrap token transaction amount!");
                 }
             } else if (includesStateToken(addressUtxo, network)) {
-                StateDatum stateDatum = StateDatum.fromUtxoDatum(addressUtxo.getInlineDatum());
+                StateDatum stateDatum = StateDatum.fromLegacyUtxoDatum(addressUtxo.getInlineDatum());
                 Optional<StateDatumEntity> optionalStateDatumEntity = stateDatumService.findByAddressUtxo(addressUtxo);
 
                 if (isBurningTransaction(addressUtxo, ValidatorUtils.getMintStateTokenHash(network))) {
@@ -499,14 +623,13 @@ public class CardanoBlockchainService {
                         stateDatumService.updateStateDatum(stateDatumEntity, addressUtxo.getSlot());
                     }
 
-                    List<UVerifyCertificate> uVerifyCertificates = stateDatum.getUVerifyCertificates();
+                    List<UVerifyCertificate> uVerifyCertificates = stateDatum.getCertificates();
                     List<UVerifyCertificateEntity> uVerifyCertificatesEntities = new ArrayList<>();
                     for (UVerifyCertificate uVerifyCertificate : uVerifyCertificates) {
                         UVerifyCertificateEntity uVerifyCertificateEntity = UVerifyCertificateEntity.fromUVerifyCertificate(uVerifyCertificate);
                         uVerifyCertificateEntity.setSlot(addressUtxo.getSlot());
                         uVerifyCertificateEntity.setStateDatum(stateDatumEntity);
                         uVerifyCertificateEntity.setTransactionId(addressUtxo.getTxHash());
-                        uVerifyCertificateEntity.setOutputIndex(addressUtxo.getOutputIndex());
                         uVerifyCertificateEntity.setBlockHash(addressUtxo.getBlockHash());
                         uVerifyCertificateEntity.setBlockNumber(addressUtxo.getBlockNumber());
                         uVerifyCertificateEntity.setCreationTime(new Date(addressUtxo.getBlockTime() * 1000));
@@ -574,5 +697,179 @@ public class CardanoBlockchainService {
 
     public Long getLatestSlot() throws ApiException {
         return CardanoUtils.getLatestSlot(backendService);
+    }
+
+    public Utxo getProxyStateUtxo(String proxyTxHash, int proxyOutputIndex) throws DecoderException, ApiException {
+        String stateTokenName = getProxyStateTokenName(proxyTxHash, proxyOutputIndex);
+        PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
+        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, Networks.preprod()).toBech32();
+        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
+        String stateTokenUnit = proxyScriptHash + stateTokenName;
+
+        Result<List<Utxo>> stateUtxRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, 1, 1);
+        return stateUtxRequest.getValue().get(0);
+    }
+
+    public Transaction mintProxyBootstrapDatum(BootstrapDatum bootstrapDatum) {
+        return mintProxyBootstrapDatum(bootstrapDatum, PROXY_TX_HASH, PROXY_OUTPUT_INDEX);
+    }
+
+    public Transaction mintProxyBootstrapDatum(BootstrapDatum bootstrapDatum, String proxyTxHash, int proxyOutputIndex) {
+        if (bootstrapDatumService.bootstrapDatumAlreadyExists(bootstrapDatum.getTokenName())) {
+            throw new IllegalArgumentException("Bootstrap datum with name " + bootstrapDatum.getTokenName() + " already exists");
+        }
+
+        PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
+        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
+
+        PlutusScript stateContract = ValidatorUtils.getUVerifyStateContract(proxyScriptHash, getProxyStateTokenName(proxyTxHash, proxyOutputIndex));
+
+        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
+
+        Asset authorizationToken = Asset.builder()
+                .name(bootstrapDatum.getTokenName())
+                .value(BigInteger.ONE)
+                .build();
+
+        String stateScriptRewardAddress = AddressProvider.getRewardAddress(stateContract, fromCardanoNetwork(network)).toBech32();
+        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, fromCardanoNetwork(network)).toBech32();
+
+        StateRedeemer redeemer = StateRedeemer.builder()
+                .purpose(UVerifyScriptPurpose.MINT_BOOTSTRAP)
+                .countdown(0)
+                .certificates(Collections.emptyList())
+                .build();
+
+        PlutusData mintProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);
+
+        Utxo proxyStateUtxo;
+        try {
+            proxyStateUtxo = getProxyStateUtxo(proxyTxHash, proxyOutputIndex);
+        } catch (Exception exception) {
+            log.error("Unable to fetch proxy state utxo: " + exception.getMessage());
+            return null;
+        }
+
+        ScriptTx scriptTx = new ScriptTx()
+                .readFrom(proxyStateUtxo)
+                .withdraw(stateScriptRewardAddress, BigInteger.valueOf(0), redeemer.toPlutusData())
+                .mintAsset(proxyContract, List.of(authorizationToken),
+                        mintProxyRedeemer, proxyScriptAddress,
+                        bootstrapDatum.toPlutusData());
+
+        return quickTxBuilder.compose(scriptTx)
+                .withReferenceScripts(stateContract)
+                .feePayer(serviceUserAddress.getAddress())
+                .withRequiredSigners(serviceUserAddress)
+                .build();
+    }
+
+    public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName, String proxyTxHash, int proxyOutputIndex) throws ApiException, CborSerializationException {
+        Optional<BootstrapDatumEntity> optionalBootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(bootstrapTokenName);
+
+        if (optionalBootstrapDatumEntity.isEmpty()) {
+            throw new IllegalArgumentException("Bootstrap datum with name " + bootstrapTokenName + " not found");
+        }
+
+        BootstrapDatumEntity bootstrapDatumEntity = optionalBootstrapDatumEntity.get();
+
+        Address userAddress = new Address(address);
+        Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
+
+        if (optionalUserAccountCredential.isEmpty()) {
+            throw new IllegalArgumentException("Invalid Cardano payment address");
+        }
+
+        byte[] userAccountCredential = optionalUserAccountCredential.get();
+        Result<TxContentUtxo> transactionUtxosResult = backendService.getTransactionService().getTransactionUtxos(bootstrapDatumEntity.getTransactionId());
+
+        String unit = getUverifyProxyContract(proxyTxHash, proxyOutputIndex).getPolicyId() + HexUtil.encodeHexString(bootstrapTokenName.getBytes());
+        Optional<TxContentUtxoOutputs> optionalTxContentUtxoOutput = transactionUtxosResult.getValue().getOutputs().stream().filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> amount.getUnit().equals(unit))).findFirst();
+
+        if (optionalTxContentUtxoOutput.isEmpty()) {
+            throw new IllegalArgumentException("Bootstrap token or datum not found in transaction outputs");
+        }
+
+        TxContentUtxoOutputs txContentUtxoOutput = optionalTxContentUtxoOutput.get();
+        Utxo utxo = txContentUtxoOutput.toUtxos(bootstrapDatumEntity.getTransactionId());
+
+        StateDatum stateDatum = StateDatum.fromBootstrapDatum(utxo.getInlineDatum(), userAccountCredential);
+        stateDatum.setCertificateDataHash(uVerifyCertificates);
+        stateDatum.setCountdown(stateDatum.getCountdown() - 1);
+
+        UtxoSupplier utxoSupplier = new DefaultUtxoSupplier(backendService.getUtxoService());
+        List<Utxo> userUtxos = utxoSupplier.getAll(address);
+
+        if (userUtxos.isEmpty()) {
+            throw new IllegalArgumentException("No UTXOs found for user address");
+        }
+
+        Utxo userUtxo = userUtxos.get(0);
+        String index = HexUtil.encodeHexString(ByteBuffer.allocate(2)
+                .order(ByteOrder.LITTLE_ENDIAN)
+                .putShort((short) userUtxo.getOutputIndex())
+                .array());
+
+        stateDatum.setId(DigestUtils.sha256Hex(HexUtil.decodeHexString(userUtxo.getTxHash() + index)));
+
+        Asset userStateToken = Asset.builder()
+                .name("0x" + stateDatum.getId())
+                .value(BigInteger.ONE)
+                .build();
+
+        PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
+        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
+
+        PlutusScript stateContract = ValidatorUtils.getUVerifyStateContract(proxyScriptHash, getProxyStateTokenName(proxyTxHash, proxyOutputIndex));
+
+        String stateScriptRewardAddress = AddressProvider.getRewardAddress(stateContract, fromCardanoNetwork(network)).toBech32();
+        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, fromCardanoNetwork(network)).toBech32();
+
+        StateRedeemer redeemer = StateRedeemer.builder()
+                .purpose(UVerifyScriptPurpose.MINT_STATE)
+                .countdown(stateDatum.getCountdown() - 1)
+                .certificates(uVerifyCertificates)
+                .build();
+        PlutusData mintProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);
+
+        Utxo proxyStateUtxo;
+        try {
+            proxyStateUtxo = getProxyStateUtxo(proxyTxHash, proxyOutputIndex);
+        } catch (Exception exception) {
+            log.error("Unable to fetch proxy state utxo: " + exception.getMessage());
+            return null;
+        }
+
+        ScriptTx scriptTransaction = new ScriptTx()
+                .readFrom(utxo, proxyStateUtxo)
+                .collectFrom(userUtxo)
+                .withdraw(stateScriptRewardAddress, BigInteger.valueOf(0), redeemer.toPlutusData())
+                .mintAsset(proxyContract, List.of(userStateToken),
+                        mintProxyRedeemer, proxyScriptAddress,
+                        stateDatum.toPlutusData());
+
+        if (bootstrapDatumEntity.getFee() > 0) {
+            long fee = bootstrapDatumEntity.getFee() / stateDatum.getFeeReceivers().size();
+            for (byte[] paymentCredential : stateDatum.getFeeReceivers()) {
+                Credential credential = Credential.fromKey(paymentCredential);
+                Address feeReceiverAddress = AddressProvider.getEntAddress(credential, fromCardanoNetwork(network));
+                scriptTransaction.payToAddress(feeReceiverAddress.getAddress(), Amount.lovelace(BigInteger.valueOf(fee)));
+            }
+        }
+
+        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
+
+        long currentSlot = CardanoUtils.getLatestSlot(backendService);
+        long validFrom = currentSlot - 10;
+        long transactionTtl = currentSlot + 600; // 10 minutes
+
+        return quickTxBuilder.compose(scriptTransaction)
+                .validFrom(validFrom)
+                .validTo(transactionTtl)
+                .withReferenceScripts(stateContract)
+                .collateralPayer(address)
+                .feePayer(address)
+                .withRequiredSigners(userAddress)
+                .build();
     }
 }

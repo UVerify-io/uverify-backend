@@ -101,6 +101,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             @Value("${cardano.test.user.mnemonic}") String testUserMnemonic,
             @Value("${cardano.service.fee.receiver.mnemonic}") String feeReceiverMnemonic,
             @Value("${cardano.facilitator.user.mnemonic}") String facilitatorMnemonic,
+            @Value("${cardano.intent.user.mnemonic}") String intentMnemonic,
             CardanoBlockchainService cardanoBlockchainService,
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
@@ -110,7 +111,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             CertificateRepository certificateRepository,
             ExtensionManager extensionManager,
             ConnectedGoodsService connectedGoodsService) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager,
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, intentMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager,
                 List.of(serviceWalletAddress));
         RestAssured.port = port;
         this.connectedGoodsServiceWallet = new Account(Networks.testnet(), serviceWalletMnemonic);

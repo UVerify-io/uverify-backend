@@ -101,7 +101,7 @@ public class StateDatumService {
     }
 
     public Optional<StateDatumEntity> findByAddressUtxo(AddressUtxo addressUtxo) {
-        StateDatum stateDatum = StateDatum.fromUtxoDatum(addressUtxo.getInlineDatum());
+        StateDatum stateDatum = StateDatum.fromLegacyUtxoDatum(addressUtxo.getInlineDatum());
         return this.findById(stateDatum.getId());
     }
 

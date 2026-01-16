@@ -18,7 +18,6 @@
 
 package io.uverify.backend.service;
 
-import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.events.internal.CommitEvent;
 import com.bloxbean.cardano.yaci.store.transaction.storage.impl.model.TxnEntity;
 import com.fasterxml.jackson.databind.JsonNode;

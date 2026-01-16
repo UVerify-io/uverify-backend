@@ -48,11 +48,14 @@ public class BootstrapDatumService {
         return bootstrapDatumRepository.findByTokenName(tokenName);
     }
 
-    public Optional<BootstrapDatum> selectCheapestBootstrapDatum(byte[] credential) {
+    public Optional<BootstrapDatum> selectCheapestBootstrapDatum(byte[] credential, int version) {
         List<BootstrapDatumEntity> bootstrapDatumEntities = bootstrapDatumRepository.findAllWhitelisted();
         List<BootstrapDatumEntity> customBootstrapDatumEntities = bootstrapDatumRepository.findByAllowedCredential(HexUtil.encodeHexString(credential));
 
         bootstrapDatumEntities.addAll(customBootstrapDatumEntities);
+        bootstrapDatumEntities = bootstrapDatumEntities.stream()
+                .filter(bootstrapDatumEntity -> bootstrapDatumEntity.getVersion().equals(version))
+                .toList();
 
         double lovelaceEveryHundredTransactions = Double.MAX_VALUE;
         BootstrapDatumEntity cheapestBootstrapDatum = null;
@@ -75,8 +78,8 @@ public class BootstrapDatumService {
         bootstrapDatumRepository.save(bootstrapDatumEntity);
     }
 
-    public void markAsInvalid(String uverify_special_test_token, long currentSlot) {
-        bootstrapDatumRepository.markAsInvalid(uverify_special_test_token, currentSlot);
+    public void markAsInvalid(String uverify_bootstrap_token, long currentSlot) {
+        bootstrapDatumRepository.markAsInvalid(uverify_bootstrap_token, currentSlot);
     }
 
     @Transactional
