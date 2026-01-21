@@ -92,7 +92,7 @@ public interface StateDatumRepository extends JpaRepository<StateDatumEntity, St
                 AND stateDatum.bootstrapDatum.tokenName = :tokenName
                 AND bootstrapDatum.invalidationSlot IS NULL
                 AND stateDatum.countdown > 0
-               """, nativeQuery = true)
-    Optional<StateDatumEntity> findByUserAndBootstrapToken(@Param("credential") byte[] credential,
+               """)
+    Optional<StateDatumEntity> findByUserAndBootstrapToken(@Param("credential") String credential,
                                                            @Param("tokenName") String tokenName);
 }

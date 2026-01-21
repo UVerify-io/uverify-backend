@@ -50,10 +50,11 @@ public class StateDatumService {
         this.stateDatumUpdateRepository = stateDatumUpdateRepository;
     }
 
-    public StateDatumEntity selectCheapestStateDatum(List<StateDatumEntity> stateDatums) {
+    public StateDatumEntity selectCheapestStateDatum(List<StateDatumEntity> stateDatums, int version) {
         List<StateDatumEntity> stateDatumEntities = stateDatums.stream().filter(
                 stateDatumEntity -> stateDatumEntity.getInvalidationSlot() == null
                         && stateDatumEntity.getCountdown() > 0
+                        && stateDatumEntity.getVersion() == version
         ).toList();
 
         if (stateDatumEntities.isEmpty()) {
@@ -120,7 +121,7 @@ public class StateDatumService {
 
     public Optional<StateDatumEntity> findByUserAndBootstrapToken(String address, String bootstrapTokenName) {
         return stateDatumRepository.findByUserAndBootstrapToken(
-                CardanoUtils.extractCredentialFromAddress(address), bootstrapTokenName);
+                HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)), bootstrapTokenName);
     }
 
     @Transactional

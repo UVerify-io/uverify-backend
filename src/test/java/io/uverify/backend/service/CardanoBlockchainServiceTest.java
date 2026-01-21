@@ -249,6 +249,10 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     public Result<String> updateUserStateDatum() throws ApiException, InterruptedException, CborSerializationException {
+        return updateUserStateDatum("");
+    }
+
+    public Result<String> updateUserStateDatum(String bootstrapToken) throws ApiException, InterruptedException, CborSerializationException {
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());
 
@@ -257,7 +261,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                 .hash("b652f076fb4feeb1f934ac9b8c0606852e93d3a73fb2596a51c92e480e246897")
                 .issuer(Hex.encodeHexString(paymentCredentialHash.get()))
                 .extra("{\"test\":\"test\"}")
-                .build()));
+                .build()), bootstrapToken, proxyTxHash, proxyOutputIndex);
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
 
         if (result.isSuccessful()) {
@@ -270,40 +274,52 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     @Test
     @Order(6)
     public void testUpdateLegacyStateDatum() throws ApiException, CborSerializationException, InterruptedException {
-        Result<String> result = updateUserStateDatum();
+        Result<String> result = updateUserStateDatum("uverify_default_test_token");
         Assertions.assertTrue(result.isSuccessful());
 
         List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(userAccount.baseAddress());
-        Assertions.assertEquals(1, stateDatumEntities.size());
+        Assertions.assertEquals(2, stateDatumEntities.size());
 
-        StateDatumEntity stateDatumEntity = stateDatumEntities.get(0);
-        Assertions.assertEquals(13, stateDatumEntity.getCountdown());
+        Optional<StateDatumEntity> stateDatumEntity = stateDatumEntities.stream()
+                .filter(stateDatum -> stateDatum.getBootstrapDatum().getTokenName().equals("uverify_default_test_token"))
+                .findFirst();
+        Assertions.assertTrue(stateDatumEntity.isPresent());
+
+        Assertions.assertEquals(13, stateDatumEntity.get().getCountdown());
     }
 
     @Test
     @Order(7)
     public void testUpdateStateDatumAgain() throws CborSerializationException, InterruptedException, ApiException {
-        Result<String> result = updateUserStateDatum();
+        Result<String> result = updateUserStateDatum("uverify_default_test_token");
         Assertions.assertTrue(result.isSuccessful());
 
         List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(userAccount.baseAddress());
-        Assertions.assertEquals(1, stateDatumEntities.size());
+        Assertions.assertEquals(2, stateDatumEntities.size());
 
-        StateDatumEntity stateDatumEntity = stateDatumEntities.get(0);
-        Assertions.assertEquals(12, stateDatumEntity.getCountdown());
+        Optional<StateDatumEntity> stateDatumEntity = stateDatumEntities.stream()
+                .filter(stateDatum -> stateDatum.getBootstrapDatum().getTokenName().equals("uverify_default_test_token"))
+                .findFirst();
+        Assertions.assertTrue(stateDatumEntity.isPresent());
+
+        Assertions.assertEquals(12, stateDatumEntity.get().getCountdown());
     }
 
     @Test
     @Order(8)
     public void testUpdateStateDatumWithFeeNeeded() throws CborSerializationException, InterruptedException, ApiException {
-        Result<String> result = updateUserStateDatum();
+        Result<String> result = updateUserStateDatum("uverify_default_test_token");
         Assertions.assertTrue(result.isSuccessful());
 
         List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(userAccount.baseAddress());
-        Assertions.assertEquals(1, stateDatumEntities.size());
+        Assertions.assertEquals(2, stateDatumEntities.size());
 
-        StateDatumEntity stateDatumEntity = stateDatumEntities.get(0);
-        Assertions.assertEquals(11, stateDatumEntity.getCountdown());
+        Optional<StateDatumEntity> stateDatumEntity = stateDatumEntities.stream()
+                .filter(stateDatum -> stateDatum.getBootstrapDatum().getTokenName().equals("uverify_default_test_token"))
+                .findFirst();
+        Assertions.assertTrue(stateDatumEntity.isPresent());
+
+        Assertions.assertEquals(11, stateDatumEntity.get().getCountdown());
 
         Result<List<Utxo>> utxosResult = yaciCardanoContainer.getUtxoService().getUtxos(feeReceiverAccount.enterpriseAddress(), 100, 1);
         Assertions.

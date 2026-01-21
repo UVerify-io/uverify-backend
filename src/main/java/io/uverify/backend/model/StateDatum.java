@@ -152,6 +152,11 @@ public class StateDatum {
         return fromPreviousLegacyStateDatum(previousStateDatum);
     }
 
+    public static StateDatum fromStateDatum(String inlineDatum) {
+        StateDatum previousStateDatum = fromUtxoDatum(inlineDatum);
+        return fromPreviousLegacyStateDatum(previousStateDatum);
+    }
+
     public static StateDatum fromTxScript(TxScript txScript, StateRedeemer stateRedeemer) {
         StateDatum stateDatum = fromUtxoDatum(txScript.getDatum());
         stateDatum.setCountdown(stateRedeemer.getCountdown());

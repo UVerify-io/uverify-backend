@@ -130,18 +130,18 @@ public class CardanoBlockchainService {
         this.backendService = backendService;
     }
 
-    public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
-        return updateStateDatum(address, uVerifyCertificates, "");
-    }
-
-    public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
+    public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName, String proxyTxHash, int proxyOutputIndex) throws ApiException {
         Optional<StateDatumEntity> stateDatumEntity = Optional.empty();
         if (bootstrapTokenName.isEmpty()) {
             List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address);
             if (stateDatumEntities.size() == 1) {
                 stateDatumEntity = Optional.of(stateDatumEntities.get(0));
             } else if (stateDatumEntities.size() > 1) {
-                stateDatumEntity = Optional.of(stateDatumService.selectCheapestStateDatum(stateDatumEntities));
+                if (proxyTxHash == null) {
+                    stateDatumEntity = Optional.of(stateDatumService.selectCheapestStateDatum(stateDatumEntities, 1));
+                } else {
+                    stateDatumEntity = Optional.of(stateDatumService.selectCheapestStateDatum(stateDatumEntities, 2));
+                }
             }
         } else {
             stateDatumEntity = stateDatumService.findByUserAndBootstrapToken(address, bootstrapTokenName);
@@ -152,14 +152,14 @@ public class CardanoBlockchainService {
         }
 
         StateDatumEntity stateDatum = stateDatumEntity.get();
-        return updateStateDatum(address, stateDatum, uVerifyCertificates);
+        if (stateDatum.getVersion() == 1) {
+            return updateLegacyStateDatum(address, stateDatum, uVerifyCertificates);
+        } else {
+            return updateStateDatum(address, stateDatum, uVerifyCertificates, proxyTxHash, proxyOutputIndex);
+        }
     }
 
-    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
-        return updateStateDatum(address, stateDatum, uVerifyCertificates, null, 0);
-    }
-
-    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates, String proxyTxHash, int proxyOutputIndex) throws ApiException {
+    public Transaction updateLegacyStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
         Address userAddress = new Address(address);
         Optional<byte[]> optionalUserPaymentCredential = userAddress.getPaymentCredentialHash();
 
@@ -169,15 +169,7 @@ public class CardanoBlockchainService {
 
         byte[] userAccountCredential = optionalUserPaymentCredential.get();
 
-        String unit;
-
-        if (stateDatum.getVersion() == 1) {
-            unit = getMintStateTokenHash(network) + Hex.encodeHexString(userAccountCredential);
-        } else if (stateDatum.getVersion() == 2) {
-            unit = getUverifyProxyContract(proxyTxHash, proxyOutputIndex) + stateDatum.getId();
-        } else {
-            throw new RuntimeException("State contract version " + stateDatum.getVersion() + " is not supported by this UVerify version yet. Make sure to upgrade the UVerify service to its latest version.");
-        }
+        String unit = getMintStateTokenHash(network) + Hex.encodeHexString(userAccountCredential);
 
         Optional<Utxo> optionalUtxo = ValidatorUtils.getUtxoByTransactionAndUnit(stateDatum.getTransactionId(), unit, backendService);
 
@@ -228,7 +220,7 @@ public class CardanoBlockchainService {
             log.debug("No state datum found for address " + address + ". Start forking a new state datum.");
             return forkLegacyStateDatum(address, uVerifyCertificate);
         } else {
-            StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities);
+            StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities, 1);
             boolean needsToPayFee = stateDatumEntity.getCountdown() % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
             if (needsToPayFee) {
                 log.debug("Fee required for updating state datum. Checking for better conditions.");
@@ -241,7 +233,7 @@ public class CardanoBlockchainService {
                 Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get(), 1);
 
                 if (bootstrapDatum.isEmpty()) {
-                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
+                    return updateLegacyStateDatum(address, stateDatumEntity, uVerifyCertificate);
                 }
 
                 double bootstrapFeeEveryHundredTransactions = (100.0 / bootstrapDatum.get().getFeeInterval()) * bootstrapDatum.get().getFee();
@@ -251,13 +243,82 @@ public class CardanoBlockchainService {
                     return forkLegacyStateDatum(address, uVerifyCertificate, bootstrapDatum.get().getTokenName());
                 } else {
                     log.debug("Updating state datum with current conditions.");
-                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
+                    return updateLegacyStateDatum(address, stateDatumEntity, uVerifyCertificate);
                 }
             } else {
                 log.debug("No fee required for updating state datum");
-                return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
+                return updateLegacyStateDatum(address, stateDatumEntity, uVerifyCertificate);
             }
         }
+    }
+
+    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates, String proxyTxHash, int proxyOutputIndex) throws ApiException {
+        Address userAddress = new Address(address);
+
+        PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
+        String proxyScriptHash = validatorToScriptHash(uverifyProxyContract);
+        PlutusScript uverifyStateContract = getUVerifyStateContract(proxyTxHash, proxyOutputIndex);
+
+        String unit = proxyScriptHash + stateDatum.getId();
+        Optional<Utxo> optionalUtxo = ValidatorUtils.getUtxoByTransactionAndUnit(stateDatum.getTransactionId(), unit, backendService);
+
+        if (optionalUtxo.isEmpty()) {
+            throw new IllegalArgumentException("State token not found in transaction outputs");
+        }
+
+        Utxo utxo = optionalUtxo.get();
+        String proxyScriptAddress = AddressProvider.getEntAddress(uverifyProxyContract, fromCardanoNetwork(network)).toBech32();
+
+        StateDatum nextStateDatum = StateDatum.fromStateDatum(utxo.getInlineDatum());
+        nextStateDatum.setCertificates(uVerifyCertificates);
+
+        Utxo proxyStateUtxo;
+        try {
+            proxyStateUtxo = getProxyStateUtxo(proxyTxHash, proxyOutputIndex);
+        } catch (Exception exception) {
+            log.error("Unable to fetch proxy state utxo: " + exception.getMessage());
+            return null;
+        }
+
+        StateRedeemer redeemer = StateRedeemer.builder()
+                .purpose(UVerifyScriptPurpose.UPDATE_STATE)
+                .countdown(stateDatum.getCountdown() - 1)
+                .certificates(uVerifyCertificates)
+                .build();
+
+        PlutusData spendProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);
+        String stateScriptRewardAddress = AddressProvider.getRewardAddress(uverifyStateContract, fromCardanoNetwork(network)).toBech32();
+
+        ScriptTx updateStateTokenTx = new ScriptTx()
+                .readFrom(proxyStateUtxo)
+                .collectFrom(utxo, spendProxyRedeemer)
+                .attachSpendingValidator(uverifyProxyContract)
+                .payToContract(proxyScriptAddress, utxo.getAmount(), nextStateDatum.toPlutusData())
+                .withdraw(stateScriptRewardAddress, BigInteger.valueOf(0), redeemer.toPlutusData());
+
+        BootstrapDatumEntity bootstrapDatum = stateDatum.getBootstrapDatum();
+        if (stateDatum.getCountdown() % bootstrapDatum.getFeeInterval() == 0) {
+            long fee = bootstrapDatum.getFee() / bootstrapDatum.getFeeReceivers().size();
+            for (FeeReceiverEntity feeReceiver : bootstrapDatum.getFeeReceivers()) {
+                Credential credential = Credential.fromKey(feeReceiver.getCredential());
+                Address feeReceiverAddress = AddressProvider.getEntAddress(credential, fromCardanoNetwork(network));
+                updateStateTokenTx.payToAddress(feeReceiverAddress.getAddress(), Amount.lovelace(BigInteger.valueOf(fee)));
+            }
+        }
+
+        long currentSlot = CardanoUtils.getLatestSlot(backendService);
+        long validFrom = currentSlot - 10;
+        long transactionTtl = currentSlot + 600; // 10 minutes
+
+        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
+        return quickTxBuilder.compose(updateStateTokenTx)
+                .validFrom(validFrom)
+                .validTo(transactionTtl)
+                .collateralPayer(address)
+                .feePayer(address)
+                .withRequiredSigners(userAddress)
+                .withReferenceScripts(uverifyStateContract)
+                .build();
     }
 
     public Transaction forkLegacyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {

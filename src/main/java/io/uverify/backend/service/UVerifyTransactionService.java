@@ -113,7 +113,7 @@ public class UVerifyTransactionService {
                 .toList();
         if (bootstrapDatumName != null && !bootstrapDatumName.isEmpty()) {
             try {
-                Transaction transaction = cardanoBlockchainService.updateStateDatum(address, uVerifyCertificates, bootstrapDatumName);
+                Transaction transaction = cardanoBlockchainService.updateStateDatum(address, uVerifyCertificates, bootstrapDatumName, null, 0);
                 return BuildTransactionResponse.builder()
                         .unsignedTransaction(transaction.serializeToHex())
                         .status(BuildStatus.builder()
