@@ -23,10 +23,7 @@ import com.bloxbean.cardano.client.address.Credential;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.backend.api.BackendService;
-import com.bloxbean.cardano.client.backend.model.TransactionContent;
-import com.bloxbean.cardano.client.backend.model.TxContentRedeemers;
-import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
-import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
+import com.bloxbean.cardano.client.backend.model.*;
 import com.bloxbean.cardano.client.common.cbor.CborSerializationUtil;
 import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusData;
@@ -79,6 +76,7 @@ public class SimulationUtils {
         Thread.sleep(3000);
 
         List<Redeemer> redeemers = transaction.getWitnessSet().getRedeemers();
+        Result<Block> latestBlock = backendService.getBlockService().getLatestBlock();
 
         Result<TransactionContent> transactionContentResult = backendService.getTransactionService().getTransaction(transactionHash);
         List<TxScript> txScripts = new ArrayList<>();
@@ -114,11 +112,11 @@ public class SimulationUtils {
                     if (optionalRedeemer.isPresent()) {
                         Redeemer redeemer = optionalRedeemer.get();
                         txScripts.add(TxScript.builder()
-                                .blockHash(transactionContent.getBlock())
-                                .blockTime(transactionContent.getBlockTime())
+                                .blockHash(latestBlock.getValue().getHash())
+                                .blockTime(latestBlock.getValue().getTime())
+                                .blockNumber(latestBlock.getValue().getHeight())
                                 .slot(transactionContent.getSlot())
                                 .txHash(transactionHash)
-                                .blockNumber(transactionContent.getBlockHeight())
                                 .purpose(RedeemerTag.valueOf(transactionRedeemer.getPurpose().name()))
                                 .datumHash(getDatumHash(datum))
                                 .datum(serializeDatum(datum))

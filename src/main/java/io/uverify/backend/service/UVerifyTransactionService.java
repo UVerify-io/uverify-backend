@@ -66,7 +66,7 @@ public class UVerifyTransactionService {
                 .map(certificate -> UVerifyCertificate.fromCertificateData(certificate, address))
                 .toList();
         try {
-            Transaction transaction = cardanoBlockchainService.persistUVerifyCertificates(address, uVerifyCertificates);
+            Transaction transaction = cardanoBlockchainService.persistUVerifyLegacyCertificates(address, uVerifyCertificates);
             return BuildTransactionResponse.builder()
                     .unsignedTransaction(transaction.serializeToHex())
                     .status(BuildStatus.builder()

@@ -214,7 +214,45 @@ public class CardanoBlockchainService {
                 .build();
     }
 
-    public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate) throws ApiException {
+    public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate, String proxyTxHash, int proxyOutputIndex) throws ApiException, CborSerializationException {
+        List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address);
+        if (stateDatumEntities.isEmpty()) {
+            log.debug("No state datum found for address " + address + ". Start forking a new state datum.");
+            return forkProxyStateDatum(address, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
+        } else {
+            StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities, 2);
+            boolean needsToPayFee = (stateDatumEntity.getCountdown() + 1) % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
+            if (needsToPayFee) {
+                log.debug("Fee required for updating state datum. Checking for better conditions.");
+                Address userAddress = new Address(address);
+                Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
+
+                if (optionalUserAccountCredential.isEmpty()) {
+                    throw new IllegalArgumentException("Invalid Cardano payment address");
+                }
+                Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get(), 2);
+
+                if (bootstrapDatum.isEmpty()) {
+                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
+                }
+
+                double bootstrapFeeEveryHundredTransactions = (100.0 / bootstrapDatum.get().getFeeInterval()) * bootstrapDatum.get().getFee();
+                double stateFeeEveryHundredTransactions = (100.0 / stateDatumEntity.getBootstrapDatum().getFeeInterval()) * stateDatumEntity.getBootstrapDatum().getFee();
+                if (bootstrapFeeEveryHundredTransactions < stateFeeEveryHundredTransactions) {
+                    log.debug("Forking state datum with better conditions.");
+                    return forkProxyStateDatum(address, uVerifyCertificate, bootstrapDatum.get().getTokenName(), proxyTxHash, proxyOutputIndex);
+                } else {
+                    log.debug("Updating state datum with current conditions.");
+                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
+                }
+            } else {
+                log.debug("No fee required for updating state datum");
+                return updateStateDatum(address, stateDatumEntity, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
+            }
+        }
+    }
+
+    public Transaction persistUVerifyLegacyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate) throws ApiException {
         List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address);
         if (stateDatumEntities.isEmpty()) {
             log.debug("No state datum found for address " + address + ". Start forking a new state datum.");
@@ -297,7 +335,7 @@ public class CardanoBlockchainService {
                 .withdraw(stateScriptRewardAddress, BigInteger.valueOf(0), redeemer.toPlutusData());
 
         BootstrapDatumEntity bootstrapDatum = stateDatum.getBootstrapDatum();
-        if (stateDatum.getCountdown() % bootstrapDatum.getFeeInterval() == 0) {
+        if ((stateDatum.getCountdown() + 1) % bootstrapDatum.getFeeInterval() == 0) {
             long fee = bootstrapDatum.getFee() / bootstrapDatum.getFeeReceivers().size();
             for (FeeReceiverEntity feeReceiver : bootstrapDatum.getFeeReceivers()) {
                 Credential credential = Credential.fromKey(feeReceiver.getCredential());
@@ -642,6 +680,32 @@ public class CardanoBlockchainService {
                         BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromTxScript(uverifyStateTx, network);
                         bootstrapDatumService.markAsInvalid(bootstrapDatumEntity.getTokenName(), uverifyStateTx.getSlot());
                         processedTxScripts.add(uverifyStateTx);
+                    } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.UPDATE_STATE)) {
+                        StateDatum stateDatum = StateDatum.fromTxScript(txScript, stateRedeemer);
+                        Optional<StateDatumEntity> optionalStateDatumEntity = stateDatumService.findById(stateDatum.getId());
+                        if (optionalStateDatumEntity.isEmpty()) {
+                            log.error("State datum not found for id " + stateDatum.getId() + " in transaction " + uverifyStateTx.getTxHash());
+                            continue;
+                        }
+                        final StateDatumEntity stateDatumEntity = optionalStateDatumEntity.get();
+                        stateDatumEntity.setTransactionId(uverifyStateTx.getTxHash());
+                        stateDatumEntity.setCountdown(stateRedeemer.getCountdown());
+                        stateDatumService.updateStateDatum(stateDatumEntity, uverifyStateTx.getSlot());
+
+                        List<UVerifyCertificate> uVerifyCertificates = stateDatum.getCertificates();
+                        List<UVerifyCertificateEntity> uVerifyCertificatesEntities = new ArrayList<>();
+                        for (UVerifyCertificate uVerifyCertificate : uVerifyCertificates) {
+                            UVerifyCertificateEntity uVerifyCertificateEntity = UVerifyCertificateEntity.fromUVerifyCertificate(uVerifyCertificate);
+                            uVerifyCertificateEntity.setSlot(uverifyStateTx.getSlot());
+                            uVerifyCertificateEntity.setStateDatum(stateDatumEntity);
+                            uVerifyCertificateEntity.setTransactionId(uverifyStateTx.getTxHash());
+                            uVerifyCertificateEntity.setBlockHash(uverifyStateTx.getBlockHash());
+                            uVerifyCertificateEntity.setBlockNumber(uverifyStateTx.getBlockNumber());
+                            uVerifyCertificateEntity.setCreationTime(new Date(uverifyStateTx.getBlockTime() * 1000));
+                            uVerifyCertificatesEntities.add(uVerifyCertificateEntity);
+                        }
+                        uVerifyCertificateService.saveAllCertificates(uVerifyCertificatesEntities);
+                        processedTxScripts.add(uverifyStateTx);
                     }
                 }
             }
@@ -823,6 +887,23 @@ public class CardanoBlockchainService {
                 .feePayer(serviceUserAddress.getAddress())
                 .withRequiredSigners(serviceUserAddress)
                 .build();
+    }
+
+    public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String proxyTxHash, int proxyOutputIndex) throws ApiException, CborSerializationException {
+        Address userAddress = new Address(address);
+        Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
+
+        if (optionalUserAccountCredential.isEmpty()) {
+            throw new IllegalArgumentException("Invalid Cardano payment address");
+        }
+
+        Optional<BootstrapDatum> optionalBootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get(), 2);
+
+        if (optionalBootstrapDatum.isEmpty()) {
+            throw new IllegalArgumentException("No applicable bootstrap datum found for user account");
+        }
+
+        return forkProxyStateDatum(address, uVerifyCertificates, optionalBootstrapDatum.get().getTokenName(), proxyTxHash, proxyOutputIndex);
     }
 
     public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName, String proxyTxHash, int proxyOutputIndex) throws ApiException, CborSerializationException {

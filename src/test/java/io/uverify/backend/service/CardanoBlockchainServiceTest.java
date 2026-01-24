@@ -202,11 +202,56 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Assertions.assertEquals(1, stateDatumEntities.size());
 
         StateDatumEntity stateDatumEntity = stateDatumEntities.get(0);
-        Assertions.assertEquals(13, stateDatumEntity.getCountdown());
+        Assertions.assertEquals(12, stateDatumEntity.getCountdown());
     }
 
     @Test
     @Order(4)
+    public void testUpdateStateDatumAgain() throws ApiException, CborSerializationException, InterruptedException {
+        Result<String> result = updateUserStateDatum();
+        Assertions.assertTrue(result.isSuccessful());
+
+        List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(userAccount.baseAddress());
+        Assertions.assertEquals(1, stateDatumEntities.size());
+
+        StateDatumEntity stateDatumEntity = stateDatumEntities.get(0);
+        Assertions.assertEquals(11, stateDatumEntity.getCountdown());
+    }
+
+    @Test
+    @Order(5)
+    public void testPersistUVerifyProxyCertificates() throws ApiException, CborSerializationException, InterruptedException {
+        Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
+        Assertions.assertTrue(paymentCredentialHash.isPresent());
+
+        List<UVerifyCertificate> uVerifyCertificates = List.of(UVerifyCertificate.builder()
+                .algorithm("SHA256")
+                .hash("b652f076fb4feeb1f934ac9b8c0606852e93d3a73fb2596a51c92e480e246897")
+                .issuer(Hex.encodeHexString(paymentCredentialHash.get()))
+                .extra("{\"test\":\"test\"}")
+                .build());
+
+        Transaction transaction = cardanoBlockchainService.persistUVerifyCertificates(
+                userAccount.baseAddress(),
+                uVerifyCertificates,
+                proxyTxHash,
+                proxyOutputIndex);
+        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
+        Assertions.assertTrue(result.isSuccessful());
+
+        if (result.isSuccessful()) {
+            simulateYaciStoreBehavior(result.getValue());
+        }
+
+        List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(userAccount.baseAddress());
+        Assertions.assertEquals(1, stateDatumEntities.size());
+
+        StateDatumEntity stateDatumEntity = stateDatumEntities.get(0);
+        Assertions.assertEquals(11, stateDatumEntity.getCountdown());
+    }
+
+    @Test
+    @Order(6)
     public void testLegacyInitializeBootstrapDatum() throws ApiException, InterruptedException, CborSerializationException {
         BootstrapDatum bootstrapDatum = BootstrapDatum.generateFrom(List.of(feeReceiverAccount.baseAddress()));
         bootstrapDatum.setTokenName("uverify_default_test_token");
@@ -223,7 +268,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(5)
+    @Order(7)
     public void testLegacyForkStateDatum() throws ApiException, CborSerializationException, InterruptedException {
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());
@@ -265,14 +310,18 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
 
         if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
+            if (transaction.getBody().getWithdrawals().size() == 0) {
+                simulateYaciStoreBehavior(result.getValue());
+            } else {
+                simulateYaciStoreBehavior(result.getValue(), transaction, proxyTxHash, proxyOutputIndex);
+            }
         }
 
         return result;
     }
 
     @Test
-    @Order(6)
+    @Order(8)
     public void testUpdateLegacyStateDatum() throws ApiException, CborSerializationException, InterruptedException {
         Result<String> result = updateUserStateDatum("uverify_default_test_token");
         Assertions.assertTrue(result.isSuccessful());
@@ -289,8 +338,8 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(7)
-    public void testUpdateStateDatumAgain() throws CborSerializationException, InterruptedException, ApiException {
+    @Order(9)
+    public void testUpdateLegacyStateDatumAgain() throws CborSerializationException, InterruptedException, ApiException {
         Result<String> result = updateUserStateDatum("uverify_default_test_token");
         Assertions.assertTrue(result.isSuccessful());
 
@@ -306,8 +355,8 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(8)
-    public void testUpdateStateDatumWithFeeNeeded() throws CborSerializationException, InterruptedException, ApiException {
+    @Order(10)
+    public void testUpdateLegacyStateDatumWithFeeNeeded() throws CborSerializationException, InterruptedException, ApiException {
         Result<String> result = updateUserStateDatum("uverify_default_test_token");
         Assertions.assertTrue(result.isSuccessful());
 
@@ -334,12 +383,12 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                         .reduce(BigInteger::add).orElse(BigInteger.ZERO))
                 .reduce(BigInteger::add).orElse(BigInteger.ZERO);
 
-        Assertions.assertEquals(lovelace, BigInteger.valueOf(6_000_000));
+        Assertions.assertEquals(lovelace, BigInteger.valueOf(8_000_000));
     }
 
     @Test
-    @Order(9)
-    public void testInitializeSpecialBootstrapDatum() throws ApiException, InterruptedException, CborSerializationException {
+    @Order(11)
+    public void testInitializeSpecialLegacyBootstrapDatum() throws ApiException, InterruptedException, CborSerializationException {
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());
 
@@ -360,8 +409,8 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(10)
-    public void testForkStateDatumFindApplicableBootstrapDatum() throws ApiException, CborSerializationException, InterruptedException {
+    @Order(12)
+    public void testForkLegacyStateDatumFindApplicableBootstrapDatum() throws ApiException, CborSerializationException, InterruptedException {
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());
 
@@ -385,7 +434,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(11)
+    @Order(13)
     public void testPersistUVerifyCertificates() throws ApiException, CborSerializationException, InterruptedException {
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());
@@ -397,7 +446,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                 .extra("{\"test\":\"test\"}")
                 .build());
 
-        Transaction transaction = cardanoBlockchainService.persistUVerifyCertificates(
+        Transaction transaction = cardanoBlockchainService.persistUVerifyLegacyCertificates(
                 userAccount.baseAddress(),
                 uVerifyCertificates);
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
@@ -409,7 +458,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(12)
+    @Order(14)
     public void testInvalidateBootstrapDatum() throws ApiException, InterruptedException, CborSerializationException {
         Transaction transaction = cardanoBlockchainService.invalidateBootstrapDatum("uverify_special_test_token");
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
@@ -426,7 +475,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(13)
+    @Order(15)
     public void testRollback() {
         Optional<BootstrapDatumEntity> bootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token");
         Assertions.assertTrue(bootstrapDatum.isPresent());
@@ -435,18 +484,18 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Assertions.assertTrue(paymentCredentialHash.isPresent());
 
         List<UVerifyCertificateEntity> certificates = uVerifyCertificateService.getCertificatesByCredential(Hex.encodeHexString(paymentCredentialHash.get()));
-        Assertions.assertEquals(6, certificates.size());
+        Assertions.assertEquals(9, certificates.size());
 
         cardanoBlockchainService.handleRollbackToSlot(bootstrapDatum.get().getCreationSlot() - 1);
         bootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token");
         Assertions.assertTrue(bootstrapDatum.isEmpty());
 
         certificates = uVerifyCertificateService.getCertificatesByCredential(Hex.encodeHexString(paymentCredentialHash.get()));
-        Assertions.assertEquals(4, certificates.size());
+        Assertions.assertEquals(7, certificates.size());
     }
 
     @Test
-    @Order(14)
+    @Order(16)
     public void testInvalidCertificates() throws ApiException, CborSerializationException, InterruptedException {
         Optional<byte[]> paymentCredentialHash = serviceAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());
@@ -467,7 +516,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(15)
+    @Order(17)
     public void testInitializeZeroFeeBootstrapDatum() throws ApiException, InterruptedException, CborSerializationException {
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());
@@ -489,7 +538,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(16)
+    @Order(18)
     public void testUseZeroFeeBootstrapDatum() throws ApiException, CborSerializationException, InterruptedException {
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());
