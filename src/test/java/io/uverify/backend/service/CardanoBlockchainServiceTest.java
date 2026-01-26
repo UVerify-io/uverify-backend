@@ -234,8 +234,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Transaction transaction = cardanoBlockchainService.persistUVerifyCertificates(
                 userAccount.baseAddress(),
                 uVerifyCertificates,
-                proxyTxHash,
-                proxyOutputIndex);
+                proxyTxHash, proxyOutputIndex);
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
         Assertions.assertTrue(result.isSuccessful());
 

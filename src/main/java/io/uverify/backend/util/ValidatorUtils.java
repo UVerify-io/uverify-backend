@@ -46,9 +46,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidatorUtils {
-    public final static String PROXY_TX_HASH = "";
-    public final static Integer PROXY_OUTPUT_INDEX = 0;
-
     public static String getProxyStateTokenName(String txHash, int outputIndex) {
         // Convert hex string to bytes
         byte[] txHashBytes;

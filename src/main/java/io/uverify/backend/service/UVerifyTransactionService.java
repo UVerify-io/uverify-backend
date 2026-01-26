@@ -27,10 +27,7 @@ import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.transaction.spec.TransactionWitnessSet;
 import com.bloxbean.cardano.client.util.HexUtil;
-import io.uverify.backend.dto.BootstrapData;
-import io.uverify.backend.dto.BuildStatus;
-import io.uverify.backend.dto.BuildTransactionResponse;
-import io.uverify.backend.dto.CertificateData;
+import io.uverify.backend.dto.*;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.model.BootstrapDatum;
@@ -55,7 +52,11 @@ public class UVerifyTransactionService {
 
         if (witnessSetHex != null && !witnessSetHex.isEmpty()) {
             TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(witnessSetHex)));
-            transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());
+            if (transaction.getWitnessSet() == null) {
+                transaction.setWitnessSet(witnessSet);
+            } else {
+                transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());
+            }
         }
 
         return cardanoBlockchainService.submitTransaction(transaction);
@@ -66,7 +67,7 @@ public class UVerifyTransactionService {
                 .map(certificate -> UVerifyCertificate.fromCertificateData(certificate, address))
                 .toList();
         try {
-            Transaction transaction = cardanoBlockchainService.persistUVerifyLegacyCertificates(address, uVerifyCertificates);
+            Transaction transaction = cardanoBlockchainService.persistUVerifyCertificates(address, uVerifyCertificates);
             return BuildTransactionResponse.builder()
                     .unsignedTransaction(transaction.serializeToHex())
                     .status(BuildStatus.builder()
@@ -85,10 +86,28 @@ public class UVerifyTransactionService {
         }
     }
 
+    public ProxyInitResponse buildInitProxyTx() {
+        ProxyInitResponse proxyInitResponse;
+        try {
+            proxyInitResponse = cardanoBlockchainService.initProxyContract();
+            proxyInitResponse.setStatus(BuildStatus.builder()
+                    .code(BuildStatusCode.SUCCESS)
+                    .build());
+
+        } catch (ApiException | CborSerializationException e) {
+            proxyInitResponse = ProxyInitResponse.builder()
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.ERROR)
+                            .message(e.getMessage())
+                            .build()).build();
+        }
+        return proxyInitResponse;
+    }
+
     public BuildTransactionResponse buildBootstrapDatum(BootstrapData bootstrapData) {
         BootstrapDatum bootstrapDatum = BootstrapDatum.fromBootstrapData(bootstrapData);
         try {
-            Transaction transaction = cardanoBlockchainService.initializeBootstrapDatum(bootstrapDatum);
+            Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
             return BuildTransactionResponse.builder()
                     .status(BuildStatus.builder()
                             .code(BuildStatusCode.SUCCESS)
@@ -113,7 +132,7 @@ public class UVerifyTransactionService {
                 .toList();
         if (bootstrapDatumName != null && !bootstrapDatumName.isEmpty()) {
             try {
-                Transaction transaction = cardanoBlockchainService.updateStateDatum(address, uVerifyCertificates, bootstrapDatumName, null, 0);
+                Transaction transaction = cardanoBlockchainService.updateStateDatum(address, uVerifyCertificates, bootstrapDatumName);
                 return BuildTransactionResponse.builder()
                         .unsignedTransaction(transaction.serializeToHex())
                         .status(BuildStatus.builder()

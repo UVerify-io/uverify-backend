@@ -43,6 +43,7 @@ import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
+import com.bloxbean.cardano.client.quicktx.Tx;
 import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
@@ -50,6 +51,7 @@ import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.core.model.RedeemerTag;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.script.domain.TxScript;
+import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.StateDatumEntity;
@@ -59,6 +61,7 @@ import io.uverify.backend.enums.UVerifyScriptPurpose;
 import io.uverify.backend.model.*;
 import io.uverify.backend.model.converter.ProxyRedeemerConverter;
 import io.uverify.backend.util.CardanoUtils;
+import io.uverify.backend.util.ValidatorHelper;
 import io.uverify.backend.util.ValidatorUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.DecoderException;
@@ -85,6 +88,8 @@ public class CardanoBlockchainService {
     private final StateDatumService stateDatumService;
     @Autowired
     private final UVerifyCertificateService uVerifyCertificateService;
+    @Autowired
+    private final ValidatorHelper validatorHelper;
     private final CardanoNetwork network;
     private final Address serviceUserAddress;
     private BackendService backendService;
@@ -96,6 +101,7 @@ public class CardanoBlockchainService {
                                     @Value("${cardano.backend.blockfrost.projectId}") String blockfrostProjectId,
                                     @Value("${cardano.network}") String network,
                                     UVerifyCertificateService uVerifyCertificateService,
+                                    ValidatorHelper validatorHelper,
                                     BootstrapDatumService bootstrapDatumService, StateDatumService stateDatumService
     ) {
         this.bootstrapDatumService = bootstrapDatumService;
@@ -103,6 +109,7 @@ public class CardanoBlockchainService {
         this.uVerifyCertificateService = uVerifyCertificateService;
         this.network = CardanoNetwork.valueOf(network);
         this.serviceUserAddress = new Address(serviceUserAddress);
+        this.validatorHelper = validatorHelper;
 
         if (cardanoBackendServiceType.equals("blockfrost")) {
             if (blockfrostProjectId == null || blockfrostProjectId.isEmpty()) {
@@ -128,6 +135,10 @@ public class CardanoBlockchainService {
 
     public void setBackendService(BackendService backendService) {
         this.backendService = backendService;
+    }
+
+    public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
+        return updateStateDatum(address, uVerifyCertificates, bootstrapTokenName, validatorHelper.getProxyTransactionHash(), validatorHelper.getProxyOutputIndex());
     }
 
     public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName, String proxyTxHash, int proxyOutputIndex) throws ApiException {
@@ -214,7 +225,14 @@ public class CardanoBlockchainService {
                 .build();
     }
 
-    public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate, String proxyTxHash, int proxyOutputIndex) throws ApiException, CborSerializationException {
+    public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate) throws ApiException, CborSerializationException {
+        String proxyTxHash = validatorHelper.getProxyTransactionHash();
+        int proxyOutputIndex = validatorHelper.getProxyOutputIndex();
+
+        return persistUVerifyCertificates(address, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
+    }
+
+    public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate, String proxyTxHash, Integer proxyOutputIndex) throws ApiException, CborSerializationException {
         List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address);
         if (stateDatumEntities.isEmpty()) {
             log.debug("No state datum found for address " + address + ". Start forking a new state datum.");
@@ -288,6 +306,77 @@ public class CardanoBlockchainService {
                 return updateLegacyStateDatum(address, stateDatumEntity, uVerifyCertificate);
             }
         }
+    }
+
+    public ProxyInitResponse initProxyContract() throws ApiException, CborSerializationException {
+        ProxyInitResponse proxyInitResponse = new ProxyInitResponse();
+        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
+        String serviceAddress = this.serviceUserAddress.getAddress();
+        PlutusScript stateContract;
+        String existingProxyTxHash = validatorHelper.getProxyTransactionHash();
+        if (existingProxyTxHash.equals("")) {
+            Result<List<Utxo>> result = this.backendService.getUtxoService().getUtxos(serviceAddress, 100, 1);
+            List<Utxo> utxos = result.getValue();
+
+            Utxo utxo = utxos.get(0);
+            PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(utxo);
+            String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
+
+            stateContract = ValidatorUtils.getUVerifyStateContract(proxyScriptHash, ValidatorUtils.getProxyStateTokenName(utxo.getTxHash(), utxo.getOutputIndex()));
+            String stateScriptHash = ValidatorUtils.validatorToScriptHash(stateContract);
+
+            Optional<byte[]> paymentCredentialHash = this.serviceUserAddress.getPaymentCredentialHash();
+            if (paymentCredentialHash.isEmpty()) {
+                throw new IllegalArgumentException("Invalid service user address");
+            }
+
+            ProxyDatum proxyDatum = ProxyDatum.builder()
+                    .ScriptOwner(Hex.encodeHexString(paymentCredentialHash.get()))
+                    .ScriptPointer(stateScriptHash)
+                    .build();
+
+            String tokenName = ValidatorUtils.getProxyStateTokenName(utxo.getTxHash(), utxo.getOutputIndex());
+            Asset authToken = Asset.builder()
+                    .name("0x" + tokenName)
+                    .value(BigInteger.valueOf(1))
+                    .build();
+
+            String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, Networks.preprod()).toBech32();
+            PlutusData initProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.ADMIN_ACTION);
+
+            String proxyUnit = proxyContract.getPolicyId() + tokenName;
+
+            ScriptTx tx = new ScriptTx()
+                    .collectFrom(List.of(utxo))
+                    .mintAsset(proxyContract, authToken, initProxyRedeemer)
+                    .payToContract(proxyScriptAddress, List.of(Amount.asset(proxyUnit, 1)), proxyDatum.toPlutusData(), stateContract)
+                    .withChangeAddress(serviceAddress);
+
+            Transaction transaction = quickTxBuilder.compose(tx)
+                    .feePayer(serviceAddress)
+                    .withRequiredSigners(serviceUserAddress)
+                    .build();
+
+            proxyInitResponse.setUnsignedProxyTransaction(transaction.serializeToHex());
+            proxyInitResponse.setProxyOutputIndex(utxo.getOutputIndex());
+            proxyInitResponse.setProxyTxHash(utxo.getTxHash());
+        } else {
+            log.info("It seems that there was a previous proxy deployment. Reusing the existing proxy contract.");
+            stateContract = validatorHelper.getParameterizedUVerifyStateContract();
+        }
+
+        String stateScriptRewardAddress = AddressProvider.getRewardAddress(stateContract, Networks.preprod()).toBech32();
+        Tx registerStakeAddressTx = new Tx()
+                .from(serviceAddress)
+                .registerStakeAddress(stateScriptRewardAddress);
+
+        Transaction stakeRegistrationTx = quickTxBuilder.compose(registerStakeAddressTx)
+                .feePayer(serviceAddress)
+                .withRequiredSigners(serviceUserAddress)
+                .build();
+
+        proxyInitResponse.setUnsignedStakeRegistrationTransaction(stakeRegistrationTx.serializeToHex());
+        return proxyInitResponse;
     }
 
     public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates, String proxyTxHash, int proxyOutputIndex) throws ApiException {
@@ -603,7 +692,7 @@ public class CardanoBlockchainService {
     }
 
     public List<TxScript> processTxScripts(List<TxScript> txScripts) throws CborDeserializationException {
-        return processTxScripts(txScripts, PROXY_TX_HASH, PROXY_OUTPUT_INDEX);
+        return processTxScripts(txScripts, validatorHelper.getProxyTransactionHash(), validatorHelper.getProxyOutputIndex());
     }
 
     private Optional<TxScript> findScriptTxByProxyRedeemer(List<TxScript> txScripts, ProxyRedeemer proxyRedeemer, com.bloxbean.cardano.yaci.core.model.RedeemerTag purpose) {
@@ -836,7 +925,7 @@ public class CardanoBlockchainService {
     }
 
     public Transaction mintProxyBootstrapDatum(BootstrapDatum bootstrapDatum) {
-        return mintProxyBootstrapDatum(bootstrapDatum, PROXY_TX_HASH, PROXY_OUTPUT_INDEX);
+        return mintProxyBootstrapDatum(bootstrapDatum, validatorHelper.getProxyTransactionHash(), validatorHelper.getProxyOutputIndex());
     }
 
     public Transaction mintProxyBootstrapDatum(BootstrapDatum bootstrapDatum, String proxyTxHash, int proxyOutputIndex) {

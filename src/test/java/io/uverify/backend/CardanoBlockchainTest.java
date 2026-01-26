@@ -55,8 +55,6 @@ public class CardanoBlockchainTest {
     protected final Account userAccount;
     protected final Account feeReceiverAccount;
 
-    protected final Account intentAccount;
-
     protected final Account facilitatorAccount;
     @Autowired
     protected final CardanoBlockchainService cardanoBlockchainService;
@@ -103,11 +101,10 @@ public class CardanoBlockchainTest {
         this.certificateRepository = certificateRepository;
         this.extensionManager = extensionManager;
 
-        serviceAccount = new Account(Networks.testnet(), testServiceUserMnemonic);
-        userAccount = new Account(Networks.testnet(), testUserMnemonic);
-        feeReceiverAccount = new Account(Networks.testnet(), feeReceiverMnemonic);
-        facilitatorAccount = new Account(Networks.testnet(), facilitatorMnemonic);
-        intentAccount = new Account(Networks.testnet(), intentMnemonic);
+        serviceAccount = Account.createFromMnemonic(Networks.testnet(), testServiceUserMnemonic);
+        userAccount = Account.createFromMnemonic(Networks.testnet(), testUserMnemonic);
+        feeReceiverAccount = Account.createFromMnemonic(Networks.testnet(), feeReceiverMnemonic);
+        facilitatorAccount = Account.createFromMnemonic(Networks.testnet(), facilitatorMnemonic);
 
         if (!yaciCardanoContainer.isRunning()) {
             List<Funding> fundingList = new ArrayList<>();
@@ -120,9 +117,6 @@ public class CardanoBlockchainTest {
             fundingList.add(new Funding(userAccount.baseAddress(), 1000));
             fundingList.add(new Funding(facilitatorAccount.baseAddress(), 10000));
             fundingList.add(new Funding(facilitatorAccount.baseAddress(), 10));
-
-            fundingList.add(new Funding(intentAccount.baseAddress(), 25));
-            fundingList.add(new Funding(intentAccount.baseAddress(), 25));
 
             for (String address : additionalFundingAddresses) {
                 fundingList.add(new Funding(address, 200));

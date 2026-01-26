@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.uverify.backend.dto.BuildTransactionRequest;
 import io.uverify.backend.dto.BuildTransactionResponse;
+import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.dto.SubmitTransactionRequest;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
@@ -52,6 +53,7 @@ public class UVerifyTransactionController {
                     Builds a transaction for the Cardano blockchain based on the provided request. Supports the following transaction types:
                     - **DEFAULT**: Submits UVerify certificates to the blockchain using the cheapest options. If no state is initialized, it forks a new state from the bootstrap datum with the best service fee conditions. If a user state exists with a valid transaction countdown and no service fee is required, it will be reused.
                     - **BOOTSTRAP**: Initializes a new bootstrap token and datum for forking states. Requires a whitelisted credential to sign the transaction.
+                    - **DEPLOY**: Deploys a new proxy script for UVerify certificate management.
                     - **CUSTOM**: Allows the user to specify a bootstrap datum to fork or consume a state related to a specific bootstrap datum. This is useful for use cases requiring a 'partner datum' and may result in a different certificate UI on the client side."""
     )
     @ApiResponses(value = {
@@ -82,6 +84,13 @@ public class UVerifyTransactionController {
                     return ResponseEntity.ok(buildTransactionResponse);
                 } else {
                     return ResponseEntity.badRequest().body(buildTransactionResponse);
+                }
+            } else if (request.getType().equals(TransactionType.DEPLOY)) {
+                ProxyInitResponse proxyInitResponse = transactionService.buildInitProxyTx();
+                if (proxyInitResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
+                    return ResponseEntity.ok(proxyInitResponse);
+                } else {
+                    return ResponseEntity.badRequest().body(proxyInitResponse);
                 }
             } else {
                 return ResponseEntity.badRequest().body("Unknown transaction type. Allowed types are: DEFAULT, BOOTSTRAP, CUSTOM.");

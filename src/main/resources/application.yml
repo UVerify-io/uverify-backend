@@ -119,6 +119,10 @@ extensions:
         private-key: ${TADAMON_GOOGLE_SHEETS_PRIVATE_KEY:}
         service-account: ${TADAMON_GOOGLE_SHEETS_SERVICE_ACCOUNT:}
 
+proxy:
+  transaction-hash: ${PROXY_TX_HASH:}
+  output-index: ${PROXY_OUTPUT_INDEX:0}
+
 ---
 spring:
   config:
