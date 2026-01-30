@@ -48,13 +48,13 @@ public class BootstrapDatumService {
         return bootstrapDatumRepository.findByTokenName(tokenName);
     }
 
-    public Optional<BootstrapDatum> selectCheapestBootstrapDatum(byte[] credential, int version) {
+    public Optional<BootstrapDatum> selectCheapestBootstrapDatum(byte[] credential) {
         List<BootstrapDatumEntity> bootstrapDatumEntities = bootstrapDatumRepository.findAllWhitelisted();
         List<BootstrapDatumEntity> customBootstrapDatumEntities = bootstrapDatumRepository.findByAllowedCredential(HexUtil.encodeHexString(credential));
 
         bootstrapDatumEntities.addAll(customBootstrapDatumEntities);
         bootstrapDatumEntities = bootstrapDatumEntities.stream()
-                .filter(bootstrapDatumEntity -> bootstrapDatumEntity.getVersion().equals(version))
+                .filter(bootstrapDatumEntity -> bootstrapDatumEntity.getVersion() > 1)
                 .toList();
 
         double lovelaceEveryHundredTransactions = Double.MAX_VALUE;

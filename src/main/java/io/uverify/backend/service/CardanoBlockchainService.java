@@ -148,11 +148,7 @@ public class CardanoBlockchainService {
             if (stateDatumEntities.size() == 1) {
                 stateDatumEntity = Optional.of(stateDatumEntities.get(0));
             } else if (stateDatumEntities.size() > 1) {
-                if (proxyTxHash == null) {
-                    stateDatumEntity = Optional.of(stateDatumService.selectCheapestStateDatum(stateDatumEntities, 1));
-                } else {
-                    stateDatumEntity = Optional.of(stateDatumService.selectCheapestStateDatum(stateDatumEntities, 2));
-                }
+                stateDatumEntity = Optional.of(stateDatumService.selectCheapestStateDatum(stateDatumEntities));
             }
         } else {
             stateDatumEntity = stateDatumService.findByUserAndBootstrapToken(address, bootstrapTokenName);
@@ -183,7 +179,7 @@ public class CardanoBlockchainService {
             log.debug("No state datum found for address " + address + ". Start forking a new state datum.");
             return forkProxyStateDatum(address, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
         } else {
-            StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities, 2);
+            StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities);
             boolean needsToPayFee = (stateDatumEntity.getCountdown() + 1) % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
             if (needsToPayFee) {
                 log.debug("Fee required for updating state datum. Checking for better conditions.");
@@ -193,7 +189,7 @@ public class CardanoBlockchainService {
                 if (optionalUserAccountCredential.isEmpty()) {
                     throw new IllegalArgumentException("Invalid Cardano payment address");
                 }
-                Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get(), 2);
+                Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
 
                 if (bootstrapDatum.isEmpty()) {
                     return updateStateDatum(address, stateDatumEntity, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
@@ -351,183 +347,6 @@ public class CardanoBlockchainService {
                 .feePayer(address)
                 .withRequiredSigners(userAddress)
                 .withReferenceScripts(uverifyStateContract)
-                .build();
-    }
-
-    public Transaction forkLegacyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
-        Address userAddress = new Address(address);
-        Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
-
-        if (optionalUserAccountCredential.isEmpty()) {
-            throw new IllegalArgumentException("Invalid Cardano payment address");
-        }
-
-        Optional<BootstrapDatum> optionalBootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get(), 1);
-
-        if (optionalBootstrapDatum.isEmpty()) {
-            throw new IllegalArgumentException("No applicable bootstrap datum found for user account");
-        }
-
-        return forkLegacyStateDatum(address, uVerifyCertificates, optionalBootstrapDatum.get().getTokenName());
-    }
-
-    public Transaction forkLegacyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
-        Optional<BootstrapDatumEntity> optionalBootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(bootstrapTokenName);
-
-        if (optionalBootstrapDatumEntity.isEmpty()) {
-            throw new IllegalArgumentException("Bootstrap datum with name " + bootstrapTokenName + " not found");
-        }
-
-        BootstrapDatumEntity bootstrapDatumEntity = optionalBootstrapDatumEntity.get();
-
-        Address userAddress = new Address(address);
-        Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
-
-        if (optionalUserAccountCredential.isEmpty()) {
-            throw new IllegalArgumentException("Invalid Cardano payment address");
-        }
-
-        byte[] userAccountCredential = optionalUserAccountCredential.get();
-        Result<TxContentUtxo> transactionUtxosResult = backendService.getTransactionService().getTransactionUtxos(bootstrapDatumEntity.getTransactionId());
-
-        String unit = getMintOrBurnAuthTokenHash(network) + HexUtil.encodeHexString(bootstrapTokenName.getBytes());
-        Optional<TxContentUtxoOutputs> optionalTxContentUtxoOutput = transactionUtxosResult.getValue().getOutputs().stream().filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> amount.getUnit().equals(unit))).findFirst();
-
-        if (optionalTxContentUtxoOutput.isEmpty()) {
-            throw new IllegalArgumentException("Bootstrap token or datum not found in transaction outputs");
-        }
-
-        TxContentUtxoOutputs txContentUtxoOutput = optionalTxContentUtxoOutput.get();
-        Utxo utxo = txContentUtxoOutput.toUtxos(bootstrapDatumEntity.getTransactionId());
-
-        StateDatum stateDatum = StateDatum.fromLegacyBootstrapDatum(utxo.getInlineDatum(), userAccountCredential);
-        stateDatum.setCertificates(uVerifyCertificates);
-        stateDatum.setCountdown(stateDatum.getCountdown() - 1);
-
-        PlutusScript mintStateTokenScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getMintStateTokenCode(network), PlutusVersion.v3);
-        Asset userStateToken = Asset.builder()
-                .name("0x" + Hex.encodeHexString(userAccountCredential))
-                .value(BigInteger.ONE)
-                .build();
-
-        PlutusScript updateTestStateTokenScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getUpdateStateTokenCode(network), PlutusVersion.v3);
-        String updateTestStateScriptAddress = AddressProvider.getEntAddress(updateTestStateTokenScript, fromCardanoNetwork(network)).toBech32();
-
-        UtxoSupplier utxoSupplier = new DefaultUtxoSupplier(backendService.getUtxoService());
-        List<Utxo> userUtxos = utxoSupplier.getAll(address);
-
-        if (userUtxos.isEmpty()) {
-            throw new IllegalArgumentException("No UTXOs found for user address");
-        }
-
-        Utxo userUtxo = userUtxos.get(0);
-        String index = HexUtil.encodeHexString(ByteBuffer.allocate(2)
-                .order(ByteOrder.LITTLE_ENDIAN)
-                .putShort((short) userUtxo.getOutputIndex())
-                .array());
-
-        stateDatum.setId(DigestUtils.sha256Hex(HexUtil.decodeHexString(userUtxo.getTxHash() + index)));
-
-        ScriptTx scriptTransaction = new ScriptTx()
-                .readFrom(utxo)
-                .collectFrom(userUtxo)
-                .mintAsset(mintStateTokenScript, List.of(userStateToken), PlutusData.unit(), updateTestStateScriptAddress, stateDatum.toLegacyPlutusData(network));
-
-        if (bootstrapDatumEntity.getFee() > 0) {
-            long fee = bootstrapDatumEntity.getFee() / stateDatum.getFeeReceivers().size();
-            for (byte[] paymentCredential : stateDatum.getFeeReceivers()) {
-                Credential credential = Credential.fromKey(paymentCredential);
-                Address feeReceiverAddress = AddressProvider.getEntAddress(credential, fromCardanoNetwork(network));
-                scriptTransaction.payToAddress(feeReceiverAddress.getAddress(), Amount.lovelace(BigInteger.valueOf(fee)));
-            }
-        }
-
-        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
-
-        long currentSlot = CardanoUtils.getLatestSlot(backendService);
-        long validFrom = currentSlot - 10;
-        long transactionTtl = currentSlot + 600; // 10 minutes
-
-        return quickTxBuilder.compose(scriptTransaction)
-                .validFrom(validFrom)
-                .validTo(transactionTtl)
-                .collateralPayer(address)
-                .feePayer(address)
-                .withRequiredSigners(userAddress)
-                .build();
-    }
-
-    public Transaction invalidateBootstrapDatum(String bootstrapTokenName) throws ApiException {
-        Optional<BootstrapDatumEntity> optionalBootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(bootstrapTokenName);
-
-        if (optionalBootstrapDatumEntity.isEmpty()) {
-            throw new IllegalArgumentException("Bootstrap datum with name " + bootstrapTokenName + " doesn't exists");
-        }
-
-        BootstrapDatumEntity bootstrapDatum = optionalBootstrapDatumEntity.get();
-        Result<TxContentUtxo> transactionUtxosResult = backendService.getTransactionService().getTransactionUtxos(bootstrapDatum.getTransactionId());
-
-        String unit = getMintOrBurnAuthTokenHash(network) + HexUtil.encodeHexString(bootstrapTokenName.getBytes());
-        Optional<TxContentUtxoOutputs> optionalTxContentUtxoOutput = transactionUtxosResult.getValue().getOutputs().stream().filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> amount.getUnit().equals(unit))).findFirst();
-
-        if (optionalTxContentUtxoOutput.isEmpty()) {
-            throw new IllegalArgumentException("Bootstrap token or datum not found in transaction outputs");
-        }
-
-        TxContentUtxoOutputs txContentUtxoOutput = optionalTxContentUtxoOutput.get();
-        Utxo utxo = txContentUtxoOutput.toUtxos(bootstrapDatum.getTransactionId());
-
-        PlutusScript authorizationScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getMintOrBurnAuthTokenCode(network), PlutusVersion.v3);
-        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
-
-        Asset authorizationToken = Asset.builder()
-                .name(bootstrapDatum.getTokenName())
-                .value(BigInteger.valueOf(-1))
-                .build();
-
-
-        UtxoSupplier utxoSupplier = new DefaultUtxoSupplier(backendService.getUtxoService());
-        List<Utxo> userUtxos = utxoSupplier.getAll(serviceUserAddress.getAddress());
-
-        if (userUtxos.isEmpty()) {
-            throw new IllegalArgumentException("No UTXOs found for user address");
-        }
-
-        Utxo userUtxo = userUtxos.get(0);
-
-        ScriptTx scriptTx = new ScriptTx()
-                .attachSpendingValidator(authorizationScript)
-                .collectFrom(utxo, PlutusData.unit())
-                .collectFrom(userUtxo)
-                .mintAsset(authorizationScript, List.of(authorizationToken), PlutusData.unit());
-
-        return quickTxBuilder.compose(scriptTx)
-                .feePayer(serviceUserAddress.getAddress())
-                .withRequiredSigners(serviceUserAddress)
-                .build();
-    }
-
-    @Deprecated(forRemoval = true)
-    public Transaction initializeBootstrapDatum(BootstrapDatum bootstrapDatum) throws ApiException {
-        if (bootstrapDatumService.bootstrapDatumAlreadyExists(bootstrapDatum.getTokenName())) {
-            throw new IllegalArgumentException("Bootstrap datum with name " + bootstrapDatum.getTokenName() + " already exists");
-        }
-
-        PlutusScript authorizationScript = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(getMintOrBurnAuthTokenCode(network), PlutusVersion.v3);
-        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
-
-        Asset authorizationToken = Asset.builder()
-                .name(bootstrapDatum.getTokenName())
-                .value(BigInteger.ONE)
-                .build();
-
-        String scriptAddress = AddressProvider.getEntAddress(authorizationScript, fromCardanoNetwork(network)).toBech32();
-        ScriptTx scriptTx = new ScriptTx()
-                .mintAsset(authorizationScript, List.of(authorizationToken), PlutusData.unit(), scriptAddress, bootstrapDatum.toPlutusData(network));
-
-        return quickTxBuilder.compose(scriptTx)
-                .feePayer(serviceUserAddress.getAddress())
-                .withRequiredSigners(serviceUserAddress)
                 .build();
     }
 
@@ -868,7 +687,7 @@ public class CardanoBlockchainService {
             throw new IllegalArgumentException("Invalid Cardano payment address");
         }
 
-        Optional<BootstrapDatum> optionalBootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get(), 2);
+        Optional<BootstrapDatum> optionalBootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
 
         if (optionalBootstrapDatum.isEmpty()) {
             throw new IllegalArgumentException("No applicable bootstrap datum found for user account");

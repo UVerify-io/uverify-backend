@@ -50,11 +50,11 @@ public class StateDatumService {
         this.stateDatumUpdateRepository = stateDatumUpdateRepository;
     }
 
-    public StateDatumEntity selectCheapestStateDatum(List<StateDatumEntity> stateDatums, int version) {
+    public StateDatumEntity selectCheapestStateDatum(List<StateDatumEntity> stateDatums) {
         List<StateDatumEntity> stateDatumEntities = stateDatums.stream().filter(
                 stateDatumEntity -> stateDatumEntity.getInvalidationSlot() == null
                         && stateDatumEntity.getCountdown() > 0
-                        && stateDatumEntity.getVersion() == version
+                        && stateDatumEntity.getVersion() > 1
         ).toList();
 
         if (stateDatumEntities.isEmpty()) {

@@ -75,7 +75,7 @@ public class UserStateService {
                     "if this UVerify backend service restarts while requests are still pending.");
             this.facilitator = new Account(fromCardanoNetwork(this.network));
         } else {
-            this.facilitator = new Account(fromCardanoNetwork(this.network), facilitatorAccountMnemonic);
+            this.facilitator = Account.createFromMnemonic(fromCardanoNetwork(this.network), facilitatorAccountMnemonic);
         }
     }
 
