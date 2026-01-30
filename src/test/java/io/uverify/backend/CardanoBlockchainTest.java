@@ -148,6 +148,12 @@ public class CardanoBlockchainTest {
         Thread.sleep(1000);
     }
 
+    protected void simulateYaciStoreBehavior(List<AddressUtxo> addressUtxos) throws InterruptedException {
+        cardanoBlockchainService.processAddressUtxos(addressUtxos);
+        extensionManager.processAddressUtxos(addressUtxos);
+        Thread.sleep(1000);
+    }
+
     protected void simulateYaciStoreBehavior(String transactionId, Transaction transaction, String proxyTxHash, int proxyOutputIndex) throws InterruptedException, ApiException {
         List<AddressUtxo> addressUtxos = SimulationUtils.getAddressUtxos(transactionId, yaciCardanoContainer.getBackendService());
         List<TxScript> txScripts = SimulationUtils.getTxScripts(transactionId, yaciCardanoContainer.getBackendService(), transaction);

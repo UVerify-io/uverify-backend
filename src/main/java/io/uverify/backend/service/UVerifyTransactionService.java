@@ -165,26 +165,4 @@ public class UVerifyTransactionService {
                     .build();
         }
     }
-
-    public BuildTransactionResponse mintProxyBootstrapToken(BootstrapData bootstrapData) {
-        BootstrapDatum bootstrapDatum = BootstrapDatum.fromBootstrapData(bootstrapData);
-        try {
-            Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
-            return BuildTransactionResponse.builder()
-                    .unsignedTransaction(transaction.serializeToHex())
-                    .status(BuildStatus.builder()
-                            .code(BuildStatusCode.SUCCESS)
-                            .build())
-                    .type(TransactionType.BOOTSTRAP)
-                    .build();
-        } catch (Exception exception) {
-            return BuildTransactionResponse.builder()
-                    .status(BuildStatus.builder()
-                            .code(BuildStatusCode.ERROR)
-                            .message(exception.getMessage())
-                            .build())
-                    .type(TransactionType.BOOTSTRAP)
-                    .build();
-        }
-    }
 }

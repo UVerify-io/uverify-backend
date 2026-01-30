@@ -138,6 +138,43 @@ public class SimulationUtils {
         return txScripts;
     }
 
+    public static AddressUtxo simulateAddressUtxo(String txHash, int outputIndex, long slot, String ownerPaymentCredential,
+                                                  String assetName, String policyId, String unit, String inlineDatum) {
+
+        ArrayList<Amt> amounts = new ArrayList<>();
+        amounts.add(Amt.builder()
+                .assetName("lovelace")
+                .unit("lovelace")
+                .quantity(BigInteger.valueOf(1767100))
+                .build());
+
+        if (unit != null && !unit.isEmpty()) {
+            amounts.add(Amt.builder()
+                    .assetName(assetName)
+                    .policyId(policyId)
+                    .unit(unit)
+                    .quantity(BigInteger.valueOf(1))
+                    .build());
+        }
+
+        AddressUtxo addressUtxo = AddressUtxo.builder()
+                .txHash(txHash)
+                .outputIndex(outputIndex)
+                .ownerPaymentCredential(ownerPaymentCredential)
+                .amounts(amounts)
+                .inlineDatum(inlineDatum)
+                .slot(slot)
+                .blockNumber(0L)
+                .blockHash("")
+                .blockTime(Date.from(Instant.now()).getTime())
+                .build();
+
+        if (inlineDatum != null && !inlineDatum.isEmpty()) {
+            addressUtxo.setInlineDatum(inlineDatum);
+        }
+        return addressUtxo;
+    }
+
     public static List<AddressUtxo> getAddressUtxos(String transactionHash, BackendService backendService) throws ApiException, InterruptedException {
         long slot = CardanoUtils.getLatestSlot(backendService);
         long blockNumber = CardanoUtils.getLatestBlockNumber(backendService);

@@ -159,7 +159,7 @@ public class StateDatum {
 
     public static StateDatum fromTxScript(TxScript txScript, StateRedeemer stateRedeemer) {
         StateDatum stateDatum = fromUtxoDatum(txScript.getDatum());
-        stateDatum.setCountdown(stateRedeemer.getCountdown());
+        stateDatum.setCountdown(stateDatum.getCountdown());
         stateDatum.setCertificates(stateRedeemer.getCertificates());
         return stateDatum;
     }

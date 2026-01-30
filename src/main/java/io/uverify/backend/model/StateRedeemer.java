@@ -18,14 +18,16 @@
 
 package io.uverify.backend.model;
 
-import com.bloxbean.cardano.client.plutus.spec.*;
+import com.bloxbean.cardano.client.plutus.spec.BytesPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import io.uverify.backend.enums.UVerifyScriptPurpose;
 import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.uverify.backend.util.ValidatorUtils.extractIntegerFromPlutusData;
 import static io.uverify.backend.util.ValidatorUtils.extractStringFromPlutusData;
 
 @Getter
@@ -35,16 +37,14 @@ import static io.uverify.backend.util.ValidatorUtils.extractStringFromPlutusData
 @NoArgsConstructor
 public class StateRedeemer {
     private UVerifyScriptPurpose purpose;
-    private int countdown;
     private List<UVerifyCertificate> certificates;
 
     public static StateRedeemer fromPlutusData(PlutusData plutusData) {
         StateRedeemer redeemer = new StateRedeemer();
         List<PlutusData> plutusDataList = ((ConstrPlutusData) plutusData).getData().getPlutusDataList();
         redeemer.setPurpose(UVerifyScriptPurpose.fromValue(extractStringFromPlutusData(plutusDataList.get(0))));
-        redeemer.setCountdown(extractIntegerFromPlutusData(plutusDataList.get(1)));
 
-        List<PlutusData> certificates = ((ListPlutusData) plutusDataList.get(2)).getPlutusDataList();
+        List<PlutusData> certificates = ((ListPlutusData) plutusDataList.get(1)).getPlutusDataList();
         ArrayList<UVerifyCertificate> uverifyCertificates = new ArrayList<>();
         for (PlutusData certificate : certificates) {
             uverifyCertificates.add(UVerifyCertificate.fromPlutusData(certificate));
@@ -66,7 +66,6 @@ public class StateRedeemer {
 
         return ConstrPlutusData.of(0,
                 BytesPlutusData.of(purpose.getValue()),
-                BigIntPlutusData.of(countdown),
                 uVerifyCertificates
         );
     }

@@ -44,7 +44,7 @@ public class UVerifyScriptStorage extends TxScriptStorageImpl {
     @Override
     public void saveAll(List<TxScript> txScripts) {
         try {
-            super.saveAll(cardanoBlockchainService.processUVerifyProxyTransactions(txScripts));
+            super.saveAll(cardanoBlockchainService.processTxScripts(txScripts));
         } catch (CborDeserializationException e) {
             log.warn("Error processing scripts: {}", e.getMessage());
         }
