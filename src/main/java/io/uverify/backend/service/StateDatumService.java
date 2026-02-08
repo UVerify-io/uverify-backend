@@ -96,8 +96,6 @@ public class StateDatumService {
                 .build();
 
         stateDatumEntity.addUpdate(stateDatumUpdateEntity);
-
-        stateDatumUpdateRepository.save(stateDatumUpdateEntity);
         stateDatumRepository.save(stateDatumEntity);
     }
 

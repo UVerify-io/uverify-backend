@@ -42,5 +42,9 @@ public class StateDatumUpdateEntity {
 
     @Column(name = "slot", nullable = false)
     private Long slot;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "state_datum_id", nullable = false)
+    private StateDatumEntity stateDatum;
 }
 

@@ -18,35 +18,42 @@
 
 package io.uverify.backend.storage;
 
-import com.bloxbean.cardano.client.exception.CborDeserializationException;
+import com.bloxbean.cardano.yaci.store.events.TransactionEvent;
 import com.bloxbean.cardano.yaci.store.script.domain.TxScript;
 import com.bloxbean.cardano.yaci.store.script.storage.impl.TxScriptStorageImpl;
 import com.bloxbean.cardano.yaci.store.script.storage.impl.mapper.ScriptMapper;
 import com.bloxbean.cardano.yaci.store.script.storage.impl.repository.TxScriptRepository;
 import io.uverify.backend.service.CardanoBlockchainService;
+import io.uverify.backend.util.ValidatorHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Slf4j
 @SuppressWarnings("unused")
+@Component
+@Profile("!disable-indexer")
 public class UVerifyScriptStorage extends TxScriptStorageImpl {
     @Autowired
     private final CardanoBlockchainService cardanoBlockchainService;
 
-
-    public UVerifyScriptStorage(TxScriptRepository txScriptRepository, ScriptMapper scriptMapper, CardanoBlockchainService cardanoBlockchainService) {
+    public UVerifyScriptStorage(TxScriptRepository txScriptRepository, ScriptMapper scriptMapper, CardanoBlockchainService cardanoBlockchainService, ValidatorHelper validatorHelper) {
         super(txScriptRepository, scriptMapper);
         this.cardanoBlockchainService = cardanoBlockchainService;
     }
 
     @Override
     public void saveAll(List<TxScript> txScripts) {
-        try {
-            super.saveAll(cardanoBlockchainService.processTxScripts(txScripts));
-        } catch (CborDeserializationException e) {
-            log.warn("Error processing scripts: {}", e.getMessage());
-        }
+    }
+
+    @EventListener
+    @Transactional
+    public void handleScriptTransactionEvent(TransactionEvent transactionEvent) {
+        cardanoBlockchainService.processTransactionEvent(transactionEvent);
     }
 }

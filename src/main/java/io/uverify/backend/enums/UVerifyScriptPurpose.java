@@ -18,30 +18,44 @@
 
 package io.uverify.backend.enums;
 
+import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
+
 public enum UVerifyScriptPurpose {
-    MINT_BOOTSTRAP("mint_bootstrap"),
-    BURN_BOOTSTRAP("burn_bootstrap"),
-    MINT_STATE("mint_state"),
-    RENEW_STATE("renew_state"),
-    BURN_STATE("burn_state"),
-    UPDATE_STATE("update_state");
+    BURN_BOOTSTRAP,
+    BURN_STATE,
+    UPDATE_STATE,
+    MINT_STATE,
+    MINT_BOOTSTRAP;
 
-    private final String value;
-
-    UVerifyScriptPurpose(String value) {
-        this.value = value;
-    }
-
-    public static UVerifyScriptPurpose fromValue(String value) {
-        for (UVerifyScriptPurpose type : values()) {
-            if (type.value.equalsIgnoreCase(value)) {
-                return type;
+    public static UVerifyScriptPurpose fromConstr(ConstrPlutusData constr) {
+        switch ((int) constr.getAlternative()) {
+            case 0 -> {
+                return BURN_BOOTSTRAP;
             }
+            case 1 -> {
+                return BURN_STATE;
+            }
+            case 2 -> {
+                return UPDATE_STATE;
+            }
+            case 3 -> {
+                return MINT_STATE;
+            }
+            case 4 -> {
+                return MINT_BOOTSTRAP;
+            }
+            default -> throw new IllegalArgumentException("Invalid state update purpose: " + constr.getAlternative());
         }
-        throw new IllegalArgumentException("Invalid UVerifyScriptPurpose type: " + value);
     }
 
-    public String getValue() {
-        return value;
+    public ConstrPlutusData toConstr() {
+        return new ConstrPlutusData(switch (this) {
+            case BURN_BOOTSTRAP -> 0;
+            case BURN_STATE -> 1;
+            case UPDATE_STATE -> 2;
+            case MINT_STATE -> 3;
+            case MINT_BOOTSTRAP -> 4;
+        }, ListPlutusData.of());
     }
 }

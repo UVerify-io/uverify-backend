@@ -23,7 +23,6 @@ import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.script.domain.TxScript;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.model.BootstrapDatum;
-import io.uverify.backend.util.ValidatorUtils;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -93,6 +92,12 @@ public class BootstrapDatumEntity {
         return BootstrapDatumEntity.fromBootstrapDatum(bootstrapDatum, transactionId, slot, network, 1);
     }
 
+    public static BootstrapDatumEntity fromInlineDatum(String inlineDatum, String txHash, long slot, CardanoNetwork network) {
+        BootstrapDatum bootstrapDatum = BootstrapDatum.fromScriptTxDatum(inlineDatum);
+
+        return BootstrapDatumEntity.fromBootstrapDatum(bootstrapDatum, txHash, slot, network, 2);
+    }
+
     public static BootstrapDatumEntity fromTxScript(TxScript txScript, CardanoNetwork network) {
         BootstrapDatum bootstrapDatum = BootstrapDatum.fromScriptTxDatum(txScript.getDatum());
         String transactionId = txScript.getTxHash();
@@ -117,9 +122,7 @@ public class BootstrapDatumEntity {
 
         return BootstrapDatumEntity.builder()
                 .allowedCredentials(userCredentialEntities)
-                .authorizationTokenScriptHash(ValidatorUtils.getMintOrBurnAuthTokenHash(network))
                 .tokenName(bootstrapDatum.getTokenName())
-                .updateTokenContractCredential(ValidatorUtils.getUpdateStateTokenHash(network))
                 .fee(bootstrapDatum.getFee())
                 .feeInterval(bootstrapDatum.getFeeInterval())
                 .feeReceivers(feeReceiverEntities)

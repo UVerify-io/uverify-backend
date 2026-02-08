@@ -41,6 +41,7 @@ import io.uverify.backend.service.BootstrapDatumService;
 import io.uverify.backend.service.CardanoBlockchainService;
 import io.uverify.backend.service.StateDatumService;
 import io.uverify.backend.service.UVerifyCertificateService;
+import io.uverify.backend.util.ValidatorHelper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -66,7 +67,6 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
             @Value("${cardano.service.fee.receiver.mnemonic}") String feeReceiverMnemonic,
             @Value("${cardano.facilitator.user.mnemonic}") String facilitatorMnemonic,
             @Value("${cardano.service.fee.partner.address}") String feeReceiverPartnerAddress,
-            @Value("${cardano.intent.user.mnemonic}") String intentMnemonic,
             CardanoBlockchainService cardanoBlockchainService,
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
@@ -74,8 +74,9 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
+            ValidatorHelper validatorHelper,
             ExtensionManager extensionManager) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, intentMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager, List.of());
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager, validatorHelper, List.of());
         RestAssured.port = port;
         this.feeReceiverPartnerAddress = feeReceiverPartnerAddress;
     }

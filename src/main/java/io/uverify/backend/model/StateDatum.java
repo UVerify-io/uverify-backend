@@ -164,6 +164,13 @@ public class StateDatum {
         return stateDatum;
     }
 
+    public static StateDatum fromDatm(TxScript txScript, StateRedeemer stateRedeemer) {
+        StateDatum stateDatum = fromUtxoDatum(txScript.getDatum());
+        stateDatum.setCountdown(stateDatum.getCountdown());
+        stateDatum.setCertificates(stateRedeemer.getCertificates());
+        return stateDatum;
+    }
+
     public void setCertificateDataHash(List<UVerifyCertificate> certificates) {
         StringBuilder textCertificates = new StringBuilder();
         for (UVerifyCertificate certificate : certificates) {

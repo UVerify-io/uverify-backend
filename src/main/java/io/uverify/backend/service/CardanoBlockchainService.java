@@ -35,7 +35,6 @@ import com.bloxbean.cardano.client.backend.koios.KoiosBackendService;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
 import com.bloxbean.cardano.client.common.model.Networks;
-import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.plutus.blueprint.PlutusBlueprintUtil;
 import com.bloxbean.cardano.client.plutus.blueprint.model.PlutusVersion;
@@ -48,9 +47,12 @@ import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
+import com.bloxbean.cardano.yaci.core.model.Redeemer;
 import com.bloxbean.cardano.yaci.core.model.RedeemerTag;
+import com.bloxbean.cardano.yaci.core.model.TransactionOutput;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
-import com.bloxbean.cardano.yaci.store.script.domain.TxScript;
+import com.bloxbean.cardano.yaci.store.events.EventMetadata;
+import com.bloxbean.cardano.yaci.store.events.TransactionEvent;
 import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
@@ -64,7 +66,6 @@ import io.uverify.backend.util.CardanoUtils;
 import io.uverify.backend.util.ValidatorHelper;
 import io.uverify.backend.util.ValidatorUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -138,10 +139,6 @@ public class CardanoBlockchainService {
     }
 
     public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
-        return updateStateDatum(address, uVerifyCertificates, bootstrapTokenName, validatorHelper.getProxyTransactionHash(), validatorHelper.getProxyOutputIndex());
-    }
-
-    public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName, String proxyTxHash, int proxyOutputIndex) throws ApiException {
         Optional<StateDatumEntity> stateDatumEntity = Optional.empty();
         if (bootstrapTokenName.isEmpty()) {
             List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address);
@@ -162,22 +159,15 @@ public class CardanoBlockchainService {
         if (stateDatum.getVersion() == 1) {
             throw new IllegalArgumentException("No applicable state datum found for user account");
         } else {
-            return updateStateDatum(address, stateDatum, uVerifyCertificates, proxyTxHash, proxyOutputIndex);
+            return updateStateDatum(address, stateDatum, uVerifyCertificates);
         }
     }
 
     public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate) throws ApiException, CborSerializationException {
-        String proxyTxHash = validatorHelper.getProxyTransactionHash();
-        int proxyOutputIndex = validatorHelper.getProxyOutputIndex();
-
-        return persistUVerifyCertificates(address, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
-    }
-
-    public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate, String proxyTxHash, Integer proxyOutputIndex) throws ApiException, CborSerializationException {
         List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address);
         if (stateDatumEntities.isEmpty()) {
             log.debug("No state datum found for address " + address + ". Start forking a new state datum.");
-            return forkProxyStateDatum(address, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
+            return forkProxyStateDatum(address, uVerifyCertificate);
         } else {
             StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities);
             boolean needsToPayFee = (stateDatumEntity.getCountdown() + 1) % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
@@ -192,21 +182,21 @@ public class CardanoBlockchainService {
                 Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
 
                 if (bootstrapDatum.isEmpty()) {
-                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
+                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
                 }
 
                 double bootstrapFeeEveryHundredTransactions = (100.0 / bootstrapDatum.get().getFeeInterval()) * bootstrapDatum.get().getFee();
                 double stateFeeEveryHundredTransactions = (100.0 / stateDatumEntity.getBootstrapDatum().getFeeInterval()) * stateDatumEntity.getBootstrapDatum().getFee();
                 if (bootstrapFeeEveryHundredTransactions < stateFeeEveryHundredTransactions) {
                     log.debug("Forking state datum with better conditions.");
-                    return forkProxyStateDatum(address, uVerifyCertificate, bootstrapDatum.get().getTokenName(), proxyTxHash, proxyOutputIndex);
+                    return forkProxyStateDatum(address, uVerifyCertificate, bootstrapDatum.get().getTokenName());
                 } else {
                     log.debug("Updating state datum with current conditions.");
-                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
+                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
                 }
             } else {
                 log.debug("No fee required for updating state datum");
-                return updateStateDatum(address, stateDatumEntity, uVerifyCertificate, proxyTxHash, proxyOutputIndex);
+                return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
             }
         }
     }
@@ -282,12 +272,42 @@ public class CardanoBlockchainService {
         return proxyInitResponse;
     }
 
-    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates, String proxyTxHash, int proxyOutputIndex) throws ApiException {
+    public Transaction deployUVerifyContracts() {
+        Optional<byte[]> optionalUserPaymentCredential = serviceUserAddress.getPaymentCredentialHash();
+
+        if (optionalUserPaymentCredential.isEmpty()) {
+            throw new IllegalArgumentException("Invalid Cardano payment address");
+        }
+
+        String proxyTransactionHash = validatorHelper.getProxyTransactionHash();
+        Integer proxyOutputIndex = validatorHelper.getProxyOutputIndex();
+
+        PlutusScript libraryContract = getLibraryContract(HexUtil.encodeHexString(optionalUserPaymentCredential.get()));
+        String libraryContractAddress = AddressProvider.getEntAddress(libraryContract, fromCardanoNetwork(network)).toBech32();
+
+        PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTransactionHash, proxyOutputIndex);
+        PlutusScript uverifyStateContract = getUVerifyStateContract(proxyTransactionHash, proxyOutputIndex);
+
+        Tx tx = new Tx()
+                .from(serviceUserAddress.getAddress())
+                .payToContract(libraryContractAddress, Amount.ada(1L), PlutusData.unit(), uverifyProxyContract)
+                .payToContract(libraryContractAddress, Amount.ada(1L), PlutusData.unit(), uverifyStateContract)
+                .registerStakeAddress(AddressProvider.getRewardAddress(uverifyStateContract, fromCardanoNetwork(network)).toBech32());
+
+        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
+        return quickTxBuilder.compose(tx)
+                .feePayer(serviceUserAddress.getAddress())
+                .withRequiredSigners(serviceUserAddress)
+                .mergeOutputs(false)
+                .build();
+    }
+
+    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
         Address userAddress = new Address(address);
 
-        PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
+        PlutusScript uverifyProxyContract = validatorHelper.getParameterizedProxyContract();
         String proxyScriptHash = validatorToScriptHash(uverifyProxyContract);
-        PlutusScript uverifyStateContract = getUVerifyStateContract(proxyTxHash, proxyOutputIndex);
+        PlutusScript uverifyStateContract = validatorHelper.getParameterizedUVerifyStateContract();
 
         String unit = proxyScriptHash + stateDatum.getId();
         Optional<Utxo> optionalUtxo = ValidatorUtils.getUtxoByTransactionAndUnit(stateDatum.getTransactionId(), unit, backendService);
@@ -304,7 +324,7 @@ public class CardanoBlockchainService {
 
         Utxo proxyStateUtxo;
         try {
-            proxyStateUtxo = getProxyStateUtxo(proxyTxHash, proxyOutputIndex);
+            proxyStateUtxo = validatorHelper.resolveProxyStateUtxo(backendService);
         } catch (Exception exception) {
             log.error("Unable to fetch proxy state utxo: " + exception.getMessage());
             return null;
@@ -393,115 +413,72 @@ public class CardanoBlockchainService {
                 .build();
     }
 
-    public List<TxScript> processTxScripts(List<TxScript> txScripts) throws CborDeserializationException {
-        return processTxScripts(txScripts, validatorHelper.getProxyTransactionHash(), validatorHelper.getProxyOutputIndex());
-    }
+    public void processUVerifyProxyTx(StateRedeemer stateRedeemer, String txHash, String blockHash, long blockNumber,
+                                      long blockTime, long slot, String inlineDatum) {
+        if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.MINT_STATE)) {
+            StateDatum stateDatum = StateDatum.fromUtxoDatum(inlineDatum);
+            stateDatum.setCertificates(stateRedeemer.getCertificates());
+            Optional<StateDatumEntity> optionalStateDatumEntity = stateDatumService.findById(stateDatum.getId());
 
-    private Optional<TxScript> findScriptTxByProxyRedeemer(List<TxScript> txScripts, ProxyRedeemer proxyRedeemer, com.bloxbean.cardano.yaci.core.model.RedeemerTag purpose) {
-        if (proxyRedeemer.equals(ProxyRedeemer.USER_ACTION)) {
-            if (purpose.equals(RedeemerTag.Mint) || purpose.equals(RedeemerTag.Spend)) {
-                return txScripts.stream().filter(txScript -> txScript.getPurpose().equals(RedeemerTag.Reward)).findFirst();
+            final StateDatumEntity stateDatumEntity;
+            if (optionalStateDatumEntity.isEmpty()) {
+                BootstrapDatumEntity bootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(stateDatum.getBootstrapDatumName())
+                        .orElseThrow(() -> new IllegalArgumentException("Bootstrap datum not found"));
+                stateDatumEntity = StateDatumEntity.fromStateDatum(stateDatum, txHash, bootstrapDatumEntity, slot);
+                stateDatumService.updateStateDatum(stateDatumEntity, slot);
+            } else {
+                stateDatumEntity = optionalStateDatumEntity.get();
+                stateDatumEntity.setTransactionId(txHash);
+                stateDatumEntity.setCountdown(stateDatum.getCountdown());
+                stateDatumService.updateStateDatum(stateDatumEntity, slot);
             }
-        }
-        return Optional.empty();
-    }
 
-    public List<TxScript> processTxScripts(List<TxScript> txScripts, String proxyTxHash, int proxyOutputIndex) throws CborDeserializationException {
-        PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
-        final String uverifyProxyScriptHash = ValidatorUtils.validatorToScriptHash(uverifyProxyContract);
-        PlutusScript uverifyStateContract = getUVerifyStateContract(uverifyProxyScriptHash, getProxyStateTokenName(proxyTxHash, proxyOutputIndex));
-        final String uverifyStateScriptHash = ValidatorUtils.validatorToScriptHash(uverifyStateContract);
-
-        List<TxScript> processedTxScripts = new ArrayList<>();
-        ArrayList<TxScript> uverifyStateTransactions = new ArrayList<>(txScripts.stream().filter(txScript -> txScript.getScriptHash().equals(uverifyStateScriptHash)).toList());
-        for (TxScript txScript : txScripts) {
-            if (txScript.getScriptHash().equals(uverifyProxyScriptHash)) {
-                ProxyRedeemer proxyRedeemer = new ProxyRedeemerConverter().deserialize(HexUtil.decodeHexString(txScript.getRedeemerCbor()));
-
-                Optional<TxScript> maybeUverifyStateTx = findScriptTxByProxyRedeemer(uverifyStateTransactions, proxyRedeemer, txScript.getPurpose());
-                maybeUverifyStateTx.ifPresent(uverifyStateTransactions::remove);
-
-                if (maybeUverifyStateTx.isPresent()) {
-                    TxScript uverifyStateTx = maybeUverifyStateTx.get();
-                    PlutusData deserialize = PlutusData.deserialize(HexUtil.decodeHexString(uverifyStateTx.getRedeemerCbor()));
-                    StateRedeemer stateRedeemer = StateRedeemer.fromPlutusData(deserialize);
-
-                    if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.MINT_STATE) ||
-                            stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.RENEW_STATE)) {
-                        StateDatum stateDatum = StateDatum.fromTxScript(txScript, stateRedeemer);
-                        Optional<StateDatumEntity> optionalStateDatumEntity = stateDatumService.findById(stateDatum.getId());
-
-                        if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.RENEW_STATE)) {
-                            stateDatumService.invalidateStateDatum(stateDatum.getId(), uverifyStateTx.getSlot());
-                            processedTxScripts.add(uverifyStateTx);
-                        }
-
-                        final StateDatumEntity stateDatumEntity;
-                        if (optionalStateDatumEntity.isEmpty()) {
-                            BootstrapDatumEntity bootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(stateDatum.getBootstrapDatumName())
-                                    .orElseThrow(() -> new IllegalArgumentException("Bootstrap datum not found"));
-                            stateDatumEntity = StateDatumEntity.fromStateDatum(stateDatum, uverifyStateTx.getTxHash(), bootstrapDatumEntity, uverifyStateTx.getSlot());
-                            stateDatumService.save(stateDatumEntity);
-                        } else {
-                            stateDatumEntity = optionalStateDatumEntity.get();
-                            stateDatumEntity.setTransactionId(uverifyStateTx.getTxHash());
-                            stateDatumEntity.setCountdown(stateDatum.getCountdown());
-                            stateDatumService.updateStateDatum(stateDatumEntity, uverifyStateTx.getSlot());
-                        }
-
-                        List<UVerifyCertificate> uVerifyCertificates = stateDatum.getCertificates();
-                        List<UVerifyCertificateEntity> uVerifyCertificatesEntities = new ArrayList<>();
-                        for (UVerifyCertificate uVerifyCertificate : uVerifyCertificates) {
-                            UVerifyCertificateEntity uVerifyCertificateEntity = UVerifyCertificateEntity.fromUVerifyCertificate(uVerifyCertificate);
-                            uVerifyCertificateEntity.setSlot(uverifyStateTx.getSlot());
-                            uVerifyCertificateEntity.setStateDatum(stateDatumEntity);
-                            uVerifyCertificateEntity.setTransactionId(uverifyStateTx.getTxHash());
-                            uVerifyCertificateEntity.setBlockHash(uverifyStateTx.getBlockHash());
-                            uVerifyCertificateEntity.setBlockNumber(uverifyStateTx.getBlockNumber());
-                            uVerifyCertificateEntity.setCreationTime(new Date(uverifyStateTx.getBlockTime() * 1000));
-                            uVerifyCertificatesEntities.add(uVerifyCertificateEntity);
-                        }
-                        uVerifyCertificateService.saveAllCertificates(uVerifyCertificatesEntities);
-                        processedTxScripts.add(uverifyStateTx);
-                    } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.MINT_BOOTSTRAP)) {
-                        BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromTxScript(txScript, network);
-                        bootstrapDatumService.save(bootstrapDatumEntity);
-                        processedTxScripts.add(uverifyStateTx);
-                    } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.BURN_BOOTSTRAP)) {
-                        BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromTxScript(uverifyStateTx, network);
-                        bootstrapDatumService.markAsInvalid(bootstrapDatumEntity.getTokenName(), uverifyStateTx.getSlot());
-                        processedTxScripts.add(uverifyStateTx);
-                    } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.UPDATE_STATE)) {
-                        StateDatum stateDatum = StateDatum.fromTxScript(txScript, stateRedeemer);
-                        Optional<StateDatumEntity> optionalStateDatumEntity = stateDatumService.findById(stateDatum.getId());
-                        if (optionalStateDatumEntity.isEmpty()) {
-                            log.error("State datum not found for id " + stateDatum.getId() + " in transaction " + uverifyStateTx.getTxHash());
-                            continue;
-                        }
-                        final StateDatumEntity stateDatumEntity = optionalStateDatumEntity.get();
-                        stateDatumEntity.setTransactionId(uverifyStateTx.getTxHash());
-                        stateDatumEntity.setCountdown(stateDatum.getCountdown());
-                        stateDatumService.updateStateDatum(stateDatumEntity, uverifyStateTx.getSlot());
-
-                        List<UVerifyCertificate> uVerifyCertificates = stateDatum.getCertificates();
-                        List<UVerifyCertificateEntity> uVerifyCertificatesEntities = new ArrayList<>();
-                        for (UVerifyCertificate uVerifyCertificate : uVerifyCertificates) {
-                            UVerifyCertificateEntity uVerifyCertificateEntity = UVerifyCertificateEntity.fromUVerifyCertificate(uVerifyCertificate);
-                            uVerifyCertificateEntity.setSlot(uverifyStateTx.getSlot());
-                            uVerifyCertificateEntity.setStateDatum(stateDatumEntity);
-                            uVerifyCertificateEntity.setTransactionId(uverifyStateTx.getTxHash());
-                            uVerifyCertificateEntity.setBlockHash(uverifyStateTx.getBlockHash());
-                            uVerifyCertificateEntity.setBlockNumber(uverifyStateTx.getBlockNumber());
-                            uVerifyCertificateEntity.setCreationTime(new Date(uverifyStateTx.getBlockTime() * 1000));
-                            uVerifyCertificatesEntities.add(uVerifyCertificateEntity);
-                        }
-                        uVerifyCertificateService.saveAllCertificates(uVerifyCertificatesEntities);
-                        processedTxScripts.add(uverifyStateTx);
-                    }
-                }
+            List<UVerifyCertificate> uVerifyCertificates = stateDatum.getCertificates();
+            List<UVerifyCertificateEntity> uVerifyCertificatesEntities = new ArrayList<>();
+            for (UVerifyCertificate uVerifyCertificate : uVerifyCertificates) {
+                UVerifyCertificateEntity uVerifyCertificateEntity = UVerifyCertificateEntity.fromUVerifyCertificate(uVerifyCertificate);
+                uVerifyCertificateEntity.setSlot(slot);
+                uVerifyCertificateEntity.setStateDatum(stateDatumEntity);
+                uVerifyCertificateEntity.setTransactionId(txHash);
+                uVerifyCertificateEntity.setBlockHash(blockHash);
+                uVerifyCertificateEntity.setBlockNumber(blockNumber);
+                uVerifyCertificateEntity.setCreationTime(new Date(blockTime * 1000));
+                uVerifyCertificatesEntities.add(uVerifyCertificateEntity);
             }
+            uVerifyCertificateService.saveAllCertificates(uVerifyCertificatesEntities);
+        } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.MINT_BOOTSTRAP)) {
+            BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromInlineDatum(inlineDatum, txHash, slot, network);
+            bootstrapDatumService.save(bootstrapDatumEntity);
+        } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.BURN_BOOTSTRAP)) {
+            BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromInlineDatum(inlineDatum, txHash, slot, network);
+            bootstrapDatumService.markAsInvalid(bootstrapDatumEntity.getTokenName(), slot);
+        } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.UPDATE_STATE)) {
+            StateDatum stateDatum = StateDatum.fromStateDatum(inlineDatum);
+            stateDatum.setCertificates(stateRedeemer.getCertificates());
+            Optional<StateDatumEntity> optionalStateDatumEntity = stateDatumService.findById(stateDatum.getId());
+            if (optionalStateDatumEntity.isEmpty()) {
+                log.error("State datum not found for id " + stateDatum.getId() + " in transaction " + txHash);
+                return;
+            }
+            final StateDatumEntity stateDatumEntity = optionalStateDatumEntity.get();
+            stateDatumEntity.setTransactionId(txHash);
+            stateDatumEntity.setCountdown(stateDatum.getCountdown());
+            stateDatumService.updateStateDatum(stateDatumEntity, slot);
+
+            List<UVerifyCertificate> uVerifyCertificates = stateDatum.getCertificates();
+            List<UVerifyCertificateEntity> uVerifyCertificatesEntities = new ArrayList<>();
+            for (UVerifyCertificate uVerifyCertificate : uVerifyCertificates) {
+                UVerifyCertificateEntity uVerifyCertificateEntity = UVerifyCertificateEntity.fromUVerifyCertificate(uVerifyCertificate);
+                uVerifyCertificateEntity.setSlot(slot);
+                uVerifyCertificateEntity.setStateDatum(stateDatumEntity);
+                uVerifyCertificateEntity.setTransactionId(txHash);
+                uVerifyCertificateEntity.setBlockHash(blockHash);
+                uVerifyCertificateEntity.setBlockNumber(blockNumber);
+                uVerifyCertificateEntity.setCreationTime(new Date(blockTime * 1000));
+                uVerifyCertificatesEntities.add(uVerifyCertificateEntity);
+            }
+            uVerifyCertificateService.saveAllCertificates(uVerifyCertificatesEntities);
         }
-        return processedTxScripts;
     }
 
     public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos) {
@@ -615,30 +592,13 @@ public class CardanoBlockchainService {
         return CardanoUtils.getLatestSlot(backendService);
     }
 
-    public Utxo getProxyStateUtxo(String proxyTxHash, int proxyOutputIndex) throws DecoderException, ApiException {
-        String stateTokenName = getProxyStateTokenName(proxyTxHash, proxyOutputIndex);
-        PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
-        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, Networks.preprod()).toBech32();
-        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
-        String stateTokenUnit = proxyScriptHash + stateTokenName;
-
-        Result<List<Utxo>> stateUtxRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, 1, 1);
-        return stateUtxRequest.getValue().get(0);
-    }
-
     public Transaction mintProxyBootstrapDatum(BootstrapDatum bootstrapDatum) {
-        return mintProxyBootstrapDatum(bootstrapDatum, validatorHelper.getProxyTransactionHash(), validatorHelper.getProxyOutputIndex());
-    }
-
-    public Transaction mintProxyBootstrapDatum(BootstrapDatum bootstrapDatum, String proxyTxHash, int proxyOutputIndex) {
         if (bootstrapDatumService.bootstrapDatumAlreadyExists(bootstrapDatum.getTokenName())) {
             throw new IllegalArgumentException("Bootstrap datum with name " + bootstrapDatum.getTokenName() + " already exists");
         }
 
-        PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
-        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
-
-        PlutusScript stateContract = ValidatorUtils.getUVerifyStateContract(proxyScriptHash, getProxyStateTokenName(proxyTxHash, proxyOutputIndex));
+        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
+        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
 
         QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
 
@@ -647,8 +607,8 @@ public class CardanoBlockchainService {
                 .value(BigInteger.ONE)
                 .build();
 
-        String stateScriptRewardAddress = AddressProvider.getRewardAddress(stateContract, fromCardanoNetwork(network)).toBech32();
-        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, fromCardanoNetwork(network)).toBech32();
+        String stateScriptRewardAddress = validatorHelper.getStateContractAddress();
+        String proxyScriptAddress = validatorHelper.getProxyContractAddress();
 
         StateRedeemer redeemer = StateRedeemer.builder()
                 .purpose(UVerifyScriptPurpose.MINT_BOOTSTRAP)
@@ -659,14 +619,16 @@ public class CardanoBlockchainService {
 
         Utxo proxyStateUtxo;
         try {
-            proxyStateUtxo = getProxyStateUtxo(proxyTxHash, proxyOutputIndex);
+            proxyStateUtxo = validatorHelper.resolveProxyStateUtxo(backendService);
         } catch (Exception exception) {
             log.error("Unable to fetch proxy state utxo: " + exception.getMessage());
             return null;
         }
 
+        Utxo stateLibraryUtxo = validatorHelper.resolveStateLibraryUtxo(backendService);
+
         ScriptTx scriptTx = new ScriptTx()
-                .readFrom(proxyStateUtxo)
+                .readFrom(proxyStateUtxo, stateLibraryUtxo)
                 .withdraw(stateScriptRewardAddress, BigInteger.valueOf(0), redeemer.toPlutusData())
                 .mintAsset(proxyContract, List.of(authorizationToken),
                         mintProxyRedeemer, proxyScriptAddress,
@@ -679,7 +641,7 @@ public class CardanoBlockchainService {
                 .build();
     }
 
-    public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String proxyTxHash, int proxyOutputIndex) throws ApiException, CborSerializationException {
+    public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException, CborSerializationException {
         Address userAddress = new Address(address);
         Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
 
@@ -693,10 +655,10 @@ public class CardanoBlockchainService {
             throw new IllegalArgumentException("No applicable bootstrap datum found for user account");
         }
 
-        return forkProxyStateDatum(address, uVerifyCertificates, optionalBootstrapDatum.get().getTokenName(), proxyTxHash, proxyOutputIndex);
+        return forkProxyStateDatum(address, uVerifyCertificates, optionalBootstrapDatum.get().getTokenName());
     }
 
-    public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName, String proxyTxHash, int proxyOutputIndex) throws ApiException, CborSerializationException {
+    public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException, CborSerializationException {
         Optional<BootstrapDatumEntity> optionalBootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(bootstrapTokenName);
 
         if (optionalBootstrapDatumEntity.isEmpty()) {
@@ -715,7 +677,8 @@ public class CardanoBlockchainService {
         byte[] userAccountCredential = optionalUserAccountCredential.get();
         Result<TxContentUtxo> transactionUtxosResult = backendService.getTransactionService().getTransactionUtxos(bootstrapDatumEntity.getTransactionId());
 
-        String unit = getUverifyProxyContract(proxyTxHash, proxyOutputIndex).getPolicyId() + HexUtil.encodeHexString(bootstrapTokenName.getBytes());
+        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
+        String unit = proxyContract.getPolicyId() + HexUtil.encodeHexString(bootstrapTokenName.getBytes());
         Optional<TxContentUtxoOutputs> optionalTxContentUtxoOutput = transactionUtxosResult.getValue().getOutputs().stream().filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> amount.getUnit().equals(unit))).findFirst();
 
         if (optionalTxContentUtxoOutput.isEmpty()) {
@@ -749,11 +712,7 @@ public class CardanoBlockchainService {
                 .value(BigInteger.ONE)
                 .build();
 
-        PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
-        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
-
-        PlutusScript stateContract = ValidatorUtils.getUVerifyStateContract(proxyScriptHash, getProxyStateTokenName(proxyTxHash, proxyOutputIndex));
-
+        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
         String stateScriptRewardAddress = AddressProvider.getRewardAddress(stateContract, fromCardanoNetwork(network)).toBech32();
         String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, fromCardanoNetwork(network)).toBech32();
 
@@ -765,7 +724,7 @@ public class CardanoBlockchainService {
 
         Utxo proxyStateUtxo;
         try {
-            proxyStateUtxo = getProxyStateUtxo(proxyTxHash, proxyOutputIndex);
+            proxyStateUtxo = validatorHelper.resolveProxyStateUtxo(backendService);
         } catch (Exception exception) {
             log.error("Unable to fetch proxy state utxo: " + exception.getMessage());
             return null;
@@ -802,5 +761,120 @@ public class CardanoBlockchainService {
                 .feePayer(address)
                 .withRequiredSigners(userAddress)
                 .build();
+    }
+
+    private Optional<StateRedeemer> findWithdrawalRedeemer(Map<String, BigInteger> withdrawals, List<Redeemer> redeemers, Address address) {
+        if (withdrawals == null || withdrawals.size() == 0)
+            return Optional.empty();
+
+        ArrayList<String> rewardAddresses = new ArrayList<>(withdrawals.keySet().stream().map(String::toLowerCase).toList());
+        Collections.sort(rewardAddresses);
+
+        int redeemerIndex = rewardAddresses.indexOf(HexUtil.encodeHexString(address.getBytes()).toLowerCase());
+        Optional<Redeemer> optionalRedeemer = redeemers.stream().filter(redeemer -> redeemer.getIndex() == redeemerIndex).findFirst();
+        if (optionalRedeemer.isEmpty()) {
+            return Optional.empty();
+        }
+        Redeemer redeemer = optionalRedeemer.get();
+        try {
+            PlutusData deserialize = PlutusData.deserialize(HexUtil.decodeHexString(redeemer.getData().getCbor()));
+            return Optional.of(StateRedeemer.fromPlutusData(deserialize));
+        } catch (Exception e) {
+            log.error("Error deserializing StateRedeemer from redeemer data cbor: {}", redeemer.getData().getCbor(), e);
+            return Optional.empty();
+        }
+    }
+
+    public void processTransactionEvent(TransactionEvent transactionEvent) {
+        EventMetadata metadata = transactionEvent.getMetadata();
+        if (metadata.isParallelMode()) {
+            return;
+        }
+
+        for (com.bloxbean.cardano.yaci.helper.model.Transaction transaction : transactionEvent.getTransactions()) {
+            if (transaction.isInvalid())
+                continue;
+            if (transaction.getWitnesses().getRedeemers() == null || transaction.getWitnesses().getRedeemers().size() == 0)
+                continue;
+
+            final String proxyTxHash = validatorHelper.getProxyTransactionHash();
+            final Integer proxyOutputIndex = validatorHelper.getProxyOutputIndex();
+
+            final PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
+            final String uverifyProxyScriptHash = ValidatorUtils.validatorToScriptHash(uverifyProxyContract);
+
+            final String proxyContractAddress = validatorHelper.getProxyContractAddress();
+            String hexStateContractAddress = HexUtil.encodeHexString(new Address(validatorHelper.getStateContractAddress()).getBytes());
+
+            List<com.bloxbean.cardano.yaci.core.model.Amount> mints = transaction.getBody().getMint();
+
+            Optional<com.bloxbean.cardano.yaci.core.model.Amount> maybeMint = mints.stream().filter(amount -> amount.getPolicyId().equals(uverifyProxyScriptHash)).findFirst();
+            boolean containsPotentialSpend = transaction.getBody().getWithdrawals().containsKey(hexStateContractAddress);
+
+            if (maybeMint.isPresent()) {
+                com.bloxbean.cardano.yaci.core.model.Amount mint = maybeMint.get();
+
+                List<String> distinctPolicies = transaction.getBody().getMint().stream()
+                        .map(com.bloxbean.cardano.yaci.core.model.Amount::getPolicyId)
+                        .distinct().toList();
+
+                int redeemerIndex = distinctPolicies.indexOf(mint.getPolicyId());
+                Optional<Redeemer> optionalRedeemer = transaction.getWitnesses().getRedeemers().stream().filter(redeemer -> redeemer.getTag().equals(RedeemerTag.Mint) && redeemer.getIndex() == redeemerIndex).findFirst();
+
+                if (optionalRedeemer.isEmpty()) {
+                    log.warn("No redeemer found for minting UVerify Proxy Token in tx: {}", transaction.getTxHash());
+                    continue;
+                }
+
+                Redeemer redeemer = optionalRedeemer.get();
+                ProxyRedeemer proxyRedeemer = new ProxyRedeemerConverter().deserialize(redeemer.getData().getCbor());
+
+                Map<String, BigInteger> withdrawals = transaction.getBody().getWithdrawals();
+                List<Redeemer> rewardRedeemers = transaction.getWitnesses().getRedeemers().stream().filter(potentialRedeemer -> potentialRedeemer.getTag().equals(RedeemerTag.Reward)).toList();
+                String stateContractAddress = validatorHelper.getStateContractAddress();
+                Optional<StateRedeemer> stateRedeemer = findWithdrawalRedeemer(withdrawals, rewardRedeemers, new Address(stateContractAddress));
+
+                if (stateRedeemer.isEmpty()) {
+                    log.warn("No StateRedeemer found for withdrawal in tx: {}", transaction.getTxHash());
+                    continue;
+                }
+
+                if (proxyRedeemer.equals(ProxyRedeemer.USER_ACTION)) {
+                    Optional<TransactionOutput> optionalUtxo = transaction.getBody().getOutputs().stream().filter(utxo -> utxo.getAmounts().stream()
+                            .anyMatch(amount -> amount.getPolicyId() != null &&
+                                    amount.getPolicyId().equals(uverifyProxyScriptHash))).findFirst();
+                    if (optionalUtxo.isEmpty()) {
+                        log.warn("No UTXO found with UVerify Proxy Token in tx: {}", transaction.getTxHash());
+                        continue;
+                    }
+                    TransactionOutput utxo = optionalUtxo.get();
+                    processUVerifyProxyTx(stateRedeemer.get(), transaction.getTxHash(),
+                            metadata.getBlockHash(), transaction.getBlockNumber(), metadata.getBlockTime(), metadata.getSlot(), utxo.getInlineDatum());
+                }
+            } else if (containsPotentialSpend) {
+                Optional<TransactionOutput> maybeTransactionOutput = transaction.getBody().getOutputs().stream().filter(txOutput -> txOutput.getAddress().equals(proxyContractAddress)
+                        && txOutput.getAmounts().stream().anyMatch(amount -> amount.getPolicyId() != null && amount.getPolicyId().equals(uverifyProxyScriptHash))).findFirst();
+
+                if (maybeTransactionOutput.isEmpty()) {
+                    log.warn("No output found with UVerify Proxy Token in tx: {}", transaction.getTxHash());
+                    continue;
+                }
+
+                Map<String, BigInteger> withdrawals = transaction.getBody().getWithdrawals();
+                List<Redeemer> rewardRedeemers = transaction.getWitnesses().getRedeemers().stream().filter(potentialRedeemer -> potentialRedeemer.getTag().equals(RedeemerTag.Reward)).toList();
+
+                String stateContractAddress = validatorHelper.getStateContractAddress();
+                Optional<StateRedeemer> stateRedeemer = findWithdrawalRedeemer(withdrawals, rewardRedeemers, new Address(stateContractAddress));
+
+                if (stateRedeemer.isEmpty()) {
+                    log.warn("No StateRedeemer found for withdrawal in tx: {}", transaction.getTxHash());
+                    continue;
+                }
+
+                TransactionOutput transactionOutput = maybeTransactionOutput.get();
+                processUVerifyProxyTx(stateRedeemer.get(), transaction.getTxHash(),
+                        metadata.getBlockHash(), transaction.getBlockNumber(), metadata.getBlockTime(), metadata.getSlot(), transactionOutput.getInlineDatum());
+            }
+        }
     }
 }

@@ -52,6 +52,7 @@ import io.uverify.backend.service.BootstrapDatumService;
 import io.uverify.backend.service.CardanoBlockchainService;
 import io.uverify.backend.service.StateDatumService;
 import io.uverify.backend.service.UVerifyCertificateService;
+import io.uverify.backend.util.ValidatorHelper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -101,7 +102,6 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             @Value("${cardano.test.user.mnemonic}") String testUserMnemonic,
             @Value("${cardano.service.fee.receiver.mnemonic}") String feeReceiverMnemonic,
             @Value("${cardano.facilitator.user.mnemonic}") String facilitatorMnemonic,
-            @Value("${cardano.intent.user.mnemonic}") String intentMnemonic,
             CardanoBlockchainService cardanoBlockchainService,
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
@@ -110,8 +110,9 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
             ExtensionManager extensionManager,
+            ValidatorHelper validatorHelper,
             ConnectedGoodsService connectedGoodsService) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, intentMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager,
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager, validatorHelper,
                 List.of(serviceWalletAddress));
         RestAssured.port = port;
         this.connectedGoodsServiceWallet = new Account(Networks.testnet(), serviceWalletMnemonic);

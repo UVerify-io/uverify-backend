@@ -18,7 +18,6 @@
 
 package io.uverify.backend.model;
 
-import com.bloxbean.cardano.client.plutus.spec.BytesPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusData;
@@ -27,8 +26,6 @@ import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static io.uverify.backend.util.ValidatorUtils.extractStringFromPlutusData;
 
 @Getter
 @Setter
@@ -42,7 +39,7 @@ public class StateRedeemer {
     public static StateRedeemer fromPlutusData(PlutusData plutusData) {
         StateRedeemer redeemer = new StateRedeemer();
         List<PlutusData> plutusDataList = ((ConstrPlutusData) plutusData).getData().getPlutusDataList();
-        redeemer.setPurpose(UVerifyScriptPurpose.fromValue(extractStringFromPlutusData(plutusDataList.get(0))));
+        redeemer.setPurpose(UVerifyScriptPurpose.fromConstr((ConstrPlutusData) plutusDataList.get(0)));
 
         List<PlutusData> certificates = ((ListPlutusData) plutusDataList.get(1)).getPlutusDataList();
         ArrayList<UVerifyCertificate> uverifyCertificates = new ArrayList<>();
@@ -65,7 +62,7 @@ public class StateRedeemer {
         }
 
         return ConstrPlutusData.of(0,
-                BytesPlutusData.of(purpose.getValue()),
+                this.purpose.toConstr(),
                 uVerifyCertificates
         );
     }

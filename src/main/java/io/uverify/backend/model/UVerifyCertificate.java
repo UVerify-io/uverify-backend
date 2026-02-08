@@ -42,8 +42,6 @@ public class UVerifyCertificate {
     private String issuer;
     private String extra;
 
-    private StateDatum stateDatum;
-
     public static UVerifyCertificate fromCertificateData(CertificateData certificateData, String address) {
         return UVerifyCertificate.builder()
                 .hash(certificateData.getHash())
