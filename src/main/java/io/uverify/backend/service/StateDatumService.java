@@ -88,6 +88,7 @@ public class StateDatumService {
         stateDatumRepository.markAsInvalid(id, slot);
     }
 
+    @Transactional
     public void updateStateDatum(StateDatumEntity stateDatumEntity, Long slot) {
         StateDatumUpdateEntity stateDatumUpdateEntity = StateDatumUpdateEntity.builder()
                 .countdown(stateDatumEntity.getCountdown())

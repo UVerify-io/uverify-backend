@@ -22,6 +22,6 @@ import com.bloxbean.cardano.client.plutus.annotation.Constr;
 
 @Constr
 public enum ProxyRedeemer {
+    ADMIN_ACTION,
     USER_ACTION,
-    ADMIN_ACTION
 }

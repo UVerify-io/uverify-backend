@@ -21,9 +21,6 @@ package io.uverify.backend.model;
 import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.plutus.spec.*;
 import com.bloxbean.cardano.client.util.HexUtil;
-import com.bloxbean.cardano.yaci.store.script.domain.TxScript;
-import io.uverify.backend.enums.CardanoNetwork;
-import io.uverify.backend.util.ValidatorUtils;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -51,20 +48,6 @@ public class StateDatum {
     private String bootstrapDatumName;
     private Boolean keepAsOracle;
 
-    public static StateDatum fromLegacyBootstrapDatum(BootstrapDatum bootstrapDatum, String ownerCredential, String certificateDataHash) {
-        StateDatum stateDatum = new StateDatum();
-        stateDatum.setOwner(ownerCredential);
-        stateDatum.setFee(bootstrapDatum.getFee());
-        stateDatum.setFeeInterval(bootstrapDatum.getFeeInterval());
-        stateDatum.setFeeReceivers(bootstrapDatum.getFeeReceivers());
-        stateDatum.setTtl(bootstrapDatum.getTtl());
-        stateDatum.setCountdown(bootstrapDatum.getTransactionLimit());
-        stateDatum.setCertificateDataHash(certificateDataHash);
-        stateDatum.setBatchSize(bootstrapDatum.getBatchSize());
-        stateDatum.setBootstrapDatumName(bootstrapDatum.getTokenName());
-        return stateDatum;
-    }
-
     public static StateDatum fromBootstrapDatum(BootstrapDatum bootstrapDatum, String ownerCredential, String certificateDataHash) {
         StateDatum stateDatum = new StateDatum();
         stateDatum.setOwner(ownerCredential);
@@ -78,11 +61,6 @@ public class StateDatum {
         stateDatum.setBootstrapDatumName(bootstrapDatum.getTokenName());
         stateDatum.setKeepAsOracle(false);
         return stateDatum;
-    }
-
-    public static StateDatum fromLegacyBootstrapDatum(String inlineDatum, byte[] ownerCredential) {
-        BootstrapDatum bootstrapDatum = BootstrapDatum.fromLegancyUtxoDatum(inlineDatum);
-        return fromLegacyBootstrapDatum(bootstrapDatum, HexUtil.encodeHexString(ownerCredential), null);
     }
 
     public static StateDatum fromBootstrapDatum(String inlineDatum, byte[] ownerCredential) {
@@ -131,44 +109,10 @@ public class StateDatum {
         return stateDatum;
     }
 
-    public static StateDatum fromPreviousLegacyStateDatum(StateDatum previousStateDatum) {
-        StateDatum stateDatum = new StateDatum();
-        stateDatum.setId(previousStateDatum.getId());
-        stateDatum.setOwner(previousStateDatum.getOwner());
-        stateDatum.setFee(previousStateDatum.getFee());
-        stateDatum.setFeeInterval(previousStateDatum.getFeeInterval());
-        stateDatum.setFeeReceivers(previousStateDatum.getFeeReceivers());
-        stateDatum.setTtl(previousStateDatum.getTtl());
-        stateDatum.setCountdown(previousStateDatum.getCountdown() - 1);
-        stateDatum.setCertificateDataHash(previousStateDatum.getCertificateDataHash());
-        stateDatum.setBatchSize(previousStateDatum.getBatchSize());
-        stateDatum.setBootstrapDatumName(previousStateDatum.getBootstrapDatumName());
-        stateDatum.setKeepAsOracle(previousStateDatum.getKeepAsOracle());
-        return stateDatum;
-    }
-
-    public static StateDatum fromPreviousLegacyStateDatum(String inlineDatum) {
-        StateDatum previousStateDatum = fromLegacyUtxoDatum(inlineDatum);
-        return fromPreviousLegacyStateDatum(previousStateDatum);
-    }
-
-    public static StateDatum fromStateDatum(String inlineDatum) {
+    public static StateDatum fromPreviousStateDatum(String inlineDatum) {
         StateDatum previousStateDatum = fromUtxoDatum(inlineDatum);
-        return fromPreviousLegacyStateDatum(previousStateDatum);
-    }
-
-    public static StateDatum fromTxScript(TxScript txScript, StateRedeemer stateRedeemer) {
-        StateDatum stateDatum = fromUtxoDatum(txScript.getDatum());
-        stateDatum.setCountdown(stateDatum.getCountdown());
-        stateDatum.setCertificates(stateRedeemer.getCertificates());
-        return stateDatum;
-    }
-
-    public static StateDatum fromDatm(TxScript txScript, StateRedeemer stateRedeemer) {
-        StateDatum stateDatum = fromUtxoDatum(txScript.getDatum());
-        stateDatum.setCountdown(stateDatum.getCountdown());
-        stateDatum.setCertificates(stateRedeemer.getCertificates());
-        return stateDatum;
+        previousStateDatum.setCountdown(previousStateDatum.getCountdown() - 1);
+        return previousStateDatum;
     }
 
     public void setCertificateDataHash(List<UVerifyCertificate> certificates) {
@@ -181,43 +125,6 @@ public class StateDatum {
 
     public void setCertificateDataHash(String certificateDataHash) {
         this.certificateDataHash = certificateDataHash;
-    }
-
-    public PlutusData toLegacyPlutusData(CardanoNetwork network) {
-        PlutusData uVerifyCertificates = ListPlutusData.of(ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build());
-        if (this.certificates != null) {
-            uVerifyCertificates = ListPlutusData.of(
-                    this.certificates.stream()
-                            .map(UVerifyCertificate::toPlutusData)
-                            .toList()
-                            .toArray(new PlutusData[0])
-            );
-        }
-
-        String stateId = this.id;
-        if (stateId == null) {
-            stateId = "00";
-        }
-
-        return ConstrPlutusData.of(0,
-                BytesPlutusData.of(HexUtil.decodeHexString(stateId)),
-                BytesPlutusData.of(HexUtil.decodeHexString(this.owner)),
-                BytesPlutusData.of(HexUtil.decodeHexString(ValidatorUtils.getMintOrBurnAuthTokenHash(network))),
-                BytesPlutusData.of(HexUtil.decodeHexString(ValidatorUtils.getUpdateStateTokenHash(network))),
-                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),
-                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),
-                ListPlutusData.of(
-                        this.feeReceivers.stream()
-                                .map(BytesPlutusData::of)
-                                .toList()
-                                .toArray(new PlutusData[0])
-                ),
-                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),
-                BigIntPlutusData.of(BigInteger.valueOf(this.countdown)),
-                uVerifyCertificates,
-                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize)),
-                BytesPlutusData.of(this.bootstrapDatumName.getBytes())
-        );
     }
 
     public PlutusData toPlutusData() {

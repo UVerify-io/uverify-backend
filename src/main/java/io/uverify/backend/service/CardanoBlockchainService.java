@@ -319,7 +319,7 @@ public class CardanoBlockchainService {
         Utxo utxo = optionalUtxo.get();
         String proxyScriptAddress = AddressProvider.getEntAddress(uverifyProxyContract, fromCardanoNetwork(network)).toBech32();
 
-        StateDatum nextStateDatum = StateDatum.fromStateDatum(utxo.getInlineDatum());
+        StateDatum nextStateDatum = StateDatum.fromPreviousStateDatum(utxo.getInlineDatum());
         nextStateDatum.setCertificates(uVerifyCertificates);
 
         Utxo proxyStateUtxo;
@@ -338,8 +338,10 @@ public class CardanoBlockchainService {
         PlutusData spendProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);
         String stateScriptRewardAddress = AddressProvider.getRewardAddress(uverifyStateContract, fromCardanoNetwork(network)).toBech32();
 
+        Utxo stateLibraryUtxo = validatorHelper.resolveStateLibraryUtxo(backendService);
+
         ScriptTx updateStateTokenTx = new ScriptTx()
-                .readFrom(proxyStateUtxo)
+                .readFrom(proxyStateUtxo, stateLibraryUtxo)
                 .collectFrom(utxo, spendProxyRedeemer)
                 .attachSpendingValidator(uverifyProxyContract)
                 .payToContract(proxyScriptAddress, utxo.getAmount(), nextStateDatum.toPlutusData())
@@ -453,7 +455,7 @@ public class CardanoBlockchainService {
             BootstrapDatumEntity bootstrapDatumEntity = BootstrapDatumEntity.fromInlineDatum(inlineDatum, txHash, slot, network);
             bootstrapDatumService.markAsInvalid(bootstrapDatumEntity.getTokenName(), slot);
         } else if (stateRedeemer.getPurpose().equals(UVerifyScriptPurpose.UPDATE_STATE)) {
-            StateDatum stateDatum = StateDatum.fromStateDatum(inlineDatum);
+            StateDatum stateDatum = StateDatum.fromUtxoDatum(inlineDatum);
             stateDatum.setCertificates(stateRedeemer.getCertificates());
             Optional<StateDatumEntity> optionalStateDatumEntity = stateDatumService.findById(stateDatum.getId());
             if (optionalStateDatumEntity.isEmpty()) {
@@ -730,8 +732,10 @@ public class CardanoBlockchainService {
             return null;
         }
 
+        Utxo stateLibraryUtxo = validatorHelper.resolveStateLibraryUtxo(backendService);
+
         ScriptTx scriptTransaction = new ScriptTx()
-                .readFrom(utxo, proxyStateUtxo)
+                .readFrom(utxo, proxyStateUtxo, stateLibraryUtxo)
                 .collectFrom(userUtxo)
                 .withdraw(stateScriptRewardAddress, BigInteger.valueOf(0), redeemer.toPlutusData())
                 .mintAsset(proxyContract, List.of(userStateToken),

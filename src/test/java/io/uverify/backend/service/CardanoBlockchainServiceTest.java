@@ -255,7 +255,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     @Test
     @Order(4)
     public void testUpdateStateDatum() throws ApiException, CborSerializationException, InterruptedException, CborException, AddressExcepion {
-        Result<String> result = updateUserStateDatum();
+        Result<String> result = updateUserStateDatum("");
 
         Assertions.assertTrue(result.isSuccessful());
         Assertions.assertEquals(getFeeReceived(feeReceiverAccount.enterpriseAddress()), 2_000_000L);
@@ -267,7 +267,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     @Test
     @Order(5)
     public void testUpdateStateDatumAgain() throws ApiException, CborSerializationException, InterruptedException, CborException, AddressExcepion {
-        Result<String> result = updateUserStateDatum();
+        Result<String> result = updateUserStateDatum("");
         Assertions.assertTrue(result.isSuccessful());
 
         Assertions.assertEquals(getFeeReceived(feeReceiverAccount.enterpriseAddress()), 2_000_000L);
@@ -351,10 +351,6 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
 
         StateDatumEntity stateDatumEntity = getFirstUserStateDatum(userAccount.baseAddress(), "uverify_default_test_token");
         Assertions.assertEquals(14, stateDatumEntity.getCountdown());
-    }
-
-    public Result<String> updateUserStateDatum() throws ApiException, InterruptedException, CborSerializationException, CborException, AddressExcepion {
-        return updateUserStateDatum("");
     }
 
     public Result<String> updateUserStateDatum(String bootstrapToken) throws ApiException, InterruptedException, CborSerializationException, CborException, AddressExcepion {
