@@ -26,7 +26,10 @@ import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.UserCredentialEntity;
 import io.uverify.backend.enums.CardanoNetwork;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -50,6 +53,7 @@ public class BootstrapData {
     private Integer transactionLimit;
     @JsonAlias({"batchSize", "batch_size"})
     private Integer batchSize;
+    private Integer version;
 
     public static BootstrapData fromBootstrapDatumEntity(BootstrapDatumEntity bootstrapDatumEntity, CardanoNetwork network) {
         BootstrapData bootstrapData = new BootstrapData();
@@ -70,6 +74,7 @@ public class BootstrapData {
         bootstrapData.setTtl(bootstrapDatumEntity.getTtl());
         bootstrapData.setTransactionLimit(bootstrapDatumEntity.getTransactionLimit());
         bootstrapData.setBatchSize(bootstrapDatumEntity.getBatchSize());
+        bootstrapData.setVersion(bootstrapDatumEntity.getVersion());
         return bootstrapData;
     }
 }

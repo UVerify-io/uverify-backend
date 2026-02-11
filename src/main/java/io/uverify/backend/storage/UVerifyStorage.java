@@ -26,6 +26,8 @@ import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.TxInputRepos
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.UtxoRepository;
 import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.service.CardanoBlockchainService;
+import io.uverify.backend.util.ValidatorHelper;
+import lombok.extern.slf4j.Slf4j;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -39,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 
 @Component
+@Slf4j
 @SuppressWarnings("unused")
 @Profile("!disable-indexer")
 public class UVerifyStorage extends UtxoStorageImpl {
@@ -49,22 +52,51 @@ public class UVerifyStorage extends UtxoStorageImpl {
     @Autowired
     private final ExtensionManager extensionManager;
 
-    public UVerifyStorage(UtxoRepository utxoRepository, TxInputRepository spentOutputRepository, DSLContext dsl, UtxoCache utxoCache, PlatformTransactionManager transactionManager, CardanoBlockchainService cardanoBlockchainService, ExtensionManager extensionManager) {
+    @Autowired
+    private final ValidatorHelper validatorHelper;
+
+    private String proxyContractAddress;
+    private String proxyPolicyId;
+
+    public UVerifyStorage(UtxoRepository utxoRepository, TxInputRepository spentOutputRepository, DSLContext dsl, UtxoCache utxoCache, PlatformTransactionManager transactionManager, CardanoBlockchainService cardanoBlockchainService, ExtensionManager extensionManager, ValidatorHelper validatorHelper) {
         super(utxoRepository, spentOutputRepository, dsl, utxoCache, transactionManager);
         this.cardanoBlockchainService = cardanoBlockchainService;
         this.extensionManager = extensionManager;
+        this.validatorHelper = validatorHelper;
     }
 
     @Override
     public void saveUnspent(List<AddressUtxo> addressUtxoList) {
         List<AddressUtxo> processedByUVerifyCore = cardanoBlockchainService.processAddressUtxos(addressUtxoList);
         List<AddressUtxo> processedByExtensions = extensionManager.processAddressUtxos(addressUtxoList);
+
+        List<AddressUtxo> processedByUVerifyProxy = hasBeenProcessedByUVerifyProxy(addressUtxoList);
+
         Set<AddressUtxo> allProcessedUtxos = new HashSet<>();
         allProcessedUtxos.addAll(processedByUVerifyCore);
         allProcessedUtxos.addAll(processedByExtensions);
+        allProcessedUtxos.addAll(processedByUVerifyProxy);
         if (!allProcessedUtxos.isEmpty()) {
             super.saveUnspent(new ArrayList<>(allProcessedUtxos));
         }
+    }
+
+    private List<AddressUtxo> hasBeenProcessedByUVerifyProxy(List<AddressUtxo> addressUtxoList) {
+        if (this.proxyContractAddress == null) {
+            this.proxyContractAddress = validatorHelper.getProxyContractAddress();
+        }
+
+        if (this.proxyPolicyId == null) {
+            try {
+                this.proxyPolicyId = validatorHelper.getParameterizedProxyContract().getPolicyId();
+            } catch (Exception e) {
+                log.error("Error setting proxy policy ID", e);
+            }
+        }
+
+        return addressUtxoList.stream().filter(addressUtxo ->
+                addressUtxo.getOwnerAddr().equals(proxyContractAddress) &&
+                        addressUtxo.getAmounts().stream().anyMatch(amount -> amount.getPolicyId() != null && amount.getPolicyId().equals(proxyPolicyId))).toList();
     }
 
     @Override

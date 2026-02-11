@@ -27,10 +27,7 @@ import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.transaction.spec.TransactionWitnessSet;
 import com.bloxbean.cardano.client.util.HexUtil;
-import io.uverify.backend.dto.BootstrapData;
-import io.uverify.backend.dto.BuildStatus;
-import io.uverify.backend.dto.BuildTransactionResponse;
-import io.uverify.backend.dto.CertificateData;
+import io.uverify.backend.dto.*;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.model.BootstrapDatum;
@@ -41,7 +38,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
 
 @Service
 @Slf4j
@@ -56,13 +52,17 @@ public class UVerifyTransactionService {
 
         if (witnessSetHex != null && !witnessSetHex.isEmpty()) {
             TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(witnessSetHex)));
-            transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());
+            if (transaction.getWitnessSet() == null) {
+                transaction.setWitnessSet(witnessSet);
+            } else {
+                transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());
+            }
         }
-        
+
         return cardanoBlockchainService.submitTransaction(transaction);
     }
 
-    public BuildTransactionResponse buildUVerifyTransaction(List<CertificateData> certificates, String address) throws ApiException, CborSerializationException {
+    public BuildTransactionResponse buildUVerifyTransaction(List<CertificateData> certificates, String address) {
         List<UVerifyCertificate> uVerifyCertificates = certificates.stream()
                 .map(certificate -> UVerifyCertificate.fromCertificateData(certificate, address))
                 .toList();
@@ -86,10 +86,28 @@ public class UVerifyTransactionService {
         }
     }
 
-    public BuildTransactionResponse buildBootstrapDatum(BootstrapData bootstrapData) throws ApiException, CborSerializationException {
+    public ProxyInitResponse buildInitProxyTx() {
+        ProxyInitResponse proxyInitResponse;
+        try {
+            proxyInitResponse = cardanoBlockchainService.initProxyContract();
+            proxyInitResponse.setStatus(BuildStatus.builder()
+                    .code(BuildStatusCode.SUCCESS)
+                    .build());
+
+        } catch (ApiException | CborSerializationException e) {
+            proxyInitResponse = ProxyInitResponse.builder()
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.ERROR)
+                            .message(e.getMessage())
+                            .build()).build();
+        }
+        return proxyInitResponse;
+    }
+
+    public BuildTransactionResponse buildBootstrapDatum(BootstrapData bootstrapData) {
         BootstrapDatum bootstrapDatum = BootstrapDatum.fromBootstrapData(bootstrapData);
         try {
-            Transaction transaction = cardanoBlockchainService.initializeBootstrapDatum(bootstrapDatum);
+            Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
             return BuildTransactionResponse.builder()
                     .status(BuildStatus.builder()
                             .code(BuildStatusCode.SUCCESS)
@@ -144,6 +162,27 @@ public class UVerifyTransactionService {
                             .message(exception.getMessage())
                             .build())
                     .type(TransactionType.CUSTOM)
+                    .build();
+        }
+    }
+
+    public BuildTransactionResponse buildDeployTx() {
+        try {
+            Transaction transaction = cardanoBlockchainService.deployUVerifyContracts();
+            return BuildTransactionResponse.builder()
+                    .unsignedTransaction(transaction.serializeToHex())
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.SUCCESS)
+                            .build())
+                    .type(TransactionType.DEPLOY)
+                    .build();
+        } catch (Exception exception) {
+            return BuildTransactionResponse.builder()
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.ERROR)
+                            .message(exception.getMessage())
+                            .build())
+                    .type(TransactionType.DEPLOY)
                     .build();
         }
     }

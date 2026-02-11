@@ -20,13 +20,12 @@ package io.uverify.backend.entity;
 
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.script.domain.TxScript;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.model.BootstrapDatum;
-import io.uverify.backend.util.ValidatorUtils;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.Date;
 import java.util.List;
 
 @Entity
@@ -82,16 +81,33 @@ public class BootstrapDatumEntity {
     @Column(name = "invalidation_slot")
     private Long invalidationSlot;
 
+    @Column(name = "version", nullable = false)
+    private Integer version;
+
     public static BootstrapDatumEntity fromAddressUtxo(AddressUtxo addressUtxo, CardanoNetwork network) {
-        BootstrapDatum bootstrapDatum = BootstrapDatum.fromUtxoDatum(addressUtxo.getInlineDatum());
+        BootstrapDatum bootstrapDatum = BootstrapDatum.fromLegancyUtxoDatum(addressUtxo.getInlineDatum());
         String transactionId = addressUtxo.getTxHash();
         long slot = addressUtxo.getSlot();
 
-        return BootstrapDatumEntity.fromBootstrapDatum(bootstrapDatum, transactionId, slot, network);
+        return BootstrapDatumEntity.fromBootstrapDatum(bootstrapDatum, transactionId, slot, network, 1);
+    }
+
+    public static BootstrapDatumEntity fromInlineDatum(String inlineDatum, String txHash, long slot, CardanoNetwork network) {
+        BootstrapDatum bootstrapDatum = BootstrapDatum.fromScriptTxDatum(inlineDatum);
+
+        return BootstrapDatumEntity.fromBootstrapDatum(bootstrapDatum, txHash, slot, network, 2);
+    }
+
+    public static BootstrapDatumEntity fromTxScript(TxScript txScript, CardanoNetwork network) {
+        BootstrapDatum bootstrapDatum = BootstrapDatum.fromScriptTxDatum(txScript.getDatum());
+        String transactionId = txScript.getTxHash();
+        long slot = txScript.getSlot();
+
+        return BootstrapDatumEntity.fromBootstrapDatum(bootstrapDatum, transactionId, slot, network, 2);
     }
 
     private static BootstrapDatumEntity fromBootstrapDatum(BootstrapDatum bootstrapDatum, String transactionId, long slot,
-                                                           CardanoNetwork network) {
+                                                           CardanoNetwork network, int version) {
         List<UserCredentialEntity> userCredentialEntities = bootstrapDatum.getAllowedCredentials().stream()
                 .map(credential -> UserCredentialEntity.builder()
                         .credential(HexUtil.encodeHexString(credential))
@@ -106,9 +122,7 @@ public class BootstrapDatumEntity {
 
         return BootstrapDatumEntity.builder()
                 .allowedCredentials(userCredentialEntities)
-                .authorizationTokenScriptHash(ValidatorUtils.getMintOrBurnAuthTokenHash(network))
                 .tokenName(bootstrapDatum.getTokenName())
-                .updateTokenContractCredential(ValidatorUtils.getUpdateStateTokenHash(network))
                 .fee(bootstrapDatum.getFee())
                 .feeInterval(bootstrapDatum.getFeeInterval())
                 .feeReceivers(feeReceiverEntities)
@@ -117,6 +131,7 @@ public class BootstrapDatumEntity {
                 .creationSlot(slot)
                 .transactionId(transactionId)
                 .batchSize(bootstrapDatum.getBatchSize())
+                .version(version)
                 .build();
     }
 }

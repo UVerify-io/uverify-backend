@@ -40,19 +40,22 @@ public class BootstrapDatumService {
         this.bootstrapDatumRepository = bootstrapDatumRepository;
     }
 
-    public boolean bootstrapDatumAlreadyExists(String tokenName) {
-        return bootstrapDatumRepository.findByTokenName(tokenName).isPresent();
+    public boolean bootstrapDatumAlreadyExists(String tokenName, int version) {
+        return bootstrapDatumRepository.findByTokenName(tokenName, version).isPresent();
     }
 
-    public Optional<BootstrapDatumEntity> getBootstrapDatum(String tokenName) {
-        return bootstrapDatumRepository.findByTokenName(tokenName);
+    public Optional<BootstrapDatumEntity> getBootstrapDatum(String tokenName, int version) {
+        return bootstrapDatumRepository.findByTokenName(tokenName, version);
     }
 
     public Optional<BootstrapDatum> selectCheapestBootstrapDatum(byte[] credential) {
         List<BootstrapDatumEntity> bootstrapDatumEntities = bootstrapDatumRepository.findAllWhitelisted();
-        List<BootstrapDatumEntity> customBootstrapDatumEntities = bootstrapDatumRepository.findByAllowedCredential(HexUtil.encodeHexString(credential));
+        List<BootstrapDatumEntity> customBootstrapDatumEntities = bootstrapDatumRepository.findByAllowedCredential(HexUtil.encodeHexString(credential), 2);
 
         bootstrapDatumEntities.addAll(customBootstrapDatumEntities);
+        bootstrapDatumEntities = bootstrapDatumEntities.stream()
+                .filter(bootstrapDatumEntity -> bootstrapDatumEntity.getVersion() > 1)
+                .toList();
 
         double lovelaceEveryHundredTransactions = Double.MAX_VALUE;
         BootstrapDatumEntity cheapestBootstrapDatum = null;
@@ -75,8 +78,8 @@ public class BootstrapDatumService {
         bootstrapDatumRepository.save(bootstrapDatumEntity);
     }
 
-    public void markAsInvalid(String uverify_special_test_token, long currentSlot) {
-        bootstrapDatumRepository.markAsInvalid(uverify_special_test_token, currentSlot);
+    public void markAsInvalid(String uverify_bootstrap_token, long currentSlot) {
+        bootstrapDatumRepository.markAsInvalid(uverify_bootstrap_token, currentSlot);
     }
 
     @Transactional

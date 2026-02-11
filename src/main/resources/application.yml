@@ -59,7 +59,7 @@ store:
   mir:
     enabled: false
   script:
-    enabled: false
+    enabled: true
   epoch:
     enabled: false
   staking:
@@ -74,6 +74,11 @@ store:
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+
+library:
+  transaction-hash: ${LIBRARY_TX_HASH:}
+  proxy-output-index: ${LIBRARY_PROXY_OUTPUT_INDEX:0}
+  state-output-index: ${LIBRARY_STATE_OUTPUT_INDEX:1}
 
 cardano:
   network: ${CARDANO_NETWORK:preprod}
@@ -115,6 +120,10 @@ extensions:
         id: ${TADAMON_GOOGLE_SHEETS_ID:}
         private-key: ${TADAMON_GOOGLE_SHEETS_PRIVATE_KEY:}
         service-account: ${TADAMON_GOOGLE_SHEETS_SERVICE_ACCOUNT:}
+
+proxy:
+  transaction-hash: ${PROXY_TX_HASH:}
+  output-index: ${PROXY_OUTPUT_INDEX:0}
 
 ---
 spring:

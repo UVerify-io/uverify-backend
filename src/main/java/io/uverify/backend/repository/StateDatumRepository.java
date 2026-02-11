@@ -66,10 +66,14 @@ public interface StateDatumRepository extends JpaRepository<StateDatumEntity, St
             """, nativeQuery = true)
     void handleRollback();
 
-    @Override
-    @Query("SELECT stateDatum FROM StateDatumEntity stateDatum WHERE stateDatum.id = :id " +
-            "AND stateDatum.invalidationSlot IS NULL " +
-            "AND stateDatum.countdown > 0")
+    @Query("""
+                SELECT DISTINCT stateDatum
+                FROM StateDatumEntity stateDatum
+                LEFT JOIN FETCH stateDatum.updates
+                WHERE stateDatum.id = :id
+                  AND stateDatum.invalidationSlot IS NULL
+                  AND stateDatum.countdown > 0
+            """)
     @NotNull
     Optional<StateDatumEntity> findById(@NotNull String id);
 
@@ -92,7 +96,7 @@ public interface StateDatumRepository extends JpaRepository<StateDatumEntity, St
                 AND stateDatum.bootstrapDatum.tokenName = :tokenName
                 AND bootstrapDatum.invalidationSlot IS NULL
                 AND stateDatum.countdown > 0
-               """, nativeQuery = true)
-    Optional<StateDatumEntity> findByUserAndBootstrapToken(@Param("credential") byte[] credential,
+               """)
+    Optional<StateDatumEntity> findByUserAndBootstrapToken(@Param("credential") String credential,
                                                            @Param("tokenName") String tokenName);
 }

@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.uverify.backend.dto.BuildTransactionRequest;
 import io.uverify.backend.dto.BuildTransactionResponse;
+import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.dto.SubmitTransactionRequest;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
@@ -52,6 +53,8 @@ public class UVerifyTransactionController {
                     Builds a transaction for the Cardano blockchain based on the provided request. Supports the following transaction types:
                     - **DEFAULT**: Submits UVerify certificates to the blockchain using the cheapest options. If no state is initialized, it forks a new state from the bootstrap datum with the best service fee conditions. If a user state exists with a valid transaction countdown and no service fee is required, it will be reused.
                     - **BOOTSTRAP**: Initializes a new bootstrap token and datum for forking states. Requires a whitelisted credential to sign the transaction.
+                    - **INIT**: Init a new proxy script for UVerify certificate management.
+                    - **DEPLOY**: Deploys the proxy and state contract to the library.
                     - **CUSTOM**: Allows the user to specify a bootstrap datum to fork or consume a state related to a specific bootstrap datum. This is useful for use cases requiring a 'partner datum' and may result in a different certificate UI on the client side."""
     )
     @ApiResponses(value = {
@@ -78,6 +81,20 @@ public class UVerifyTransactionController {
                 }
             } else if (request.getType().equals(TransactionType.CUSTOM)) {
                 BuildTransactionResponse buildTransactionResponse = transactionService.buildCustomTransaction(request.getCertificates(), request.getAddress(), request.getBootstrapDatum().getName());
+                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
+                    return ResponseEntity.ok(buildTransactionResponse);
+                } else {
+                    return ResponseEntity.badRequest().body(buildTransactionResponse);
+                }
+            } else if (request.getType().equals(TransactionType.INIT)) {
+                ProxyInitResponse proxyInitResponse = transactionService.buildInitProxyTx();
+                if (proxyInitResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
+                    return ResponseEntity.ok(proxyInitResponse);
+                } else {
+                    return ResponseEntity.badRequest().body(proxyInitResponse);
+                }
+            } else if (request.getType().equals(TransactionType.DEPLOY)) {
+                BuildTransactionResponse buildTransactionResponse = transactionService.buildDeployTx();
                 if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
                     return ResponseEntity.ok(buildTransactionResponse);
                 } else {

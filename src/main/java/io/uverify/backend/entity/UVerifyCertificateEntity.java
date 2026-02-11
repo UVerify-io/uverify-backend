@@ -52,9 +52,6 @@ public class UVerifyCertificateEntity {
     @Column(name = "transaction_id", nullable = false, length = 255)
     private String transactionId;
 
-    @Column(name = "output_index", nullable = false)
-    private Integer outputIndex;
-
     @Column(name = "creation_time", nullable = false)
     private Date creationTime;
 

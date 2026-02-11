@@ -23,6 +23,7 @@ import io.uverify.backend.model.StateDatum;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -49,9 +50,12 @@ public class StateDatumEntity {
     @Column(name = "transaction_id", nullable = false)
     private String transactionId;
 
-    @JoinColumn(name = "state_datum_id")
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<StateDatumUpdateEntity> updates;
+    @OneToMany(
+            mappedBy = "stateDatum",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<StateDatumUpdateEntity> updates = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "bootstrap_datum_id")
@@ -60,28 +64,27 @@ public class StateDatumEntity {
     @Column(name = "invalidation_slot")
     private Long invalidationSlot;
 
+    @Column(name = "version", nullable = false)
+    private Integer version;
+
     public static StateDatumEntity fromAddressUtxo(AddressUtxo addressUtxo, BootstrapDatumEntity bootstrapDatumEntity) {
-        StateDatum stateDatum = StateDatum.fromUtxoDatum(addressUtxo.getInlineDatum());
+        StateDatum stateDatum = StateDatum.fromLegacyUtxoDatum(addressUtxo.getInlineDatum());
         String transactionId = addressUtxo.getTxHash();
         long slot = addressUtxo.getSlot();
 
-        return StateDatumEntity.fromStateDatum(stateDatum, transactionId, bootstrapDatumEntity, slot);
+        StateDatumEntity stateDatumEntity = StateDatumEntity.fromStateDatum(stateDatum, transactionId, bootstrapDatumEntity, slot);
+        stateDatumEntity.setVersion(1);
+        return stateDatumEntity;
     }
 
     public static StateDatumEntity fromStateDatum(StateDatum stateDatum, String transactionId, BootstrapDatumEntity bootstrapDatumEntity, long slot) {
-        List<StateDatumUpdateEntity> updates = List.of(
-                StateDatumUpdateEntity.builder()
-                        .slot(slot)
-                        .countdown(stateDatum.getCountdown())
-                        .transactionId(transactionId)
-                        .build()
-        );
         return StateDatumEntity.builder()
                 .id(stateDatum.getId())
+                .version(bootstrapDatumEntity.getVersion())
                 .owner(stateDatum.getOwner())
                 .countdown(stateDatum.getCountdown())
+                .updates(new ArrayList<>())
                 .creationSlot(slot)
-                .updates(updates)
                 .transactionId(transactionId)
                 .bootstrapDatum(bootstrapDatumEntity)
                 .build();
@@ -89,5 +92,6 @@ public class StateDatumEntity {
 
     public void addUpdate(StateDatumUpdateEntity update) {
         updates.add(update);
+        update.setStateDatum(this);
     }
 }

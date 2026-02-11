@@ -36,14 +36,12 @@ import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
-import com.bloxbean.cardano.client.quicktx.Tx;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.transaction.storage.impl.model.TxnEntity;
 import io.uverify.backend.dto.UsageStatistics;
-import io.uverify.backend.entity.UVerifyCertificateEntity;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.enums.UseCaseCategory;
 import io.uverify.backend.extension.ExtensionManager;
@@ -458,17 +456,11 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
                 .build();
 
         ScriptTx mintTransaction = new ScriptTx()
-                .mintAsset(connectedGoodsScript, asset, PlutusData.unit());
-
-        Tx sendTransaction = new Tx()
-                .from(userAddress)
                 .collectFrom(List.of(utxo))
-                .payToContract(scriptAddress, List.of(Amount.ada(1.0), Amount.asset(
-                                connectedGoodsScript.getPolicyId(), asset.getName(), BigInteger.ONE)),
-                        datum);
+                .mintAsset(connectedGoodsScript, List.of(asset), PlutusData.unit(), scriptAddress, datum);
 
         QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
-        Transaction unsignedTransaction = quickTxBuilder.compose(mintTransaction, sendTransaction)
+        Transaction unsignedTransaction = quickTxBuilder.compose(mintTransaction)
                 .collateralPayer(userAddress)
                 .feePayer(userAddress)
                 .withRequiredSigners(new Address(userAddress))

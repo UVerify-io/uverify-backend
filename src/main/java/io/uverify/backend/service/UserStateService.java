@@ -75,7 +75,7 @@ public class UserStateService {
                     "if this UVerify backend service restarts while requests are still pending.");
             this.facilitator = new Account(fromCardanoNetwork(this.network));
         } else {
-            this.facilitator = new Account(fromCardanoNetwork(this.network), facilitatorAccountMnemonic);
+            this.facilitator = Account.createFromMnemonic(fromCardanoNetwork(this.network), facilitatorAccountMnemonic);
         }
     }
 
@@ -140,7 +140,6 @@ public class UserStateService {
         if (optionalUserAddress.isEmpty()) {
             return false;
         }
-        // TODO: Check if timestamp is in validity range
 
         return edDSASigningProvider.verify(HexUtil.decodeHexString(actionRequest.getSignature()),
                 actionRequest.getMessage().getBytes(), facilitator.publicKeyBytes()) &&
@@ -149,7 +148,7 @@ public class UserStateService {
     }
 
     public ExecuteUserActionResponse executeUserOptOut(ExecuteUserActionRequest request) {
-        if (signaturesAreValid(request)) {
+        if (signaturesAreValid(request) && hasValidTimeframe(request.getTimestamp())) {
             String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(request.getAddress()));
             List<StateDatumEntity> stateDatumEntities = stateDatumRepository.findByOwner(userCredential);
             Address userAddress = new Address(request.getAddress());
@@ -165,12 +164,12 @@ public class UserStateService {
             return response;
         } else {
             return ExecuteUserActionResponse.builder().status(HttpStatus.BAD_REQUEST)
-                    .error("The provided signatures are not valid.").build();
+                    .error("The provided signatures are not valid or the request is outdated (signature older than 10 minutes).").build();
         }
     }
 
     public ExecuteUserActionResponse executeStateInvalidationRequest(ExecuteUserActionRequest actionRequest) {
-        if (signaturesAreValid(actionRequest)) {
+        if (signaturesAreValid(actionRequest) && hasValidTimeframe(actionRequest.getTimestamp())) {
             Optional<StateDatumEntity> optionalStateDatum = stateDatumRepository.findById(actionRequest.getStateId());
 
             if (optionalStateDatum.isEmpty()) {
@@ -197,14 +196,14 @@ public class UserStateService {
             return response;
         }
         return ExecuteUserActionResponse.builder().status(HttpStatus.BAD_REQUEST)
-                .error("The provided signatures are not valid.").build();
+                .error("The provided signatures are not valid or the request is outdated (signature older than 10 minutes).").build();
     }
 
     public ExecuteUserActionResponse executeUserInfoRequest(ExecuteUserActionRequest actionRequest) {
-        if (signaturesAreValid(actionRequest)) {
+        if (signaturesAreValid(actionRequest) && hasValidTimeframe(actionRequest.getTimestamp())) {
             String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(actionRequest.getAddress()));
             List<BootstrapDatumEntity> bootstrapDatumEntities = bootstrapDatumRepository.findAllWhitelisted();
-            List<BootstrapDatumEntity> customBootstrapDatumEntities = bootstrapDatumRepository.findByAllowedCredential(userCredential);
+            List<BootstrapDatumEntity> customBootstrapDatumEntities = bootstrapDatumRepository.findByAllowedCredential(userCredential, 2);
 
             bootstrapDatumEntities.addAll(customBootstrapDatumEntities);
 
@@ -224,6 +223,12 @@ public class UserStateService {
                     .build();
         }
         return ExecuteUserActionResponse.builder().status(HttpStatus.BAD_REQUEST)
-                .error("The provided signatures are not valid.").build();
+                .error("The provided signatures are not valid or the request is outdated (signature older than 10 minutes).").build();
+    }
+
+    private boolean hasValidTimeframe(long timestamp) {
+        long currentTime = System.currentTimeMillis();
+        long timeDifference = Math.abs(currentTime - timestamp);
+        return timeDifference <= 600000;
     }
 }

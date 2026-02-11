@@ -24,7 +24,11 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public enum TransactionType {
     DEFAULT("default"),
     BOOTSTRAP("bootstrap"),
-    CUSTOM("custom");
+    CUSTOM("custom"),
+    BURN_STATE("burn_state"),
+    BURN_BOOTSTRAP("burn_bootstrap"),
+    DEPLOY("deploy"),
+    INIT("init");
 
     private final String value;
 

@@ -18,10 +18,24 @@
 
 package io.uverify.backend;
 
+import co.nstant.in.cbor.CborException;
+import co.nstant.in.cbor.model.DataItem;
 import com.bloxbean.cardano.client.account.Account;
 import com.bloxbean.cardano.client.api.exception.ApiException;
+import com.bloxbean.cardano.client.api.model.Result;
+import com.bloxbean.cardano.client.backend.model.Block;
+import com.bloxbean.cardano.client.common.cbor.CborSerializationUtil;
 import com.bloxbean.cardano.client.common.model.Networks;
+import com.bloxbean.cardano.client.exception.AddressExcepion;
+import com.bloxbean.cardano.client.exception.CborSerializationException;
+import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.yaci.core.model.TransactionBody;
+import com.bloxbean.cardano.yaci.core.model.Witnesses;
+import com.bloxbean.cardano.yaci.core.model.serializers.TransactionBodySerializer;
+import com.bloxbean.cardano.yaci.core.model.serializers.WitnessesSerializer;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.events.EventMetadata;
+import com.bloxbean.cardano.yaci.store.events.TransactionEvent;
 import com.bloxbean.cardano.yaci.test.Funding;
 import com.bloxbean.cardano.yaci.test.YaciCardanoContainer;
 import io.uverify.backend.extension.ExtensionManager;
@@ -33,6 +47,7 @@ import io.uverify.backend.service.CardanoBlockchainService;
 import io.uverify.backend.service.StateDatumService;
 import io.uverify.backend.service.UVerifyCertificateService;
 import io.uverify.backend.simulation.SimulationUtils;
+import io.uverify.backend.util.ValidatorHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.TestInstance;
@@ -76,6 +91,9 @@ public class CardanoBlockchainTest {
     protected final ExtensionManager extensionManager;
 
     @Autowired
+    protected final ValidatorHelper validatorHelper;
+
+    @Autowired
     public CardanoBlockchainTest(@Value("${cardano.service.user.mnemonic}") String testServiceUserMnemonic,
                                  @Value("${cardano.test.user.mnemonic}") String testUserMnemonic,
                                  @Value("${cardano.service.fee.receiver.mnemonic}") String feeReceiverMnemonic,
@@ -88,6 +106,7 @@ public class CardanoBlockchainTest {
                                  BootstrapDatumRepository bootstrapDatumRepository,
                                  CertificateRepository certificateRepository,
                                  ExtensionManager extensionManager,
+                                 ValidatorHelper validatorHelper,
                                  List<String> additionalFundingAddresses) {
         this.cardanoBlockchainService = cardanoBlockchainService;
         this.stateDatumService = stateDatumService;
@@ -97,11 +116,12 @@ public class CardanoBlockchainTest {
         this.bootstrapDatumRepository = bootstrapDatumRepository;
         this.certificateRepository = certificateRepository;
         this.extensionManager = extensionManager;
+        this.validatorHelper = validatorHelper;
 
-        serviceAccount = new Account(Networks.testnet(), testServiceUserMnemonic);
-        userAccount = new Account(Networks.testnet(), testUserMnemonic);
-        feeReceiverAccount = new Account(Networks.testnet(), feeReceiverMnemonic);
-        facilitatorAccount = new Account(Networks.testnet(), facilitatorMnemonic);
+        serviceAccount = Account.createFromMnemonic(Networks.testnet(), testServiceUserMnemonic);
+        userAccount = Account.createFromMnemonic(Networks.testnet(), testUserMnemonic);
+        feeReceiverAccount = Account.createFromMnemonic(Networks.testnet(), feeReceiverMnemonic);
+        facilitatorAccount = Account.createFromMnemonic(Networks.testnet(), facilitatorMnemonic);
 
         if (!yaciCardanoContainer.isRunning()) {
             List<Funding> fundingList = new ArrayList<>();
@@ -142,6 +162,47 @@ public class CardanoBlockchainTest {
         List<AddressUtxo> addressUtxos = SimulationUtils.getAddressUtxos(transactionId, yaciCardanoContainer.getBackendService());
         cardanoBlockchainService.processAddressUtxos(addressUtxos);
         extensionManager.processAddressUtxos(addressUtxos);
+        Thread.sleep(1000);
+    }
+
+    protected void simulateYaciStoreBehavior(List<AddressUtxo> addressUtxos) throws InterruptedException {
+        cardanoBlockchainService.processAddressUtxos(addressUtxos);
+        extensionManager.processAddressUtxos(addressUtxos);
+        Thread.sleep(1000);
+    }
+
+    protected void simulateYaciStoreBehavior(String transactionId, Transaction transaction) throws InterruptedException, ApiException, AddressExcepion, CborSerializationException, CborException {
+        Result<Block> latestBlock = yaciCardanoContainer.getBackendService().getBlockService().getLatestBlock();
+
+        DataItem bodyDataItem = transaction.getBody().serialize();
+        byte[] bytes = CborSerializationUtil.serialize(bodyDataItem);
+        TransactionBody txBody = TransactionBodySerializer.INSTANCE.deserializeDI(bodyDataItem, bytes);
+
+        DataItem witnessSetDataItem = transaction.getWitnessSet().serialize();
+        Witnesses witnesses = WitnessesSerializer.INSTANCE.deserializeDI(witnessSetDataItem);
+
+        try {
+            TransactionEvent transactionEvent = TransactionEvent.builder()
+                    .metadata(EventMetadata.builder()
+                            .blockHash(latestBlock.getValue().getHash())
+                            .blockTime(latestBlock.getValue().getTime())
+                            .epochNumber(latestBlock.getValue().getEpoch())
+                            .slot(latestBlock.getValue().getSlot())
+                            .parallelMode(false)
+                            .build())
+                    .transactions(List.of(com.bloxbean.cardano.yaci.helper.model.Transaction.builder()
+                            .blockNumber(latestBlock.getValue().getHeight())
+                            .txHash(transactionId)
+                            .body(txBody)
+                            .slot(latestBlock.getValue().getSlot())
+                            .witnesses(witnesses)
+                            .build())).build();
+
+            cardanoBlockchainService.processTransactionEvent(transactionEvent);
+        } catch (Exception exception) {
+            log.error("Unable to process tx scripts: " + exception.getMessage());
+        }
+
         Thread.sleep(1000);
     }
 }

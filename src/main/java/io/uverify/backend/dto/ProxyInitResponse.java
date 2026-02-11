@@ -18,14 +18,18 @@
 
 package io.uverify.backend.dto;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import io.uverify.backend.enums.UserAction;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
-public class UserActionRequest {
-    private String address;
-    private UserAction action;
-    @JsonAlias({"stateId", "state_id"})
-    private String stateId;
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ProxyInitResponse {
+    private String unsignedProxyTransaction;
+    private String proxyTxHash;
+    private Integer proxyOutputIndex;
+    private BuildStatus status;
 }

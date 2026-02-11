@@ -54,6 +54,7 @@ public class StateDatumService {
         List<StateDatumEntity> stateDatumEntities = stateDatums.stream().filter(
                 stateDatumEntity -> stateDatumEntity.getInvalidationSlot() == null
                         && stateDatumEntity.getCountdown() > 0
+                        && stateDatumEntity.getVersion() > 1
         ).toList();
 
         if (stateDatumEntities.isEmpty()) {
@@ -87,6 +88,7 @@ public class StateDatumService {
         stateDatumRepository.markAsInvalid(id, slot);
     }
 
+    @Transactional
     public void updateStateDatum(StateDatumEntity stateDatumEntity, Long slot) {
         StateDatumUpdateEntity stateDatumUpdateEntity = StateDatumUpdateEntity.builder()
                 .countdown(stateDatumEntity.getCountdown())
@@ -95,22 +97,16 @@ public class StateDatumService {
                 .build();
 
         stateDatumEntity.addUpdate(stateDatumUpdateEntity);
-
-        stateDatumUpdateRepository.save(stateDatumUpdateEntity);
         stateDatumRepository.save(stateDatumEntity);
     }
 
     public Optional<StateDatumEntity> findByAddressUtxo(AddressUtxo addressUtxo) {
-        StateDatum stateDatum = StateDatum.fromUtxoDatum(addressUtxo.getInlineDatum());
+        StateDatum stateDatum = StateDatum.fromLegacyUtxoDatum(addressUtxo.getInlineDatum());
         return this.findById(stateDatum.getId());
     }
 
     public Optional<StateDatumEntity> findById(String id) {
         return stateDatumRepository.findById(id);
-    }
-
-    public void save(StateDatumEntity stateDatumEntity) {
-        stateDatumRepository.save(stateDatumEntity);
     }
 
     public List<StateDatumEntity> findByOwner(String address) {
@@ -120,7 +116,7 @@ public class StateDatumService {
 
     public Optional<StateDatumEntity> findByUserAndBootstrapToken(String address, String bootstrapTokenName) {
         return stateDatumRepository.findByUserAndBootstrapToken(
-                CardanoUtils.extractCredentialFromAddress(address), bootstrapTokenName);
+                HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)), bootstrapTokenName);
     }
 
     @Transactional

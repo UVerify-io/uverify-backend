@@ -18,7 +18,6 @@
 
 package io.uverify.backend.service;
 
-import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.events.internal.CommitEvent;
 import com.bloxbean.cardano.yaci.store.transaction.storage.impl.model.TxnEntity;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -80,8 +79,10 @@ public class StatisticsService {
                     } else {
                         switch (templateId.asText()) {
                             case "tadamon" -> usageStatistics.addCertificateToCategory(UseCaseCategory.IDENTITY);
-                            case "socialHub", "linktree" -> usageStatistics.addCertificateToCategory(UseCaseCategory.CONNECTED_GOODS);
-                            case "diploma" -> usageStatistics.addCertificateToCategory(UseCaseCategory.STUDENT_CERTIFICATION);
+                            case "socialHub", "linktree", "productVerification" ->
+                                    usageStatistics.addCertificateToCategory(UseCaseCategory.CONNECTED_GOODS);
+                            case "diploma" ->
+                                    usageStatistics.addCertificateToCategory(UseCaseCategory.STUDENT_CERTIFICATION);
                             default -> usageStatistics.addCertificateToCategory(UseCaseCategory.NOTARY);
                         }
                     }

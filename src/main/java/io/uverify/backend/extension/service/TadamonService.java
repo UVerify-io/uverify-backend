@@ -113,7 +113,8 @@ public class TadamonService implements UVerifyServiceExtension {
     }
 
     @Override
-    public void addUsageStatistics(UsageStatistics usageStatistics) {}
+    public void addUsageStatistics(UsageStatistics usageStatistics) {
+    }
 
     public Result<?> submit(TadamonTransactionRequest request) throws CborDeserializationException, CborSerializationException, ApiException {
         Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(request.getTransaction()));
@@ -169,14 +170,14 @@ public class TadamonService implements UVerifyServiceExtension {
 
         StateDatum stateDatum = StateDatum.fromUtxoDatum(transactionOutput.getInlineDatum().serializeToHex());
 
-        if (stateDatum.getUVerifyCertificates().isEmpty()) {
+        if (stateDatum.getCertificates().isEmpty()) {
             return Result.error("Transaction output does not contain UVerify certificates");
-        } else if (stateDatum.getUVerifyCertificates().size() > 1) {
+        } else if (stateDatum.getCertificates().size() > 1) {
             return Result.error("Transaction output contains multiple UVerify certificates. Only one is allowed" +
                     " for the Tadamon extension");
         }
 
-        UVerifyCertificate certificate = stateDatum.getUVerifyCertificates().get(0);
+        UVerifyCertificate certificate = stateDatum.getCertificates().get(0);
         tadamonTransactionEntity.setCertificateDataHash(certificate.getHash());
 
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction);

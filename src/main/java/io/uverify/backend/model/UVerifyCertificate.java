@@ -42,8 +42,6 @@ public class UVerifyCertificate {
     private String issuer;
     private String extra;
 
-    private StateDatum stateDatum;
-
     public static UVerifyCertificate fromCertificateData(CertificateData certificateData, String address) {
         return UVerifyCertificate.builder()
                 .hash(certificateData.getHash())
@@ -70,10 +68,9 @@ public class UVerifyCertificate {
             if (certificate.isEmpty()) {
                 return null;
             }
-
             uVerifyCertificate.setHash(HexUtil.encodeHexString(((BytesPlutusData) certificate.get(0)).getValue()));
             uVerifyCertificate.setAlgorithm(new String(((BytesPlutusData) certificate.get(1)).getValue()));
-            uVerifyCertificate.setIssuer(HexUtil.encodeHexString(((BytesPlutusData)certificate.get(2)).getValue()));
+            uVerifyCertificate.setIssuer(HexUtil.encodeHexString(((BytesPlutusData) certificate.get(2)).getValue()));
             ListPlutusData metadataListData = (ListPlutusData) certificate.get(3);
             List<PlutusData> metadataList = metadataListData.getPlutusDataList();
             StringBuilder extra = new StringBuilder();
@@ -129,5 +126,19 @@ public class UVerifyCertificate {
                 BytesPlutusData.of(algorithm.getBytes()),
                 BytesPlutusData.of(HashToBytes(issuer)),
                 metadataListData);
+    }
+
+    public String toString() {
+        StringBuilder certificateData = new StringBuilder();
+        certificateData.append(this.hash);
+        certificateData.append(HexUtil.encodeHexString(this.algorithm.getBytes()));
+        certificateData.append(this.issuer);
+
+        List<String> metadata = splitStringIntoChunks(this.extra);
+        for (String chunk : metadata) {
+            certificateData.append(HexUtil.encodeHexString(chunk.getBytes()));
+        }
+
+        return certificateData.toString();
     }
 }
