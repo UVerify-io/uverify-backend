@@ -113,84 +113,85 @@ public class TadamonService implements UVerifyServiceExtension {
 <span class="nc" id="L113">    }</span>
 
     @Override
-<span class="nc" id="L116">    public void addUsageStatistics(UsageStatistics usageStatistics) {}</span>
+    public void addUsageStatistics(UsageStatistics usageStatistics) {
+<span class="nc" id="L117">    }</span>
 
     public Result&lt;?&gt; submit(TadamonTransactionRequest request) throws CborDeserializationException, CborSerializationException, ApiException {
-<span class="nc" id="L119">        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(request.getTransaction()));</span>
-<span class="nc bnc" id="L120" title="All 4 branches missed.">        if (request.getWitnessSet() != null &amp;&amp; !request.getWitnessSet().isEmpty()) {</span>
-<span class="nc" id="L121">            TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(request.getWitnessSet())));</span>
-<span class="nc" id="L122">            transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());</span>
+<span class="nc" id="L120">        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(request.getTransaction()));</span>
+<span class="nc bnc" id="L121" title="All 4 branches missed.">        if (request.getWitnessSet() != null &amp;&amp; !request.getWitnessSet().isEmpty()) {</span>
+<span class="nc" id="L122">            TransactionWitnessSet witnessSet = TransactionWitnessSet.deserialize((Map) CborSerializationUtil.deserialize(HexUtil.decodeHexString(request.getWitnessSet())));</span>
+<span class="nc" id="L123">            transaction.getWitnessSet().setVkeyWitnesses(witnessSet.getVkeyWitnesses());</span>
         }
 
-<span class="nc bnc" id="L125" title="All 4 branches missed.">        if (transaction.getWitnessSet() == null || transaction.getWitnessSet().getVkeyWitnesses().isEmpty()) {</span>
-<span class="nc" id="L126">            return Result.error(&quot;Transaction witness set is empty. Make sure either the transaction is signed or the witness set is provided&quot;);</span>
+<span class="nc bnc" id="L126" title="All 4 branches missed.">        if (transaction.getWitnessSet() == null || transaction.getWitnessSet().getVkeyWitnesses().isEmpty()) {</span>
+<span class="nc" id="L127">            return Result.error(&quot;Transaction witness set is empty. Make sure either the transaction is signed or the witness set is provided&quot;);</span>
         }
 
-<span class="nc" id="L129">        boolean signedByAllowedAddress = transaction.getWitnessSet().getVkeyWitnesses().stream().anyMatch(</span>
+<span class="nc" id="L130">        boolean signedByAllowedAddress = transaction.getWitnessSet().getVkeyWitnesses().stream().anyMatch(</span>
                 vkeyWitness -&gt; {
-<span class="nc" id="L131">                    String vkeyHash = HexUtil.encodeHexString(Blake2bUtil.blake2bHash224(vkeyWitness.getVkey()));</span>
-<span class="nc bnc" id="L132" title="All 2 branches missed.">                    for (String address : allowedAddresses) {</span>
-<span class="nc" id="L133">                        Optional&lt;byte[]&gt; paymentCredential = new Address(address).getPaymentCredentialHash();</span>
-<span class="nc bnc" id="L134" title="All 2 branches missed.">                        if (paymentCredential.isPresent()) {</span>
-<span class="nc" id="L135">                            String paymentCredentialHash = HexUtil.encodeHexString(paymentCredential.get());</span>
-<span class="nc bnc" id="L136" title="All 2 branches missed.">                            if (paymentCredentialHash.equalsIgnoreCase(vkeyHash)) {</span>
-<span class="nc" id="L137">                                return true;</span>
+<span class="nc" id="L132">                    String vkeyHash = HexUtil.encodeHexString(Blake2bUtil.blake2bHash224(vkeyWitness.getVkey()));</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">                    for (String address : allowedAddresses) {</span>
+<span class="nc" id="L134">                        Optional&lt;byte[]&gt; paymentCredential = new Address(address).getPaymentCredentialHash();</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">                        if (paymentCredential.isPresent()) {</span>
+<span class="nc" id="L136">                            String paymentCredentialHash = HexUtil.encodeHexString(paymentCredential.get());</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">                            if (paymentCredentialHash.equalsIgnoreCase(vkeyHash)) {</span>
+<span class="nc" id="L138">                                return true;</span>
                             }
                         }
-<span class="nc" id="L140">                    }</span>
-<span class="nc" id="L141">                    return false;</span>
+<span class="nc" id="L141">                    }</span>
+<span class="nc" id="L142">                    return false;</span>
                 }
         );
 
-<span class="nc bnc" id="L145" title="All 2 branches missed.">        if (!signedByAllowedAddress) {</span>
-<span class="nc" id="L146">            return Result.error(&quot;Transaction not signed by whitelisted address&quot;);</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">        if (!signedByAllowedAddress) {</span>
+<span class="nc" id="L147">            return Result.error(&quot;Transaction not signed by whitelisted address&quot;);</span>
         }
 
-<span class="nc" id="L149">        TadamonTransactionEntity tadamonTransactionEntity = new TadamonTransactionEntity();</span>
-<span class="nc" id="L150">        tadamonTransactionEntity.setTransactionHex(transaction.serializeToHex());</span>
-<span class="nc" id="L151">        tadamonTransactionEntity.setCsoName(request.getCso().getName());</span>
-<span class="nc" id="L152">        tadamonTransactionEntity.setCsoEmail(request.getCso().getEmail());</span>
-<span class="nc" id="L153">        tadamonTransactionEntity.setCsoOrganizationType(request.getCso().getOrganizationType());</span>
-<span class="nc" id="L154">        tadamonTransactionEntity.setCsoStatusApproved(request.getCso().getStatusApproved());</span>
-<span class="nc" id="L155">        tadamonTransactionEntity.setCsoRegistrationCountry(request.getCso().getRegistrationCountry());</span>
-<span class="nc" id="L156">        tadamonTransactionEntity.setCsoEstablishmentDate(request.getCso().getEstablishmentDate());</span>
-<span class="nc" id="L157">        tadamonTransactionEntity.setTadamonId(request.getTadamonId());</span>
-<span class="nc" id="L158">        tadamonTransactionEntity.setVeridianAid(request.getVeridianAid());</span>
-<span class="nc" id="L159">        tadamonTransactionEntity.setUndpSigningDate(request.getUndpSigningDate());</span>
-<span class="nc" id="L160">        tadamonTransactionEntity.setBeneficiarySigningDate(request.getBeneficiarySigningDate());</span>
+<span class="nc" id="L150">        TadamonTransactionEntity tadamonTransactionEntity = new TadamonTransactionEntity();</span>
+<span class="nc" id="L151">        tadamonTransactionEntity.setTransactionHex(transaction.serializeToHex());</span>
+<span class="nc" id="L152">        tadamonTransactionEntity.setCsoName(request.getCso().getName());</span>
+<span class="nc" id="L153">        tadamonTransactionEntity.setCsoEmail(request.getCso().getEmail());</span>
+<span class="nc" id="L154">        tadamonTransactionEntity.setCsoOrganizationType(request.getCso().getOrganizationType());</span>
+<span class="nc" id="L155">        tadamonTransactionEntity.setCsoStatusApproved(request.getCso().getStatusApproved());</span>
+<span class="nc" id="L156">        tadamonTransactionEntity.setCsoRegistrationCountry(request.getCso().getRegistrationCountry());</span>
+<span class="nc" id="L157">        tadamonTransactionEntity.setCsoEstablishmentDate(request.getCso().getEstablishmentDate());</span>
+<span class="nc" id="L158">        tadamonTransactionEntity.setTadamonId(request.getTadamonId());</span>
+<span class="nc" id="L159">        tadamonTransactionEntity.setVeridianAid(request.getVeridianAid());</span>
+<span class="nc" id="L160">        tadamonTransactionEntity.setUndpSigningDate(request.getUndpSigningDate());</span>
+<span class="nc" id="L161">        tadamonTransactionEntity.setBeneficiarySigningDate(request.getBeneficiarySigningDate());</span>
 
-<span class="nc" id="L162">        TransactionOutput transactionOutput = transaction.getBody().getOutputs().stream().filter(</span>
+<span class="nc" id="L163">        TransactionOutput transactionOutput = transaction.getBody().getOutputs().stream().filter(</span>
                 ValidatorUtils::includesStateToken
-<span class="nc" id="L164">        ).findFirst().orElse(null);</span>
+<span class="nc" id="L165">        ).findFirst().orElse(null);</span>
 
-<span class="nc bnc" id="L166" title="All 2 branches missed.">        if (transactionOutput == null) {</span>
-<span class="nc" id="L167">            return Result.error(&quot;Transaction output does not contain a state token nor UVerify certificates&quot;);</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">        if (transactionOutput == null) {</span>
+<span class="nc" id="L168">            return Result.error(&quot;Transaction output does not contain a state token nor UVerify certificates&quot;);</span>
         }
 
-<span class="nc" id="L170">        StateDatum stateDatum = StateDatum.fromUtxoDatum(transactionOutput.getInlineDatum().serializeToHex());</span>
+<span class="nc" id="L171">        StateDatum stateDatum = StateDatum.fromUtxoDatum(transactionOutput.getInlineDatum().serializeToHex());</span>
 
-<span class="nc bnc" id="L172" title="All 2 branches missed.">        if (stateDatum.getUVerifyCertificates().isEmpty()) {</span>
-<span class="nc" id="L173">            return Result.error(&quot;Transaction output does not contain UVerify certificates&quot;);</span>
-<span class="nc bnc" id="L174" title="All 2 branches missed.">        } else if (stateDatum.getUVerifyCertificates().size() &gt; 1) {</span>
-<span class="nc" id="L175">            return Result.error(&quot;Transaction output contains multiple UVerify certificates. Only one is allowed&quot; +</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        if (stateDatum.getCertificates().isEmpty()) {</span>
+<span class="nc" id="L174">            return Result.error(&quot;Transaction output does not contain UVerify certificates&quot;);</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">        } else if (stateDatum.getCertificates().size() &gt; 1) {</span>
+<span class="nc" id="L176">            return Result.error(&quot;Transaction output contains multiple UVerify certificates. Only one is allowed&quot; +</span>
                     &quot; for the Tadamon extension&quot;);
         }
 
-<span class="nc" id="L179">        UVerifyCertificate certificate = stateDatum.getUVerifyCertificates().get(0);</span>
-<span class="nc" id="L180">        tadamonTransactionEntity.setCertificateDataHash(certificate.getHash());</span>
+<span class="nc" id="L180">        UVerifyCertificate certificate = stateDatum.getCertificates().get(0);</span>
+<span class="nc" id="L181">        tadamonTransactionEntity.setCertificateDataHash(certificate.getHash());</span>
 
-<span class="nc" id="L182">        Result&lt;String&gt; result = cardanoBlockchainService.submitTransaction(transaction);</span>
-<span class="nc bnc" id="L183" title="All 2 branches missed.">        if (result.isSuccessful()) {</span>
-<span class="nc" id="L184">            tadamonTransactionEntity.setTransactionId(result.getValue());</span>
-<span class="nc" id="L185">            tadamonTransactionEntity.setCertificateCreationDate(LocalDateTime.now());</span>
-<span class="nc" id="L186">            tadamonTransactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());</span>
-<span class="nc" id="L187">            tadamonTransactionRepository.save(tadamonTransactionEntity);</span>
+<span class="nc" id="L183">        Result&lt;String&gt; result = cardanoBlockchainService.submitTransaction(transaction);</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        if (result.isSuccessful()) {</span>
+<span class="nc" id="L185">            tadamonTransactionEntity.setTransactionId(result.getValue());</span>
+<span class="nc" id="L186">            tadamonTransactionEntity.setCertificateCreationDate(LocalDateTime.now());</span>
+<span class="nc" id="L187">            tadamonTransactionEntity.setSlot(cardanoBlockchainService.getLatestSlot());</span>
+<span class="nc" id="L188">            tadamonTransactionRepository.save(tadamonTransactionEntity);</span>
 
-<span class="nc" id="L189">            int row = tadamonGoogleSheetsService.findRowByDataHash(tadamonTransactionEntity.getCertificateDataHash());</span>
-<span class="nc" id="L190">            tadamonGoogleSheetsService.writeRowToSheet(tadamonTransactionEntity, row);</span>
+<span class="nc" id="L190">            int row = tadamonGoogleSheetsService.findRowByDataHash(tadamonTransactionEntity.getCertificateDataHash());</span>
+<span class="nc" id="L191">            tadamonGoogleSheetsService.writeRowToSheet(tadamonTransactionEntity, row);</span>
         }
 
-<span class="nc" id="L193">        return result;</span>
+<span class="nc" id="L194">        return result;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -24,7 +24,7 @@ import lombok.*;
 
 @Entity
 @Getter
-<span class="nc" id="L27">@Setter</span>
+<span class="pc" id="L27">@Setter</span>
 <span class="pc" id="L28">@Builder</span>
 <span class="fc" id="L29">@NoArgsConstructor</span>
 <span class="fc" id="L30">@AllArgsConstructor</span>
@@ -42,6 +42,10 @@ public class StateDatumUpdateEntity {
 
     @Column(name = &quot;slot&quot;, nullable = false)
 <span class="nc" id="L44">    private Long slot;</span>
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = &quot;state_datum_id&quot;, nullable = false)
+<span class="nc" id="L48">    private StateDatumEntity stateDatum;</span>
 }
 
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

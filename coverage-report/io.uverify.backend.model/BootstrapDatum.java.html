@@ -101,7 +101,7 @@ public class BootstrapDatum {
 <span class="fc" id="L101">        return bootstrapDatum;</span>
     }
 
-    public static BootstrapDatum fromUtxoDatum(String inlineDatum) {
+    public static BootstrapDatum fromLegancyUtxoDatum(String inlineDatum) {
 <span class="fc" id="L105">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
         try {
 <span class="fc" id="L107">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
@@ -119,28 +119,88 @@ public class BootstrapDatum {
 <span class="fc" id="L119">        return bootstrapDatum;</span>
     }
 
+    public static BootstrapDatum fromUtxoDatum(String inlineDatum) {
+<span class="fc" id="L123">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
+        try {
+<span class="fc" id="L125">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
+<span class="fc" id="L126">            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));</span>
+<span class="fc" id="L127">            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(1)));</span>
+<span class="fc" id="L128">            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(2)));</span>
+<span class="fc" id="L129">            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(3)));</span>
+<span class="fc" id="L130">            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(4)));</span>
+<span class="fc" id="L131">            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(5)));</span>
+<span class="fc" id="L132">            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(6)));</span>
+<span class="fc" id="L133">            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(7)));</span>
+<span class="nc" id="L134">        } catch (CborDeserializationException e) {</span>
+<span class="nc" id="L135">            throw new RuntimeException(e);</span>
+<span class="fc" id="L136">        }</span>
+<span class="fc" id="L137">        return bootstrapDatum;</span>
+    }
+
+    public static BootstrapDatum fromScriptTxDatum(String inlineDatum) {
+<span class="fc" id="L141">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
+        try {
+<span class="fc" id="L143">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
+<span class="fc" id="L144">            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));</span>
+<span class="fc" id="L145">            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(1)));</span>
+<span class="fc" id="L146">            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(2)));</span>
+<span class="fc" id="L147">            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(3)));</span>
+<span class="fc" id="L148">            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(4)));</span>
+<span class="fc" id="L149">            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(5)));</span>
+<span class="fc" id="L150">            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(6)));</span>
+<span class="fc" id="L151">            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(7)));</span>
+<span class="nc" id="L152">        } catch (CborDeserializationException e) {</span>
+<span class="nc" id="L153">            throw new RuntimeException(e);</span>
+<span class="fc" id="L154">        }</span>
+<span class="fc" id="L155">        return bootstrapDatum;</span>
+    }
+
+    public PlutusData toPlutusData() {
+<span class="fc" id="L159">        return ConstrPlutusData.of(0,</span>
+<span class="fc" id="L160">                ListPlutusData.of(</span>
+<span class="fc" id="L161">                        this.allowedCredentials.stream()</span>
+<span class="fc" id="L162">                                .map(BytesPlutusData::of)</span>
+<span class="fc" id="L163">                                .toList()</span>
+<span class="fc" id="L164">                                .toArray(new PlutusData[0])</span>
+                ),
+<span class="fc" id="L166">                BytesPlutusData.of(this.tokenName),</span>
+<span class="fc" id="L167">                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),</span>
+<span class="fc" id="L168">                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),</span>
+<span class="fc" id="L169">                ListPlutusData.of(</span>
+<span class="fc" id="L170">                        this.feeReceivers.stream()</span>
+<span class="fc" id="L171">                                .map(BytesPlutusData::of)</span>
+<span class="fc" id="L172">                                .toList()</span>
+<span class="fc" id="L173">                                .toArray(new PlutusData[0])</span>
+                ),
+<span class="fc" id="L175">                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),</span>
+<span class="fc" id="L176">                BigIntPlutusData.of(BigInteger.valueOf(this.transactionLimit)),</span>
+<span class="fc" id="L177">                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize))</span>
+        );
+    }
+
+    @Deprecated(forRemoval = true)
     public PlutusData toPlutusData(CardanoNetwork network) {
-<span class="fc" id="L123">        return ConstrPlutusData.of(0,</span>
-<span class="fc" id="L124">                ListPlutusData.of(</span>
-<span class="fc" id="L125">                        this.allowedCredentials.stream()</span>
-<span class="fc" id="L126">                                .map(BytesPlutusData::of)</span>
-<span class="fc" id="L127">                                .toList()</span>
-<span class="fc" id="L128">                                .toArray(new PlutusData[0])</span>
+<span class="nc" id="L183">        return ConstrPlutusData.of(0,</span>
+<span class="nc" id="L184">                ListPlutusData.of(</span>
+<span class="nc" id="L185">                        this.allowedCredentials.stream()</span>
+<span class="nc" id="L186">                                .map(BytesPlutusData::of)</span>
+<span class="nc" id="L187">                                .toList()</span>
+<span class="nc" id="L188">                                .toArray(new PlutusData[0])</span>
                 ),
-<span class="fc" id="L130">                BytesPlutusData.of(HexUtil.decodeHexString(getMintOrBurnAuthTokenHash(network))),</span>
-<span class="fc" id="L131">                BytesPlutusData.of(this.tokenName),</span>
-<span class="fc" id="L132">                BytesPlutusData.of(HexUtil.decodeHexString(getUpdateStateTokenHash(network))),</span>
-<span class="fc" id="L133">                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),</span>
-<span class="fc" id="L134">                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),</span>
-<span class="fc" id="L135">                ListPlutusData.of(</span>
-<span class="fc" id="L136">                        this.feeReceivers.stream()</span>
-<span class="fc" id="L137">                                .map(BytesPlutusData::of)</span>
-<span class="fc" id="L138">                                .toList()</span>
-<span class="fc" id="L139">                                .toArray(new PlutusData[0])</span>
+<span class="nc" id="L190">                BytesPlutusData.of(HexUtil.decodeHexString(getMintOrBurnAuthTokenHash(network))),</span>
+<span class="nc" id="L191">                BytesPlutusData.of(this.tokenName),</span>
+<span class="nc" id="L192">                BytesPlutusData.of(HexUtil.decodeHexString(getUpdateStateTokenHash(network))),</span>
+<span class="nc" id="L193">                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),</span>
+<span class="nc" id="L194">                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),</span>
+<span class="nc" id="L195">                ListPlutusData.of(</span>
+<span class="nc" id="L196">                        this.feeReceivers.stream()</span>
+<span class="nc" id="L197">                                .map(BytesPlutusData::of)</span>
+<span class="nc" id="L198">                                .toList()</span>
+<span class="nc" id="L199">                                .toArray(new PlutusData[0])</span>
                 ),
-<span class="fc" id="L141">                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),</span>
-<span class="fc" id="L142">                BigIntPlutusData.of(BigInteger.valueOf(this.transactionLimit)),</span>
-<span class="fc" id="L143">                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize))</span>
+<span class="nc" id="L201">                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),</span>
+<span class="nc" id="L202">                BigIntPlutusData.of(BigInteger.valueOf(this.transactionLimit)),</span>
+<span class="nc" id="L203">                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize))</span>
         );
     }
 }

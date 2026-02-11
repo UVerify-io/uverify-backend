@@ -36,14 +36,12 @@ import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
-import com.bloxbean.cardano.client.quicktx.Tx;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.transaction.storage.impl.model.TxnEntity;
 import io.uverify.backend.dto.UsageStatistics;
-import io.uverify.backend.entity.UVerifyCertificateEntity;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.enums.UseCaseCategory;
 import io.uverify.backend.extension.ExtensionManager;
@@ -89,7 +87,7 @@ import static io.uverify.backend.extension.utils.ConnectedGoodUtils.*;
 import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 
 @Service
-<span class="fc" id="L92">@Slf4j</span>
+<span class="fc" id="L90">@Slf4j</span>
 @ConditionalOnProperty(value = &quot;extensions.connected-goods.enabled&quot;, havingValue = &quot;true&quot;)
 public class ConnectedGoodsService implements UVerifyServiceExtension {
 
@@ -119,411 +117,405 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
             @Value(&quot;${cardano.network}&quot;) String network,
             ConnectedGoodsRepository connectedGoodsRepository, SocialHubRepository socialHubRepository,
             @Autowired ExtensionManager extensionManager, ConnectedGoodUpdateRepository connectedGoodUpdateRepository,
-<span class="fc" id="L122">            @Autowired TransactionRepository transactionRepository) {</span>
-<span class="fc" id="L123">        this.connectedGoodsRepository = connectedGoodsRepository;</span>
-<span class="fc" id="L124">        this.connectedGoodUpdateRepository = connectedGoodUpdateRepository;</span>
-<span class="fc" id="L125">        this.socialHubRepository = socialHubRepository;</span>
-<span class="fc" id="L126">        this.transactionRepository = transactionRepository;</span>
-<span class="fc" id="L127">        this.salt = salt;</span>
-<span class="fc" id="L128">        this.network = fromCardanoNetwork(CardanoNetwork.valueOf(network));</span>
-<span class="fc" id="L129">        extensionManager.registerExtension(this);</span>
+<span class="fc" id="L120">            @Autowired TransactionRepository transactionRepository) {</span>
+<span class="fc" id="L121">        this.connectedGoodsRepository = connectedGoodsRepository;</span>
+<span class="fc" id="L122">        this.connectedGoodUpdateRepository = connectedGoodUpdateRepository;</span>
+<span class="fc" id="L123">        this.socialHubRepository = socialHubRepository;</span>
+<span class="fc" id="L124">        this.transactionRepository = transactionRepository;</span>
+<span class="fc" id="L125">        this.salt = salt;</span>
+<span class="fc" id="L126">        this.network = fromCardanoNetwork(CardanoNetwork.valueOf(network));</span>
+<span class="fc" id="L127">        extensionManager.registerExtension(this);</span>
 
-<span class="pc bpc" id="L131" title="1 of 2 branches missed.">        if (cardanoBackendServiceType.equals(&quot;blockfrost&quot;)) {</span>
-<span class="nc bnc" id="L132" title="All 4 branches missed.">            if (blockfrostProjectId == null || blockfrostProjectId.isEmpty()) {</span>
-<span class="nc" id="L133">                throw new IllegalArgumentException(&quot;Blockfrost projectId is required when using Blockfrost backend service&quot;);</span>
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">        if (cardanoBackendServiceType.equals(&quot;blockfrost&quot;)) {</span>
+<span class="nc bnc" id="L130" title="All 4 branches missed.">            if (blockfrostProjectId == null || blockfrostProjectId.isEmpty()) {</span>
+<span class="nc" id="L131">                throw new IllegalArgumentException(&quot;Blockfrost projectId is required when using Blockfrost backend service&quot;);</span>
             }
 
-<span class="nc" id="L136">            this.backendService = new BFBackendService(</span>
+<span class="nc" id="L134">            this.backendService = new BFBackendService(</span>
                     blockfrostBaseUrl,
                     blockfrostProjectId);
-<span class="pc bpc" id="L139" title="1 of 2 branches missed.">        } else if (cardanoBackendServiceType.equals(&quot;koios&quot;)) {</span>
-<span class="nc" id="L140">            this.backendService = new KoiosBackendService(Constants.KOIOS_PREPROD_URL);</span>
+<span class="pc bpc" id="L137" title="1 of 2 branches missed.">        } else if (cardanoBackendServiceType.equals(&quot;koios&quot;)) {</span>
+<span class="nc" id="L138">            this.backendService = new KoiosBackendService(Constants.KOIOS_PREPROD_URL);</span>
         }
-<span class="fc" id="L142">    }</span>
+<span class="fc" id="L140">    }</span>
 
     public void setBackendService(BackendService backendService) {
-<span class="fc" id="L145">        this.backendService = backendService;</span>
-<span class="fc" id="L146">    }</span>
+<span class="fc" id="L143">        this.backendService = backendService;</span>
+<span class="fc" id="L144">    }</span>
 
     public SocialHubEntity getSocialHubByBatchIdAndMintHash(String batchId, String mintHash) {
-<span class="fc" id="L149">        Optional&lt;SocialHubEntity&gt; socialHubEntity = socialHubRepository.findByBatchIdAndMintHash(batchId, mintHash);</span>
-<span class="fc" id="L150">        return socialHubEntity.orElse(null);</span>
+<span class="fc" id="L147">        Optional&lt;SocialHubEntity&gt; socialHubEntity = socialHubRepository.findByBatchIdAndMintHash(batchId, mintHash);</span>
+<span class="fc" id="L148">        return socialHubEntity.orElse(null);</span>
     }
 
     public SocialHubEntity getSocialHubByBatchIdsAndItemId(String batchIds, String itemId) {
-<span class="fc" id="L154">        Optional&lt;SocialHubEntity&gt; socialHubEntity = socialHubRepository.findByBatchIdsAndMintHash(Arrays.stream(batchIds.split(&quot;,&quot;)).toList(), applySHA3_256(itemId));</span>
-<span class="fc" id="L155">        return socialHubEntity.orElse(null);</span>
+<span class="fc" id="L152">        Optional&lt;SocialHubEntity&gt; socialHubEntity = socialHubRepository.findByBatchIdsAndMintHash(Arrays.stream(batchIds.split(&quot;,&quot;)).toList(), applySHA3_256(itemId));</span>
+<span class="fc" id="L153">        return socialHubEntity.orElse(null);</span>
     }
 
     public List&lt;AddressUtxo&gt; processAddressUtxos(List&lt;AddressUtxo&gt; addressUtxos) {
-<span class="fc" id="L159">        List&lt;AddressUtxo&gt; processedUtxos = new ArrayList&lt;&gt;();</span>
-<span class="fc bfc" id="L160" title="All 2 branches covered.">        for (AddressUtxo addressUtxo : addressUtxos) {</span>
+<span class="fc" id="L157">        List&lt;AddressUtxo&gt; processedUtxos = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">        for (AddressUtxo addressUtxo : addressUtxos) {</span>
             try {
-<span class="fc bfc" id="L162" title="All 2 branches covered.">                if (includesConnectedGoodsToken(addressUtxo)) {</span>
-<span class="fc" id="L163">                    ConnectedGoodsDatum connectedGoodsDatum = new ConnectedGoodsDatumConverter().deserialize(addressUtxo.getInlineDatum());</span>
-<span class="fc" id="L164">                    String transactionId = addressUtxo.getTxHash();</span>
-<span class="fc" id="L165">                    long slot = addressUtxo.getSlot();</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">                if (includesConnectedGoodsToken(addressUtxo)) {</span>
+<span class="fc" id="L161">                    ConnectedGoodsDatum connectedGoodsDatum = new ConnectedGoodsDatumConverter().deserialize(addressUtxo.getInlineDatum());</span>
+<span class="fc" id="L162">                    String transactionId = addressUtxo.getTxHash();</span>
+<span class="fc" id="L163">                    long slot = addressUtxo.getSlot();</span>
 
-<span class="fc" id="L167">                    String batchId = HexUtil.encodeHexString(connectedGoodsDatum.getId());</span>
-<span class="fc" id="L168">                    Optional&lt;ConnectedGoodEntity&gt; entry = connectedGoodsRepository.findById(batchId);</span>
+<span class="fc" id="L165">                    String batchId = HexUtil.encodeHexString(connectedGoodsDatum.getId());</span>
+<span class="fc" id="L166">                    Optional&lt;ConnectedGoodEntity&gt; entry = connectedGoodsRepository.findById(batchId);</span>
 
                     ConnectedGoodEntity connectedGoodEntity;
-<span class="fc" id="L171">                    ConnectedGoodUpdateEntity connectedGoodUpdateEntity = new ConnectedGoodUpdateEntity();</span>
-<span class="fc" id="L172">                    connectedGoodUpdateEntity.setSlot(slot);</span>
-<span class="fc" id="L173">                    connectedGoodUpdateEntity.setTransactionId(transactionId);</span>
-<span class="fc" id="L174">                    connectedGoodUpdateEntity.setOutputIndex(addressUtxo.getOutputIndex());</span>
-<span class="fc bfc" id="L175" title="All 2 branches covered.">                    if (entry.isEmpty()) {</span>
-<span class="fc" id="L176">                        connectedGoodEntity = new ConnectedGoodEntity();</span>
-<span class="fc" id="L177">                        connectedGoodEntity.setId(batchId);</span>
-<span class="fc" id="L178">                        connectedGoodEntity.setCreationSlot(slot);</span>
+<span class="fc" id="L169">                    ConnectedGoodUpdateEntity connectedGoodUpdateEntity = new ConnectedGoodUpdateEntity();</span>
+<span class="fc" id="L170">                    connectedGoodUpdateEntity.setSlot(slot);</span>
+<span class="fc" id="L171">                    connectedGoodUpdateEntity.setTransactionId(transactionId);</span>
+<span class="fc" id="L172">                    connectedGoodUpdateEntity.setOutputIndex(addressUtxo.getOutputIndex());</span>
+<span class="fc bfc" id="L173" title="All 2 branches covered.">                    if (entry.isEmpty()) {</span>
+<span class="fc" id="L174">                        connectedGoodEntity = new ConnectedGoodEntity();</span>
+<span class="fc" id="L175">                        connectedGoodEntity.setId(batchId);</span>
+<span class="fc" id="L176">                        connectedGoodEntity.setCreationSlot(slot);</span>
 
-<span class="fc" id="L180">                        List&lt;SocialHubEntity&gt; socialHubEntities = new ArrayList&lt;&gt;();</span>
-<span class="fc bfc" id="L181" title="All 2 branches covered.">                        for (ConnectedGoodsDatumItem item : connectedGoodsDatum.getItems()) {</span>
-<span class="fc" id="L182">                            SocialHubEntity socialHubEntity = new SocialHubEntity();</span>
-<span class="fc" id="L183">                            socialHubEntity.setPassword(HexUtil.encodeHexString(item.getPassword()));</span>
-<span class="fc" id="L184">                            socialHubEntity.setAssetId(item.getTokenName());</span>
-<span class="fc" id="L185">                            socialHubEntity.setTransactionId(transactionId);</span>
-<span class="fc" id="L186">                            socialHubEntity.setOutputIndex(addressUtxo.getOutputIndex());</span>
-<span class="fc" id="L187">                            socialHubEntity.setCreationSlot(slot);</span>
-<span class="fc" id="L188">                            socialHubEntities.add(socialHubEntity);</span>
-<span class="fc" id="L189">                        }</span>
+<span class="fc" id="L178">                        List&lt;SocialHubEntity&gt; socialHubEntities = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">                        for (ConnectedGoodsDatumItem item : connectedGoodsDatum.getItems()) {</span>
+<span class="fc" id="L180">                            SocialHubEntity socialHubEntity = new SocialHubEntity();</span>
+<span class="fc" id="L181">                            socialHubEntity.setPassword(HexUtil.encodeHexString(item.getPassword()));</span>
+<span class="fc" id="L182">                            socialHubEntity.setAssetId(item.getTokenName());</span>
+<span class="fc" id="L183">                            socialHubEntity.setTransactionId(transactionId);</span>
+<span class="fc" id="L184">                            socialHubEntity.setOutputIndex(addressUtxo.getOutputIndex());</span>
+<span class="fc" id="L185">                            socialHubEntity.setCreationSlot(slot);</span>
+<span class="fc" id="L186">                            socialHubEntities.add(socialHubEntity);</span>
+<span class="fc" id="L187">                        }</span>
 
-<span class="fc" id="L191">                        connectedGoodEntity.setUpdates(List.of(connectedGoodUpdateEntity));</span>
-<span class="fc" id="L192">                        connectedGoodEntity.setSocialHubEntities(socialHubEntities);</span>
-<span class="fc" id="L193">                    } else {</span>
-<span class="fc" id="L194">                        connectedGoodEntity = entry.get();</span>
-<span class="fc" id="L195">                        connectedGoodEntity.getUpdates().add(connectedGoodUpdateEntity);</span>
+<span class="fc" id="L189">                        connectedGoodEntity.setUpdates(List.of(connectedGoodUpdateEntity));</span>
+<span class="fc" id="L190">                        connectedGoodEntity.setSocialHubEntities(socialHubEntities);</span>
+<span class="fc" id="L191">                    } else {</span>
+<span class="fc" id="L192">                        connectedGoodEntity = entry.get();</span>
+<span class="fc" id="L193">                        connectedGoodEntity.getUpdates().add(connectedGoodUpdateEntity);</span>
 
                     }
-<span class="fc" id="L198">                    connectedGoodsRepository.save(connectedGoodEntity);</span>
-<span class="fc" id="L199">                    processedUtxos.add(addressUtxo);</span>
+<span class="fc" id="L196">                    connectedGoodsRepository.save(connectedGoodEntity);</span>
+<span class="fc" id="L197">                    processedUtxos.add(addressUtxo);</span>
                 }
 
-<span class="fc bfc" id="L202" title="All 2 branches covered.">                if (includesSocialHubToken(addressUtxo)) {</span>
-<span class="fc" id="L203">                    SocialHubDatum socialHubDatum = new SocialHubDatumConverter().deserialize(addressUtxo.getInlineDatum());</span>
-<span class="fc" id="L204">                    String transactionId = addressUtxo.getTxHash();</span>
+<span class="fc bfc" id="L200" title="All 2 branches covered.">                if (includesSocialHubToken(addressUtxo)) {</span>
+<span class="fc" id="L201">                    SocialHubDatum socialHubDatum = new SocialHubDatumConverter().deserialize(addressUtxo.getInlineDatum());</span>
+<span class="fc" id="L202">                    String transactionId = addressUtxo.getTxHash();</span>
 
-<span class="fc" id="L206">                    String batchId = HexUtil.encodeHexString(socialHubDatum.getBatchId());</span>
-<span class="fc" id="L207">                    String tokenName = getSocialHubTokenName(addressUtxo);</span>
+<span class="fc" id="L204">                    String batchId = HexUtil.encodeHexString(socialHubDatum.getBatchId());</span>
+<span class="fc" id="L205">                    String tokenName = getSocialHubTokenName(addressUtxo);</span>
 
-<span class="pc bpc" id="L209" title="1 of 2 branches missed.">                    if (tokenName != null) {</span>
-<span class="fc" id="L210">                        Optional&lt;SocialHubEntity&gt; optionalSocialHub = socialHubRepository.findByBatchIdAndAssetId(batchId, tokenName);</span>
+<span class="pc bpc" id="L207" title="1 of 2 branches missed.">                    if (tokenName != null) {</span>
+<span class="fc" id="L208">                        Optional&lt;SocialHubEntity&gt; optionalSocialHub = socialHubRepository.findByBatchIdAndAssetId(batchId, tokenName);</span>
 
-<span class="pc bpc" id="L212" title="1 of 2 branches missed.">                        if (optionalSocialHub.isPresent()) {</span>
-<span class="fc" id="L213">                            SocialHubEntity socialHubEntity = SocialHubEntity.fromSocialHubDatum(socialHubDatum);</span>
+<span class="pc bpc" id="L210" title="1 of 2 branches missed.">                        if (optionalSocialHub.isPresent()) {</span>
+<span class="fc" id="L211">                            SocialHubEntity socialHubEntity = SocialHubEntity.fromSocialHubDatum(socialHubDatum);</span>
 
-<span class="fc" id="L215">                            socialHubEntity.setTransactionId(transactionId);</span>
-<span class="fc" id="L216">                            socialHubEntity.setOutputIndex(addressUtxo.getOutputIndex());</span>
-<span class="fc" id="L217">                            socialHubEntity.setCreationSlot(addressUtxo.getSlot());</span>
+<span class="fc" id="L213">                            socialHubEntity.setTransactionId(transactionId);</span>
+<span class="fc" id="L214">                            socialHubEntity.setOutputIndex(addressUtxo.getOutputIndex());</span>
+<span class="fc" id="L215">                            socialHubEntity.setCreationSlot(addressUtxo.getSlot());</span>
 
-<span class="fc" id="L219">                            SocialHubEntity previousSocialHubEntity = optionalSocialHub.get();</span>
-<span class="fc" id="L220">                            socialHubEntity.setPassword(previousSocialHubEntity.getPassword());</span>
-<span class="fc" id="L221">                            socialHubEntity.setAssetId(previousSocialHubEntity.getAssetId());</span>
-<span class="fc" id="L222">                            socialHubEntity.setConnectedGood(previousSocialHubEntity.getConnectedGood());</span>
-<span class="fc" id="L223">                            socialHubRepository.save(socialHubEntity);</span>
-<span class="fc" id="L224">                            processedUtxos.add(addressUtxo);</span>
-<span class="fc" id="L225">                        } else {</span>
-<span class="nc" id="L226">                            log.warn(&quot;SocialHub not found for batchId: {} and tokenName: {}&quot;, batchId, tokenName);</span>
+<span class="fc" id="L217">                            SocialHubEntity previousSocialHubEntity = optionalSocialHub.get();</span>
+<span class="fc" id="L218">                            socialHubEntity.setPassword(previousSocialHubEntity.getPassword());</span>
+<span class="fc" id="L219">                            socialHubEntity.setAssetId(previousSocialHubEntity.getAssetId());</span>
+<span class="fc" id="L220">                            socialHubEntity.setConnectedGood(previousSocialHubEntity.getConnectedGood());</span>
+<span class="fc" id="L221">                            socialHubRepository.save(socialHubEntity);</span>
+<span class="fc" id="L222">                            processedUtxos.add(addressUtxo);</span>
+<span class="fc" id="L223">                        } else {</span>
+<span class="nc" id="L224">                            log.warn(&quot;SocialHub not found for batchId: {} and tokenName: {}&quot;, batchId, tokenName);</span>
                         }
                     }
                 }
-<span class="nc" id="L230">            } catch (Exception e) {</span>
-<span class="nc" id="L231">                e.printStackTrace();</span>
-<span class="fc" id="L232">            }</span>
-<span class="fc" id="L233">        }</span>
-<span class="fc" id="L234">        return processedUtxos;</span>
+<span class="nc" id="L228">            } catch (Exception e) {</span>
+<span class="nc" id="L229">                e.printStackTrace();</span>
+<span class="fc" id="L230">            }</span>
+<span class="fc" id="L231">        }</span>
+<span class="fc" id="L232">        return processedUtxos;</span>
     }
 
     public void handleRollbackToSlot(long slot) {
-<span class="nc" id="L238">        connectedGoodsRepository.deleteAllAfterSlot(slot);</span>
-<span class="nc" id="L239">        connectedGoodUpdateRepository.deleteAllAfterSlot(slot);</span>
-<span class="nc" id="L240">        socialHubRepository.deleteAllAfterSlot(slot);</span>
-<span class="nc" id="L241">    }</span>
+<span class="nc" id="L236">        connectedGoodsRepository.deleteAllAfterSlot(slot);</span>
+<span class="nc" id="L237">        connectedGoodUpdateRepository.deleteAllAfterSlot(slot);</span>
+<span class="nc" id="L238">        socialHubRepository.deleteAllAfterSlot(slot);</span>
+<span class="nc" id="L239">    }</span>
 
     @Override
     public void addUsageStatistics(UsageStatistics usageStatistics) {
-<span class="nc" id="L245">        List&lt;ConnectedGoodEntity&gt; registeredBatches = connectedGoodsRepository.findAll();</span>
-<span class="nc" id="L246">        List&lt;ConnectedGoodUpdateEntity&gt; claimedItems = connectedGoodUpdateRepository.findAll();</span>
-<span class="nc" id="L247">        usageStatistics.addCertificatesToCategory(UseCaseCategory.CONNECTED_GOODS, registeredBatches.size() + claimedItems.size());</span>
-<span class="nc" id="L248">    }</span>
+<span class="nc" id="L243">        List&lt;ConnectedGoodEntity&gt; registeredBatches = connectedGoodsRepository.findAll();</span>
+<span class="nc" id="L244">        List&lt;ConnectedGoodUpdateEntity&gt; claimedItems = connectedGoodUpdateRepository.findAll();</span>
+<span class="nc" id="L245">        usageStatistics.addCertificatesToCategory(UseCaseCategory.CONNECTED_GOODS, registeredBatches.size() + claimedItems.size());</span>
+<span class="nc" id="L246">    }</span>
 
     @Override
     public BigInteger addTransactionFees(BigInteger totalFees) {
         // registered batches are already included in the certificate transaction fee itself
-<span class="nc" id="L253">        List&lt;ConnectedGoodUpdateEntity&gt; claimedItems = connectedGoodUpdateRepository.findAll();</span>
-<span class="nc bnc" id="L254" title="All 2 branches missed.">        for (ConnectedGoodUpdateEntity claimedItem : claimedItems) {</span>
-<span class="nc" id="L255">            Optional&lt;TxnEntity&gt; transaction = transactionRepository.findById(claimedItem.getTransactionId());</span>
-<span class="nc bnc" id="L256" title="All 2 branches missed.">            if (transaction.isPresent()) {</span>
-<span class="nc" id="L257">                totalFees = totalFees.add(transaction.get().getFee());</span>
+<span class="nc" id="L251">        List&lt;ConnectedGoodUpdateEntity&gt; claimedItems = connectedGoodUpdateRepository.findAll();</span>
+<span class="nc bnc" id="L252" title="All 2 branches missed.">        for (ConnectedGoodUpdateEntity claimedItem : claimedItems) {</span>
+<span class="nc" id="L253">            Optional&lt;TxnEntity&gt; transaction = transactionRepository.findById(claimedItem.getTransactionId());</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">            if (transaction.isPresent()) {</span>
+<span class="nc" id="L255">                totalFees = totalFees.add(transaction.get().getFee());</span>
             } else {
-<span class="nc" id="L259">                log.warn(&quot;Transaction not found for UTXO with hash: {}&quot;, claimedItem.getTransactionId());</span>
+<span class="nc" id="L257">                log.warn(&quot;Transaction not found for UTXO with hash: {}&quot;, claimedItem.getTransactionId());</span>
             }
-<span class="nc" id="L261">        }</span>
+<span class="nc" id="L259">        }</span>
 
-<span class="nc" id="L263">        return totalFees;</span>
+<span class="nc" id="L261">        return totalFees;</span>
     }
 
     private SecretKey generateKey(String key) throws Exception {
-<span class="fc" id="L267">        byte[] saltBytes = Base64.getDecoder().decode(salt);</span>
-<span class="fc" id="L268">        SecretKeyFactory factory = SecretKeyFactory.getInstance(&quot;PBKDF2WithHmacSHA256&quot;);</span>
-<span class="fc" id="L269">        KeySpec spec = new PBEKeySpec(key.toCharArray(), saltBytes, ITERATION_COUNT, KEY_LENGTH);</span>
-<span class="fc" id="L270">        SecretKey tmp = factory.generateSecret(spec);</span>
-<span class="fc" id="L271">        return new SecretKeySpec(tmp.getEncoded(), &quot;AES&quot;);</span>
+<span class="fc" id="L265">        byte[] saltBytes = Base64.getDecoder().decode(salt);</span>
+<span class="fc" id="L266">        SecretKeyFactory factory = SecretKeyFactory.getInstance(&quot;PBKDF2WithHmacSHA256&quot;);</span>
+<span class="fc" id="L267">        KeySpec spec = new PBEKeySpec(key.toCharArray(), saltBytes, ITERATION_COUNT, KEY_LENGTH);</span>
+<span class="fc" id="L268">        SecretKey tmp = factory.generateSecret(spec);</span>
+<span class="fc" id="L269">        return new SecretKeySpec(tmp.getEncoded(), &quot;AES&quot;);</span>
     }
 
     private Optional&lt;byte[]&gt; encrypt(Optional&lt;byte[]&gt; plaintext, String key) throws Exception {
-<span class="fc bfc" id="L275" title="All 2 branches covered.">        if (plaintext.isPresent()) {</span>
-<span class="fc" id="L276">            return Optional.of(encrypt(plaintext.get(), key));</span>
+<span class="fc bfc" id="L273" title="All 2 branches covered.">        if (plaintext.isPresent()) {</span>
+<span class="fc" id="L274">            return Optional.of(encrypt(plaintext.get(), key));</span>
         } else {
-<span class="fc" id="L278">            return Optional.empty();</span>
+<span class="fc" id="L276">            return Optional.empty();</span>
         }
     }
 
     public byte[] encrypt(byte[] plaintext, String key) throws Exception {
-<span class="fc" id="L283">        byte[] iv = new byte[CTR_IV_LENGTH];</span>
-<span class="fc" id="L284">        SecureRandom random = SecureRandom.getInstanceStrong();</span>
-<span class="fc" id="L285">        random.nextBytes(iv);</span>
+<span class="fc" id="L281">        byte[] iv = new byte[CTR_IV_LENGTH];</span>
+<span class="fc" id="L282">        SecureRandom random = SecureRandom.getInstanceStrong();</span>
+<span class="fc" id="L283">        random.nextBytes(iv);</span>
 
-<span class="fc" id="L287">        SecretKey secretKey = generateKey(key);</span>
+<span class="fc" id="L285">        SecretKey secretKey = generateKey(key);</span>
 
-<span class="fc" id="L289">        Cipher cipher = Cipher.getInstance(&quot;AES/CTR/NoPadding&quot;);</span>
-<span class="fc" id="L290">        cipher.init(Cipher.ENCRYPT_MODE, secretKey, new IvParameterSpec(iv));</span>
+<span class="fc" id="L287">        Cipher cipher = Cipher.getInstance(&quot;AES/CTR/NoPadding&quot;);</span>
+<span class="fc" id="L288">        cipher.init(Cipher.ENCRYPT_MODE, secretKey, new IvParameterSpec(iv));</span>
 
-<span class="fc" id="L292">        byte[] ciphertext = cipher.doFinal(plaintext);</span>
+<span class="fc" id="L290">        byte[] ciphertext = cipher.doFinal(plaintext);</span>
 
-<span class="fc" id="L294">        byte[] encrypted = new byte[iv.length + ciphertext.length];</span>
-<span class="fc" id="L295">        System.arraycopy(iv, 0, encrypted, 0, iv.length);</span>
-<span class="fc" id="L296">        System.arraycopy(ciphertext, 0, encrypted, iv.length, ciphertext.length);</span>
+<span class="fc" id="L292">        byte[] encrypted = new byte[iv.length + ciphertext.length];</span>
+<span class="fc" id="L293">        System.arraycopy(iv, 0, encrypted, 0, iv.length);</span>
+<span class="fc" id="L294">        System.arraycopy(ciphertext, 0, encrypted, iv.length, ciphertext.length);</span>
 
-<span class="fc" id="L298">        return encrypted;</span>
+<span class="fc" id="L296">        return encrypted;</span>
     }
 
     private String decrypt(byte[] encryptedText, String key) throws Exception {
-<span class="pc bpc" id="L302" title="1 of 4 branches missed.">        if (encryptedText != null &amp;&amp; encryptedText.length &gt; CTR_IV_LENGTH) {</span>
-<span class="fc" id="L303">            return decryptString(encryptedText, key);</span>
+<span class="pc bpc" id="L300" title="1 of 4 branches missed.">        if (encryptedText != null &amp;&amp; encryptedText.length &gt; CTR_IV_LENGTH) {</span>
+<span class="fc" id="L301">            return decryptString(encryptedText, key);</span>
         } else {
-<span class="fc" id="L305">            return null;</span>
+<span class="fc" id="L303">            return null;</span>
         }
     }
 
     private String decryptString(byte[] encryptedText, String key) throws Exception {
-<span class="fc" id="L310">        byte[] iv = Arrays.copyOfRange(encryptedText, 0, CTR_IV_LENGTH);</span>
-<span class="fc" id="L311">        byte[] ciphertext = Arrays.copyOfRange(encryptedText, CTR_IV_LENGTH, encryptedText.length);</span>
+<span class="fc" id="L308">        byte[] iv = Arrays.copyOfRange(encryptedText, 0, CTR_IV_LENGTH);</span>
+<span class="fc" id="L309">        byte[] ciphertext = Arrays.copyOfRange(encryptedText, CTR_IV_LENGTH, encryptedText.length);</span>
 
-<span class="fc" id="L313">        SecretKey secretKey = generateKey(key);</span>
+<span class="fc" id="L311">        SecretKey secretKey = generateKey(key);</span>
 
-<span class="fc" id="L315">        Cipher cipher = Cipher.getInstance(&quot;AES/CTR/NoPadding&quot;);</span>
-<span class="fc" id="L316">        cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(iv));</span>
+<span class="fc" id="L313">        Cipher cipher = Cipher.getInstance(&quot;AES/CTR/NoPadding&quot;);</span>
+<span class="fc" id="L314">        cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(iv));</span>
 
-<span class="fc" id="L318">        byte[] decrypted = cipher.doFinal(ciphertext);</span>
-<span class="fc" id="L319">        return new String(decrypted, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L316">        byte[] decrypted = cipher.doFinal(ciphertext);</span>
+<span class="fc" id="L317">        return new String(decrypted, StandardCharsets.UTF_8);</span>
     }
 
     private SocialHubDatum encryptSocialHub(SocialHubDatum plainSocialHub, String password) throws Exception {
-<span class="fc" id="L323">        SocialHubDatum encryptedSocialHub = new SocialHubDatum();</span>
-<span class="fc" id="L324">        encryptedSocialHub.setOwner(plainSocialHub.getOwner());</span>
-<span class="fc" id="L325">        encryptedSocialHub.setBatchId(plainSocialHub.getBatchId());</span>
-<span class="fc" id="L326">        encryptedSocialHub.setName(encrypt(plainSocialHub.getName(), password));</span>
-<span class="fc" id="L327">        encryptedSocialHub.setSubtitle(encrypt(plainSocialHub.getSubtitle(), password));</span>
-<span class="fc" id="L328">        encryptedSocialHub.setX(encrypt(plainSocialHub.getX(), password));</span>
-<span class="fc" id="L329">        encryptedSocialHub.setTelegram(encrypt(plainSocialHub.getTelegram(), password));</span>
-<span class="fc" id="L330">        encryptedSocialHub.setDiscord(encrypt(plainSocialHub.getDiscord(), password));</span>
-<span class="fc" id="L331">        encryptedSocialHub.setYoutube(encrypt(plainSocialHub.getYoutube(), password));</span>
-<span class="fc" id="L332">        encryptedSocialHub.setWebsite(encrypt(plainSocialHub.getWebsite(), password));</span>
-<span class="fc" id="L333">        encryptedSocialHub.setEmail(encrypt(plainSocialHub.getEmail(), password));</span>
-<span class="fc" id="L334">        encryptedSocialHub.setAdahandle(encrypt(plainSocialHub.getAdahandle(), password));</span>
-<span class="fc" id="L335">        encryptedSocialHub.setReddit(encrypt(plainSocialHub.getReddit(), password));</span>
-<span class="fc" id="L336">        encryptedSocialHub.setInstagram(encrypt(plainSocialHub.getInstagram(), password));</span>
-<span class="fc" id="L337">        encryptedSocialHub.setGithub(encrypt(plainSocialHub.getGithub(), password));</span>
-<span class="fc" id="L338">        encryptedSocialHub.setLinkedin(encrypt(plainSocialHub.getLinkedin(), password));</span>
-<span class="fc" id="L339">        encryptedSocialHub.setPicture(encrypt(plainSocialHub.getPicture(), password));</span>
-<span class="fc" id="L340">        return encryptedSocialHub;</span>
+<span class="fc" id="L321">        SocialHubDatum encryptedSocialHub = new SocialHubDatum();</span>
+<span class="fc" id="L322">        encryptedSocialHub.setOwner(plainSocialHub.getOwner());</span>
+<span class="fc" id="L323">        encryptedSocialHub.setBatchId(plainSocialHub.getBatchId());</span>
+<span class="fc" id="L324">        encryptedSocialHub.setName(encrypt(plainSocialHub.getName(), password));</span>
+<span class="fc" id="L325">        encryptedSocialHub.setSubtitle(encrypt(plainSocialHub.getSubtitle(), password));</span>
+<span class="fc" id="L326">        encryptedSocialHub.setX(encrypt(plainSocialHub.getX(), password));</span>
+<span class="fc" id="L327">        encryptedSocialHub.setTelegram(encrypt(plainSocialHub.getTelegram(), password));</span>
+<span class="fc" id="L328">        encryptedSocialHub.setDiscord(encrypt(plainSocialHub.getDiscord(), password));</span>
+<span class="fc" id="L329">        encryptedSocialHub.setYoutube(encrypt(plainSocialHub.getYoutube(), password));</span>
+<span class="fc" id="L330">        encryptedSocialHub.setWebsite(encrypt(plainSocialHub.getWebsite(), password));</span>
+<span class="fc" id="L331">        encryptedSocialHub.setEmail(encrypt(plainSocialHub.getEmail(), password));</span>
+<span class="fc" id="L332">        encryptedSocialHub.setAdahandle(encrypt(plainSocialHub.getAdahandle(), password));</span>
+<span class="fc" id="L333">        encryptedSocialHub.setReddit(encrypt(plainSocialHub.getReddit(), password));</span>
+<span class="fc" id="L334">        encryptedSocialHub.setInstagram(encrypt(plainSocialHub.getInstagram(), password));</span>
+<span class="fc" id="L335">        encryptedSocialHub.setGithub(encrypt(plainSocialHub.getGithub(), password));</span>
+<span class="fc" id="L336">        encryptedSocialHub.setLinkedin(encrypt(plainSocialHub.getLinkedin(), password));</span>
+<span class="fc" id="L337">        encryptedSocialHub.setPicture(encrypt(plainSocialHub.getPicture(), password));</span>
+<span class="fc" id="L338">        return encryptedSocialHub;</span>
     }
 
     public SocialHub decryptSocialHub(SocialHub encryptedSocialHub, String password) throws Exception {
-<span class="fc" id="L344">        SocialHub decryptedSocialHub = new SocialHub();</span>
-<span class="fc" id="L345">        decryptedSocialHub.setOwner(encryptedSocialHub.getOwner());</span>
-<span class="fc" id="L346">        decryptedSocialHub.setItemName(encryptedSocialHub.getItemName());</span>
-<span class="fc" id="L347">        decryptedSocialHub.setName(decrypt(encryptedSocialHub.asBinaryName(), password));</span>
-<span class="fc" id="L348">        decryptedSocialHub.setSubtitle(decrypt(encryptedSocialHub.asBinarySubtitle(), password));</span>
-<span class="fc" id="L349">        decryptedSocialHub.setX(decrypt(encryptedSocialHub.asBinaryX(), password));</span>
-<span class="fc" id="L350">        decryptedSocialHub.setTelegram(decrypt(encryptedSocialHub.asBinaryTelegram(), password));</span>
-<span class="fc" id="L351">        decryptedSocialHub.setDiscord(decrypt(encryptedSocialHub.asBinaryDiscord(), password));</span>
-<span class="fc" id="L352">        decryptedSocialHub.setYoutube(decrypt(encryptedSocialHub.asBinaryYoutube(), password));</span>
-<span class="fc" id="L353">        decryptedSocialHub.setWebsite(decrypt(encryptedSocialHub.asBinaryWebsite(), password));</span>
-<span class="fc" id="L354">        decryptedSocialHub.setEmail(decrypt(encryptedSocialHub.asBinaryEmail(), password));</span>
-<span class="fc" id="L355">        decryptedSocialHub.setAdaHandle(decrypt(encryptedSocialHub.asBinaryAdahandle(), password));</span>
-<span class="fc" id="L356">        decryptedSocialHub.setReddit(decrypt(encryptedSocialHub.asBinaryReddit(), password));</span>
-<span class="fc" id="L357">        decryptedSocialHub.setInstagram(decrypt(encryptedSocialHub.asBinaryInstagram(), password));</span>
-<span class="fc" id="L358">        decryptedSocialHub.setGithub(decrypt(encryptedSocialHub.asBinaryGithub(), password));</span>
-<span class="fc" id="L359">        decryptedSocialHub.setLinkedin(decrypt(encryptedSocialHub.asBinaryLinkedin(), password));</span>
-<span class="fc" id="L360">        decryptedSocialHub.setPicture(decrypt(encryptedSocialHub.asBinaryPicture(), password));</span>
-<span class="fc" id="L361">        return decryptedSocialHub;</span>
+<span class="fc" id="L342">        SocialHub decryptedSocialHub = new SocialHub();</span>
+<span class="fc" id="L343">        decryptedSocialHub.setOwner(encryptedSocialHub.getOwner());</span>
+<span class="fc" id="L344">        decryptedSocialHub.setItemName(encryptedSocialHub.getItemName());</span>
+<span class="fc" id="L345">        decryptedSocialHub.setName(decrypt(encryptedSocialHub.asBinaryName(), password));</span>
+<span class="fc" id="L346">        decryptedSocialHub.setSubtitle(decrypt(encryptedSocialHub.asBinarySubtitle(), password));</span>
+<span class="fc" id="L347">        decryptedSocialHub.setX(decrypt(encryptedSocialHub.asBinaryX(), password));</span>
+<span class="fc" id="L348">        decryptedSocialHub.setTelegram(decrypt(encryptedSocialHub.asBinaryTelegram(), password));</span>
+<span class="fc" id="L349">        decryptedSocialHub.setDiscord(decrypt(encryptedSocialHub.asBinaryDiscord(), password));</span>
+<span class="fc" id="L350">        decryptedSocialHub.setYoutube(decrypt(encryptedSocialHub.asBinaryYoutube(), password));</span>
+<span class="fc" id="L351">        decryptedSocialHub.setWebsite(decrypt(encryptedSocialHub.asBinaryWebsite(), password));</span>
+<span class="fc" id="L352">        decryptedSocialHub.setEmail(decrypt(encryptedSocialHub.asBinaryEmail(), password));</span>
+<span class="fc" id="L353">        decryptedSocialHub.setAdaHandle(decrypt(encryptedSocialHub.asBinaryAdahandle(), password));</span>
+<span class="fc" id="L354">        decryptedSocialHub.setReddit(decrypt(encryptedSocialHub.asBinaryReddit(), password));</span>
+<span class="fc" id="L355">        decryptedSocialHub.setInstagram(decrypt(encryptedSocialHub.asBinaryInstagram(), password));</span>
+<span class="fc" id="L356">        decryptedSocialHub.setGithub(decrypt(encryptedSocialHub.asBinaryGithub(), password));</span>
+<span class="fc" id="L357">        decryptedSocialHub.setLinkedin(decrypt(encryptedSocialHub.asBinaryLinkedin(), password));</span>
+<span class="fc" id="L358">        decryptedSocialHub.setPicture(decrypt(encryptedSocialHub.asBinaryPicture(), password));</span>
+<span class="fc" id="L359">        return decryptedSocialHub;</span>
     }
 
     public Transaction claim(String assetName, String password, String transactionId, int outputIndex, SocialHubDatum socialHubDatum, String userAddress) throws ApiException {
-<span class="fc" id="L365">        Result&lt;Utxo&gt; output = backendService.getUtxoService().getTxOutput(transactionId, outputIndex);</span>
-<span class="fc" id="L366">        Utxo utxo = output.getValue();</span>
+<span class="fc" id="L363">        Result&lt;Utxo&gt; output = backendService.getUtxoService().getTxOutput(transactionId, outputIndex);</span>
+<span class="fc" id="L364">        Utxo utxo = output.getValue();</span>
 
-<span class="fc" id="L368">        ConnectedGoodsDatum inputDatum = new ConnectedGoodsDatumConverter().deserialize(utxo.getInlineDatum());</span>
-<span class="fc bfc" id="L369" title="All 2 branches covered.">        inputDatum.setItems(inputDatum.getItems().stream().filter(item -&gt; !item.getTokenName().equals(assetName)).toList());</span>
-<span class="fc" id="L370">        ConstrPlutusData datum = new ConnectedGoodsDatumConverter().toPlutusData(inputDatum);</span>
+<span class="fc" id="L366">        ConnectedGoodsDatum inputDatum = new ConnectedGoodsDatumConverter().deserialize(utxo.getInlineDatum());</span>
+<span class="fc bfc" id="L367" title="All 2 branches covered.">        inputDatum.setItems(inputDatum.getItems().stream().filter(item -&gt; !item.getTokenName().equals(assetName)).toList());</span>
+<span class="fc" id="L368">        ConstrPlutusData datum = new ConnectedGoodsDatumConverter().toPlutusData(inputDatum);</span>
 
-<span class="fc" id="L372">        String scriptAddress = AddressProvider.getEntAddress(connectedGoodsScript, network).toBech32();</span>
-<span class="fc" id="L373">        ConnectedGoodsDatumItem connectedGood = new ConnectedGoodsDatumItem(assetName, password.getBytes());</span>
-<span class="fc" id="L374">        ConstrPlutusData redeemer = new ConnectedGoodsDatumItemConverter().toPlutusData(connectedGood);</span>
+<span class="fc" id="L370">        String scriptAddress = AddressProvider.getEntAddress(connectedGoodsScript, network).toBech32();</span>
+<span class="fc" id="L371">        ConnectedGoodsDatumItem connectedGood = new ConnectedGoodsDatumItem(assetName, password.getBytes());</span>
+<span class="fc" id="L372">        ConstrPlutusData redeemer = new ConnectedGoodsDatumItemConverter().toPlutusData(connectedGood);</span>
 
-<span class="fc" id="L376">        Address address = new Address(userAddress);</span>
-<span class="fc" id="L377">        byte[] ownerCredential = address.getPaymentCredentialHash().orElseThrow();</span>
+<span class="fc" id="L374">        Address address = new Address(userAddress);</span>
+<span class="fc" id="L375">        byte[] ownerCredential = address.getPaymentCredentialHash().orElseThrow();</span>
 
-<span class="fc" id="L379">        socialHubDatum.setOwner(ownerCredential);</span>
-<span class="fc" id="L380">        socialHubDatum.setBatchId(inputDatum.getId());</span>
+<span class="fc" id="L377">        socialHubDatum.setOwner(ownerCredential);</span>
+<span class="fc" id="L378">        socialHubDatum.setBatchId(inputDatum.getId());</span>
 
-<span class="fc" id="L382">        String socialHubScriptAddress = AddressProvider.getEntAddress(socialHubScript, network).toBech32();</span>
-<span class="fc" id="L383">        Asset asset = Asset.builder()</span>
-<span class="fc" id="L384">                .name(connectedGood.getTokenName())</span>
-<span class="fc" id="L385">                .value(BigInteger.ONE)</span>
-<span class="fc" id="L386">                .build();</span>
+<span class="fc" id="L380">        String socialHubScriptAddress = AddressProvider.getEntAddress(socialHubScript, network).toBech32();</span>
+<span class="fc" id="L381">        Asset asset = Asset.builder()</span>
+<span class="fc" id="L382">                .name(connectedGood.getTokenName())</span>
+<span class="fc" id="L383">                .value(BigInteger.ONE)</span>
+<span class="fc" id="L384">                .build();</span>
 
         SocialHubDatum encryptedSocialHub;
         try {
-<span class="fc" id="L390">            encryptedSocialHub = encryptSocialHub(socialHubDatum, password);</span>
-<span class="nc" id="L391">        } catch (Exception exception) {</span>
-<span class="nc" id="L392">            log.error(exception.getMessage(), exception);</span>
-<span class="nc" id="L393">            throw new ApiException(&quot;Failed to encrypt social hub data&quot;, exception);</span>
-<span class="fc" id="L394">        }</span>
+<span class="fc" id="L388">            encryptedSocialHub = encryptSocialHub(socialHubDatum, password);</span>
+<span class="nc" id="L389">        } catch (Exception exception) {</span>
+<span class="nc" id="L390">            log.error(exception.getMessage(), exception);</span>
+<span class="nc" id="L391">            throw new ApiException(&quot;Failed to encrypt social hub data&quot;, exception);</span>
+<span class="fc" id="L392">        }</span>
 
-<span class="fc" id="L396">        ScriptTx transaction = new ScriptTx()</span>
-<span class="fc" id="L397">                .mintAsset(socialHubScript, List.of(asset),</span>
-<span class="fc" id="L398">                        PlutusData.unit(),</span>
-<span class="fc" id="L399">                        socialHubScriptAddress, new SocialHubDatumConverter().toPlutusData(encryptedSocialHub))</span>
-<span class="fc" id="L400">                .attachSpendingValidator(connectedGoodsScript)</span>
-<span class="fc" id="L401">                .collectFrom(utxo, redeemer)</span>
-<span class="fc" id="L402">                .payToContract(scriptAddress, utxo.getAmount(), datum);</span>
+<span class="fc" id="L394">        ScriptTx transaction = new ScriptTx()</span>
+<span class="fc" id="L395">                .mintAsset(socialHubScript, List.of(asset),</span>
+<span class="fc" id="L396">                        PlutusData.unit(),</span>
+<span class="fc" id="L397">                        socialHubScriptAddress, new SocialHubDatumConverter().toPlutusData(encryptedSocialHub))</span>
+<span class="fc" id="L398">                .attachSpendingValidator(connectedGoodsScript)</span>
+<span class="fc" id="L399">                .collectFrom(utxo, redeemer)</span>
+<span class="fc" id="L400">                .payToContract(scriptAddress, utxo.getAmount(), datum);</span>
 
-<span class="fc" id="L404">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
-<span class="fc" id="L405">        return quickTxBuilder.compose(transaction)</span>
-<span class="fc" id="L406">                .collateralPayer(userAddress)</span>
-<span class="fc" id="L407">                .feePayer(userAddress)</span>
-<span class="fc" id="L408">                .withRequiredSigners(address)</span>
-<span class="fc" id="L409">                .build();</span>
+<span class="fc" id="L402">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
+<span class="fc" id="L403">        return quickTxBuilder.compose(transaction)</span>
+<span class="fc" id="L404">                .collateralPayer(userAddress)</span>
+<span class="fc" id="L405">                .feePayer(userAddress)</span>
+<span class="fc" id="L406">                .withRequiredSigners(address)</span>
+<span class="fc" id="L407">                .build();</span>
     }
 
     public MintConnectedGoodsResponse mint(String tokenName, List&lt;Item&gt; items, String userAddress) throws CborSerializationException {
-<span class="fc" id="L413">        Map&lt;String, String&gt; itemMap = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L414" title="All 2 branches covered.">        for (Item item : items) {</span>
-<span class="fc" id="L415">            itemMap.put(item.getAssetName(), item.getPassword());</span>
-<span class="fc" id="L416">        }</span>
-<span class="fc" id="L417">        return mint(tokenName, itemMap, userAddress);</span>
+<span class="fc" id="L411">        Map&lt;String, String&gt; itemMap = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L412" title="All 2 branches covered.">        for (Item item : items) {</span>
+<span class="fc" id="L413">            itemMap.put(item.getAssetName(), item.getPassword());</span>
+<span class="fc" id="L414">        }</span>
+<span class="fc" id="L415">        return mint(tokenName, itemMap, userAddress);</span>
     }
 
     public MintConnectedGoodsResponse mint(String tokenName, Map&lt;String, String&gt; items, String userAddress) throws CborSerializationException {
-<span class="fc" id="L421">        List&lt;ConnectedGoodsDatumItem&gt; connectedGoods = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L422">        items.forEach((assetName, password) -&gt; connectedGoods.add(new ConnectedGoodsDatumItem(assetName, HexUtil.decodeHexString(applySHA3_256(password)))));</span>
+<span class="fc" id="L419">        List&lt;ConnectedGoodsDatumItem&gt; connectedGoods = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L420">        items.forEach((assetName, password) -&gt; connectedGoods.add(new ConnectedGoodsDatumItem(assetName, HexUtil.decodeHexString(applySHA3_256(password)))));</span>
 
-<span class="fc" id="L424">        UtxoService utxoService = backendService.getUtxoService();</span>
-<span class="fc" id="L425">        DefaultUtxoSupplier utxoSupplier = new DefaultUtxoSupplier(utxoService);</span>
+<span class="fc" id="L422">        UtxoService utxoService = backendService.getUtxoService();</span>
+<span class="fc" id="L423">        DefaultUtxoSupplier utxoSupplier = new DefaultUtxoSupplier(utxoService);</span>
 
-<span class="fc" id="L427">        List&lt;Utxo&gt; utxos = utxoSupplier.getAll(userAddress);</span>
-<span class="pc bpc" id="L428" title="1 of 2 branches missed.">        if (utxos.isEmpty()) {</span>
-<span class="nc" id="L429">            throw new IllegalStateException(&quot;No UTxOs found for facilitator account&quot;);</span>
+<span class="fc" id="L425">        List&lt;Utxo&gt; utxos = utxoSupplier.getAll(userAddress);</span>
+<span class="pc bpc" id="L426" title="1 of 2 branches missed.">        if (utxos.isEmpty()) {</span>
+<span class="nc" id="L427">            throw new IllegalStateException(&quot;No UTxOs found for facilitator account&quot;);</span>
         }
 
         // TODO: find UTXO with at least 2 ADA but also the smallest UTXO
-<span class="fc" id="L433">        Optional&lt;Utxo&gt; optionalUtxo = utxos.stream().filter(utxo -&gt; {</span>
-<span class="fc" id="L434">            Amount lovelace = utxo.getAmount().stream()</span>
-<span class="fc" id="L435">                    .filter(amount -&gt; amount.getUnit().equals(&quot;lovelace&quot;)).findFirst().orElse(null);</span>
+<span class="fc" id="L431">        Optional&lt;Utxo&gt; optionalUtxo = utxos.stream().filter(utxo -&gt; {</span>
+<span class="fc" id="L432">            Amount lovelace = utxo.getAmount().stream()</span>
+<span class="fc" id="L433">                    .filter(amount -&gt; amount.getUnit().equals(&quot;lovelace&quot;)).findFirst().orElse(null);</span>
 
-<span class="pc bpc" id="L437" title="1 of 2 branches missed.">            if (lovelace == null) {</span>
-<span class="nc" id="L438">                return false;</span>
+<span class="pc bpc" id="L435" title="1 of 2 branches missed.">            if (lovelace == null) {</span>
+<span class="nc" id="L436">                return false;</span>
             }
 
-<span class="pc bpc" id="L441" title="1 of 2 branches missed.">            return lovelace.getQuantity().compareTo(BigInteger.valueOf(3_000_000)) &gt; 0;</span>
-<span class="fc" id="L442">        }).findFirst();</span>
+<span class="pc bpc" id="L439" title="1 of 2 branches missed.">            return lovelace.getQuantity().compareTo(BigInteger.valueOf(3_000_000)) &gt; 0;</span>
+<span class="fc" id="L440">        }).findFirst();</span>
 
-<span class="pc bpc" id="L444" title="1 of 2 branches missed.">        if (optionalUtxo.isEmpty()) {</span>
-<span class="nc" id="L445">            throw new IllegalStateException(&quot;No UTxOs found with at least 3 ADA&quot;);</span>
+<span class="pc bpc" id="L442" title="1 of 2 branches missed.">        if (optionalUtxo.isEmpty()) {</span>
+<span class="nc" id="L443">            throw new IllegalStateException(&quot;No UTxOs found with at least 3 ADA&quot;);</span>
         }
 
-<span class="fc" id="L448">        Utxo utxo = optionalUtxo.get();</span>
-<span class="fc" id="L449">        String batchId = applySHA3_256(HexUtil.decodeHexString(utxo.getTxHash() + HexUtil.encodeHexString(String.valueOf(utxo.getOutputIndex()).getBytes())));</span>
-<span class="fc" id="L450">        ConnectedGoodsDatum connectedGoodsDatum = new ConnectedGoodsDatum(</span>
-<span class="fc" id="L451">                HexUtil.decodeHexString(batchId), connectedGoods);</span>
-<span class="fc" id="L452">        ConstrPlutusData datum = new ConnectedGoodsDatumConverter().toPlutusData(connectedGoodsDatum);</span>
+<span class="fc" id="L446">        Utxo utxo = optionalUtxo.get();</span>
+<span class="fc" id="L447">        String batchId = applySHA3_256(HexUtil.decodeHexString(utxo.getTxHash() + HexUtil.encodeHexString(String.valueOf(utxo.getOutputIndex()).getBytes())));</span>
+<span class="fc" id="L448">        ConnectedGoodsDatum connectedGoodsDatum = new ConnectedGoodsDatum(</span>
+<span class="fc" id="L449">                HexUtil.decodeHexString(batchId), connectedGoods);</span>
+<span class="fc" id="L450">        ConstrPlutusData datum = new ConnectedGoodsDatumConverter().toPlutusData(connectedGoodsDatum);</span>
 
-<span class="fc" id="L454">        String scriptAddress = AddressProvider.getEntAddress(connectedGoodsScript, network).toBech32();</span>
-<span class="fc" id="L455">        Asset asset = Asset.builder()</span>
-<span class="fc" id="L456">                .name(tokenName)</span>
-<span class="fc" id="L457">                .value(BigInteger.ONE)</span>
-<span class="fc" id="L458">                .build();</span>
+<span class="fc" id="L452">        String scriptAddress = AddressProvider.getEntAddress(connectedGoodsScript, network).toBech32();</span>
+<span class="fc" id="L453">        Asset asset = Asset.builder()</span>
+<span class="fc" id="L454">                .name(tokenName)</span>
+<span class="fc" id="L455">                .value(BigInteger.ONE)</span>
+<span class="fc" id="L456">                .build();</span>
 
-<span class="fc" id="L460">        ScriptTx mintTransaction = new ScriptTx()</span>
-<span class="fc" id="L461">                .mintAsset(connectedGoodsScript, asset, PlutusData.unit());</span>
+<span class="fc" id="L458">        ScriptTx mintTransaction = new ScriptTx()</span>
+<span class="fc" id="L459">                .collectFrom(List.of(utxo))</span>
+<span class="fc" id="L460">                .mintAsset(connectedGoodsScript, List.of(asset), PlutusData.unit(), scriptAddress, datum);</span>
 
-<span class="fc" id="L463">        Tx sendTransaction = new Tx()</span>
-<span class="fc" id="L464">                .from(userAddress)</span>
-<span class="fc" id="L465">                .collectFrom(List.of(utxo))</span>
-<span class="fc" id="L466">                .payToContract(scriptAddress, List.of(Amount.ada(1.0), Amount.asset(</span>
-<span class="fc" id="L467">                                connectedGoodsScript.getPolicyId(), asset.getName(), BigInteger.ONE)),</span>
-                        datum);
+<span class="fc" id="L462">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
+<span class="fc" id="L463">        Transaction unsignedTransaction = quickTxBuilder.compose(mintTransaction)</span>
+<span class="fc" id="L464">                .collateralPayer(userAddress)</span>
+<span class="fc" id="L465">                .feePayer(userAddress)</span>
+<span class="fc" id="L466">                .withRequiredSigners(new Address(userAddress))</span>
+<span class="fc" id="L467">                .build();</span>
 
-<span class="fc" id="L470">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
-<span class="fc" id="L471">        Transaction unsignedTransaction = quickTxBuilder.compose(mintTransaction, sendTransaction)</span>
-<span class="fc" id="L472">                .collateralPayer(userAddress)</span>
-<span class="fc" id="L473">                .feePayer(userAddress)</span>
-<span class="fc" id="L474">                .withRequiredSigners(new Address(userAddress))</span>
-<span class="fc" id="L475">                .build();</span>
-
-<span class="fc" id="L477">        String unsignedTransactionHex = unsignedTransaction.serializeToHex();</span>
-<span class="fc" id="L478">        MintConnectedGoodsResponse response = new MintConnectedGoodsResponse();</span>
-<span class="fc" id="L479">        response.setUnsignedTransaction(unsignedTransactionHex);</span>
-<span class="fc" id="L480">        response.setBatchId(batchId);</span>
-<span class="fc" id="L481">        response.setStatus(HttpStatus.OK);</span>
-<span class="fc" id="L482">        return response;</span>
+<span class="fc" id="L469">        String unsignedTransactionHex = unsignedTransaction.serializeToHex();</span>
+<span class="fc" id="L470">        MintConnectedGoodsResponse response = new MintConnectedGoodsResponse();</span>
+<span class="fc" id="L471">        response.setUnsignedTransaction(unsignedTransactionHex);</span>
+<span class="fc" id="L472">        response.setBatchId(batchId);</span>
+<span class="fc" id="L473">        response.setStatus(HttpStatus.OK);</span>
+<span class="fc" id="L474">        return response;</span>
     }
 
     private Transaction modify(SocialHubDatum socialHubDatum, String transactionId, int outputIndex,
                                String userAddress, SocialHubRedeemer socialHubRedeemer, String password) throws ApiException {
-<span class="fc" id="L487">        Result&lt;Utxo&gt; output = backendService.getUtxoService().getTxOutput(transactionId, outputIndex);</span>
-<span class="fc" id="L488">        Utxo utxo = output.getValue();</span>
+<span class="fc" id="L479">        Result&lt;Utxo&gt; output = backendService.getUtxoService().getTxOutput(transactionId, outputIndex);</span>
+<span class="fc" id="L480">        Utxo utxo = output.getValue();</span>
 
         SocialHubDatum encryptedSocialHubDatum;
         try {
-<span class="fc" id="L492">            encryptedSocialHubDatum = encryptSocialHub(socialHubDatum, password);</span>
-<span class="nc" id="L493">        } catch (Exception exception) {</span>
-<span class="nc" id="L494">            log.error(exception.getMessage(), exception);</span>
-<span class="nc" id="L495">            throw new ApiException(&quot;Failed to encrypt social hub data&quot;, exception);</span>
-<span class="fc" id="L496">        }</span>
+<span class="fc" id="L484">            encryptedSocialHubDatum = encryptSocialHub(socialHubDatum, password);</span>
+<span class="nc" id="L485">        } catch (Exception exception) {</span>
+<span class="nc" id="L486">            log.error(exception.getMessage(), exception);</span>
+<span class="nc" id="L487">            throw new ApiException(&quot;Failed to encrypt social hub data&quot;, exception);</span>
+<span class="fc" id="L488">        }</span>
 
-<span class="fc" id="L498">        ConstrPlutusData datum = new SocialHubDatumConverter().toPlutusData(encryptedSocialHubDatum);</span>
-<span class="fc" id="L499">        ConstrPlutusData redeemer = new SocialHubRedeemerConverter().toPlutusData(socialHubRedeemer);</span>
+<span class="fc" id="L490">        ConstrPlutusData datum = new SocialHubDatumConverter().toPlutusData(encryptedSocialHubDatum);</span>
+<span class="fc" id="L491">        ConstrPlutusData redeemer = new SocialHubRedeemerConverter().toPlutusData(socialHubRedeemer);</span>
 
-<span class="fc" id="L501">        String socialHubScriptAddress = AddressProvider.getEntAddress(socialHubScript, network).toBech32();</span>
-<span class="fc" id="L502">        ScriptTx transaction = new ScriptTx()</span>
-<span class="fc" id="L503">                .attachSpendingValidator(socialHubScript)</span>
-<span class="fc" id="L504">                .collectFrom(utxo, redeemer)</span>
-<span class="fc" id="L505">                .payToContract(socialHubScriptAddress, utxo.getAmount(), datum);</span>
+<span class="fc" id="L493">        String socialHubScriptAddress = AddressProvider.getEntAddress(socialHubScript, network).toBech32();</span>
+<span class="fc" id="L494">        ScriptTx transaction = new ScriptTx()</span>
+<span class="fc" id="L495">                .attachSpendingValidator(socialHubScript)</span>
+<span class="fc" id="L496">                .collectFrom(utxo, redeemer)</span>
+<span class="fc" id="L497">                .payToContract(socialHubScriptAddress, utxo.getAmount(), datum);</span>
 
-<span class="fc" id="L507">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
-<span class="fc" id="L508">        Address address = new Address(userAddress);</span>
+<span class="fc" id="L499">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
+<span class="fc" id="L500">        Address address = new Address(userAddress);</span>
 
-<span class="fc" id="L510">        return quickTxBuilder.compose(transaction)</span>
-<span class="fc" id="L511">                .collateralPayer(userAddress)</span>
-<span class="fc" id="L512">                .feePayer(userAddress)</span>
-<span class="fc" id="L513">                .withRequiredSigners(address)</span>
-<span class="fc" id="L514">                .build();</span>
+<span class="fc" id="L502">        return quickTxBuilder.compose(transaction)</span>
+<span class="fc" id="L503">                .collateralPayer(userAddress)</span>
+<span class="fc" id="L504">                .feePayer(userAddress)</span>
+<span class="fc" id="L505">                .withRequiredSigners(address)</span>
+<span class="fc" id="L506">                .build();</span>
     }
 
     public Transaction update(SocialHubDatum socialHubDatum, String transactionId, int outputIndex, String userAddress, String password) throws ApiException {
-<span class="fc" id="L518">        return modify(socialHubDatum, transactionId, outputIndex, userAddress, SocialHubRedeemer.UPDATE, password);</span>
+<span class="fc" id="L510">        return modify(socialHubDatum, transactionId, outputIndex, userAddress, SocialHubRedeemer.UPDATE, password);</span>
     }
 
     public Transaction transfer(SocialHubDatum socialHubDatum, String transactionId, int outputIndex, String userAddress, String password) throws ApiException {
-<span class="nc" id="L522">        return modify(socialHubDatum, transactionId, outputIndex, userAddress, SocialHubRedeemer.TRANSFER, password);</span>
+<span class="nc" id="L514">        return modify(socialHubDatum, transactionId, outputIndex, userAddress, SocialHubRedeemer.TRANSFER, password);</span>
     }
 
     public ConnectedGoodUpdateEntity getLatestUpdateByConnectedGoodId(String id) {
-<span class="nc" id="L526">        return connectedGoodUpdateRepository.getLatestUpdateByConnectedGoodId(id);</span>
+<span class="nc" id="L518">        return connectedGoodUpdateRepository.getLatestUpdateByConnectedGoodId(id);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

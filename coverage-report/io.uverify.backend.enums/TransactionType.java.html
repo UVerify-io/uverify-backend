@@ -24,27 +24,31 @@ import com.fasterxml.jackson.annotation.JsonValue;
 <span class="fc" id="L24">public enum TransactionType {</span>
 <span class="fc" id="L25">    DEFAULT(&quot;default&quot;),</span>
 <span class="fc" id="L26">    BOOTSTRAP(&quot;bootstrap&quot;),</span>
-<span class="fc" id="L27">    CUSTOM(&quot;custom&quot;);</span>
+<span class="fc" id="L27">    CUSTOM(&quot;custom&quot;),</span>
+<span class="fc" id="L28">    BURN_STATE(&quot;burn_state&quot;),</span>
+<span class="fc" id="L29">    BURN_BOOTSTRAP(&quot;burn_bootstrap&quot;),</span>
+<span class="fc" id="L30">    DEPLOY(&quot;deploy&quot;),</span>
+<span class="fc" id="L31">    INIT(&quot;init&quot;);</span>
 
     private final String value;
 
-<span class="fc" id="L31">    TransactionType(String value) {</span>
-<span class="fc" id="L32">        this.value = value;</span>
-<span class="fc" id="L33">    }</span>
+<span class="fc" id="L35">    TransactionType(String value) {</span>
+<span class="fc" id="L36">        this.value = value;</span>
+<span class="fc" id="L37">    }</span>
 
     @JsonCreator
     public static TransactionType fromValue(String value) {
-<span class="pc bpc" id="L37" title="1 of 2 branches missed.">        for (TransactionType type : values()) {</span>
-<span class="fc bfc" id="L38" title="All 2 branches covered.">            if (type.value.equalsIgnoreCase(value)) {</span>
-<span class="fc" id="L39">                return type;</span>
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        for (TransactionType type : values()) {</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">            if (type.value.equalsIgnoreCase(value)) {</span>
+<span class="fc" id="L43">                return type;</span>
             }
         }
-<span class="nc" id="L42">        throw new IllegalArgumentException(&quot;Invalid transaction type: &quot; + value);</span>
+<span class="nc" id="L46">        throw new IllegalArgumentException(&quot;Invalid transaction type: &quot; + value);</span>
     }
 
     @JsonValue
     public String getValue() {
-<span class="fc" id="L47">        return value;</span>
+<span class="fc" id="L51">        return value;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProxyRedeemerConverter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.model.converter</a> &gt; <span class="el_source">ProxyRedeemerConverter.java</span></div><h1>ProxyRedeemerConverter.java</h1><pre class="source lang-java linenums">package io.uverify.backend.model.converter;
+
+import com.bloxbean.cardano.client.common.cbor.CborSerializationUtil;
+import com.bloxbean.cardano.client.exception.CborRuntimeException;
+import com.bloxbean.cardano.client.plutus.annotation.BasePlutusDataConverter;
+import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
+import com.bloxbean.cardano.client.util.HexUtil;
+import io.uverify.backend.model.ProxyRedeemer;
+import java.lang.Exception;
+import java.lang.IllegalArgumentException;
+import java.lang.String;
+import java.util.Objects;
+
+/**
+ * Auto generated code. DO NOT MODIFY
+ */
+<span class="fc" id="L18">public class ProxyRedeemerConverter extends BasePlutusDataConverter {</span>
+  public ConstrPlutusData toPlutusData(ProxyRedeemer proxyRedeemer) {
+<span class="fc bfc" id="L20" title="All 2 branches covered.">    if(proxyRedeemer == ProxyRedeemer.ADMIN_ACTION) {</span>
+<span class="fc" id="L21">      return ConstrPlutusData.builder().alternative(0).data(ListPlutusData.of()).build();</span>
+    }
+<span class="pc bpc" id="L23" title="1 of 2 branches missed.">    if(proxyRedeemer == ProxyRedeemer.USER_ACTION) {</span>
+<span class="fc" id="L24">      return ConstrPlutusData.builder().alternative(1).data(ListPlutusData.of()).build();</span>
+    }
+<span class="nc" id="L26">    throw new IllegalArgumentException(&quot;Invalid enum value : &quot; + proxyRedeemer);</span>
+  }
+
+  public ProxyRedeemer fromPlutusData(ConstrPlutusData constr) {
+<span class="fc" id="L30">    var data = constr.getData();</span>
+<span class="pc bpc" id="L31" title="1 of 2 branches missed.">    if(constr.getAlternative() == 0) {</span>
+<span class="nc" id="L32">      return ProxyRedeemer.ADMIN_ACTION;</span>
+    }
+<span class="pc bpc" id="L34" title="1 of 2 branches missed.">    if(constr.getAlternative() == 1) {</span>
+<span class="fc" id="L35">      return ProxyRedeemer.USER_ACTION;</span>
+    }
+<span class="nc" id="L37">    throw new IllegalArgumentException(&quot;Invalid alternative : &quot; + constr.getAlternative());</span>
+  }
+
+  public byte[] serialize(ProxyRedeemer obj) {
+<span class="nc" id="L41">    Objects.requireNonNull(obj);;</span>
+    try {
+<span class="nc" id="L43">      var constr = toPlutusData(obj);</span>
+<span class="nc" id="L44">      return CborSerializationUtil.serialize(constr.serialize());</span>
+<span class="nc" id="L45">    } catch (Exception e) {</span>
+<span class="nc" id="L46">      throw new CborRuntimeException(e);</span>
+    }
+  }
+
+  public String serializeToHex(ProxyRedeemer obj) {
+<span class="nc" id="L51">    Objects.requireNonNull(obj);;</span>
+<span class="nc" id="L52">    var constr = toPlutusData(obj);</span>
+<span class="nc" id="L53">    return constr.serializeToHex();</span>
+  }
+
+  public ProxyRedeemer deserialize(byte[] bytes) {
+<span class="fc" id="L57">    Objects.requireNonNull(bytes);;</span>
+    try {
+<span class="fc" id="L59">      var di = CborSerializationUtil.deserialize(bytes);</span>
+<span class="fc" id="L60">      var constr = ConstrPlutusData.deserialize(di);</span>
+<span class="fc" id="L61">      return fromPlutusData(constr);</span>
+<span class="nc" id="L62">    } catch (Exception e) {</span>
+<span class="nc" id="L63">      throw new CborRuntimeException(e);</span>
+    }
+  }
+
+  public ProxyRedeemer deserialize(String hex) {
+<span class="fc" id="L68">    Objects.requireNonNull(hex);;</span>
+<span class="fc" id="L69">    var bytes = HexUtil.decodeHexString(hex);</span>
+<span class="fc" id="L70">    return deserialize(bytes);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

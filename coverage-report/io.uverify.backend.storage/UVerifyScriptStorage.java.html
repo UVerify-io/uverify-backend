@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UVerifyScriptStorage.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.storage</a> &gt; <span class="el_source">UVerifyScriptStorage.java</span></div><h1>UVerifyScriptStorage.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.storage;
+
+import com.bloxbean.cardano.yaci.store.events.TransactionEvent;
+import com.bloxbean.cardano.yaci.store.script.domain.TxScript;
+import com.bloxbean.cardano.yaci.store.script.storage.impl.TxScriptStorageImpl;
+import com.bloxbean.cardano.yaci.store.script.storage.impl.mapper.ScriptMapper;
+import com.bloxbean.cardano.yaci.store.script.storage.impl.repository.TxScriptRepository;
+import io.uverify.backend.service.CardanoBlockchainService;
+import io.uverify.backend.util.ValidatorHelper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+<span class="fc" id="L37">@Slf4j</span>
+@SuppressWarnings(&quot;unused&quot;)
+@Component
+@Profile(&quot;!disable-indexer&quot;)
+public class UVerifyScriptStorage extends TxScriptStorageImpl {
+    @Autowired
+    private final CardanoBlockchainService cardanoBlockchainService;
+
+    public UVerifyScriptStorage(TxScriptRepository txScriptRepository, ScriptMapper scriptMapper, CardanoBlockchainService cardanoBlockchainService, ValidatorHelper validatorHelper) {
+<span class="fc" id="L46">        super(txScriptRepository, scriptMapper);</span>
+<span class="fc" id="L47">        this.cardanoBlockchainService = cardanoBlockchainService;</span>
+<span class="fc" id="L48">    }</span>
+
+    @Override
+    public void saveAll(List&lt;TxScript&gt; txScripts) {
+<span class="nc" id="L52">    }</span>
+
+    @EventListener
+    @Transactional
+    public void handleScriptTransactionEvent(TransactionEvent transactionEvent) {
+<span class="nc" id="L57">        cardanoBlockchainService.processTransactionEvent(transactionEvent);</span>
+<span class="nc" id="L58">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

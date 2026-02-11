@@ -19,16 +19,15 @@
 package io.uverify.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.uverify.backend.enums.TransactionType;
 import lombok.*;
 
-<span class="nc bnc" id="L26" title="All 30 branches missed.">@Data</span>
-<span class="pc" id="L27">@Builder</span>
+<span class="nc bnc" id="L25" title="All 30 branches missed.">@Data</span>
+<span class="pc" id="L26">@Builder</span>
 public class BuildTransactionResponse {
     @JsonAlias({&quot;unsignedTransaction&quot;, &quot;unsigned_transaction&quot;})
-<span class="fc" id="L30">    private String unsignedTransaction;</span>
-<span class="fc" id="L31">    private TransactionType type;</span>
-<span class="fc" id="L32">    private BuildStatus status;</span>
+<span class="fc" id="L29">    private String unsignedTransaction;</span>
+<span class="fc" id="L30">    private TransactionType type;</span>
+<span class="fc" id="L31">    private BuildStatus status;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -52,33 +52,30 @@ public class UVerifyCertificateEntity {
     @Column(name = &quot;transaction_id&quot;, nullable = false, length = 255)
 <span class="nc" id="L53">    private String transactionId;</span>
 
-    @Column(name = &quot;output_index&quot;, nullable = false)
-<span class="nc" id="L56">    private Integer outputIndex;</span>
-
     @Column(name = &quot;creation_time&quot;, nullable = false)
-<span class="nc" id="L59">    private Date creationTime;</span>
+<span class="nc" id="L56">    private Date creationTime;</span>
 
     @Column(name = &quot;slot&quot;, nullable = false)
-<span class="nc" id="L62">    private Long slot;</span>
+<span class="nc" id="L59">    private Long slot;</span>
 
     @Column(name = &quot;extra&quot;, nullable = false)
-<span class="nc" id="L65">    private String extra;</span>
+<span class="nc" id="L62">    private String extra;</span>
 
     @Column(name = &quot;hash_algorithm&quot;, nullable = false, length = 100)
-<span class="nc" id="L68">    private String hashAlgorithm;</span>
+<span class="nc" id="L65">    private String hashAlgorithm;</span>
 
     @ManyToOne
     @JoinColumn(name = &quot;state_datum_id&quot;)
-<span class="nc" id="L72">    private StateDatumEntity stateDatum;</span>
+<span class="nc" id="L69">    private StateDatumEntity stateDatum;</span>
 
     public static UVerifyCertificateEntity fromUVerifyCertificate(UVerifyCertificate uVerifyCertificate) {
-<span class="fc" id="L75">        return UVerifyCertificateEntity.builder()</span>
-<span class="fc" id="L76">                .hash(uVerifyCertificate.getHash())</span>
-<span class="fc" id="L77">                .paymentCredential(uVerifyCertificate.getIssuer())</span>
-<span class="fc" id="L78">                .creationTime(Date.from(Instant.now()))</span>
-<span class="fc" id="L79">                .extra(uVerifyCertificate.getExtra())</span>
-<span class="fc" id="L80">                .hashAlgorithm(uVerifyCertificate.getAlgorithm())</span>
-<span class="fc" id="L81">                .build();</span>
+<span class="fc" id="L72">        return UVerifyCertificateEntity.builder()</span>
+<span class="fc" id="L73">                .hash(uVerifyCertificate.getHash())</span>
+<span class="fc" id="L74">                .paymentCredential(uVerifyCertificate.getIssuer())</span>
+<span class="fc" id="L75">                .creationTime(Date.from(Instant.now()))</span>
+<span class="fc" id="L76">                .extra(uVerifyCertificate.getExtra())</span>
+<span class="fc" id="L77">                .hashAlgorithm(uVerifyCertificate.getAlgorithm())</span>
+<span class="fc" id="L78">                .build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

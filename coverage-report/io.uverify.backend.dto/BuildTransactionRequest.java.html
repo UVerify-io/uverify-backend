@@ -19,20 +19,22 @@
 package io.uverify.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.uverify.backend.enums.TransactionType;
 import lombok.*;
 
 import java.util.List;
 
-<span class="pc bnc" id="L28" title="All 46 branches missed.">@Data</span>
+<span class="pc bnc" id="L27" title="All 46 branches missed.">@Data</span>
+<span class="nc" id="L28">@Builder</span>
+<span class="fc" id="L29">@NoArgsConstructor</span>
+<span class="nc" id="L30">@AllArgsConstructor</span>
 public class BuildTransactionRequest {
-<span class="fc" id="L30">    private List&lt;CertificateData&gt; certificates;</span>
-<span class="fc" id="L31">    private TransactionType type;</span>
-<span class="fc" id="L32">    private String address;</span>
+<span class="fc" id="L32">    private List&lt;CertificateData&gt; certificates;</span>
+<span class="fc" id="L33">    private TransactionType type;</span>
+<span class="fc" id="L34">    private String address;</span>
     @JsonAlias({&quot;bootstrapDatum&quot;, &quot;bootstrap_datum&quot;})
-<span class="fc" id="L34">    private BootstrapData bootstrapDatum;</span>
+<span class="fc" id="L36">    private BootstrapData bootstrapDatum;</span>
     @JsonAlias({&quot;stateId&quot;, &quot;state_id&quot;})
-<span class="fc" id="L36">    private String stateId;</span>
+<span class="fc" id="L38">    private String stateId;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
