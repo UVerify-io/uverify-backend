@@ -109,10 +109,6 @@ public class StateDatumService {
         return stateDatumRepository.findById(id);
     }
 
-    public void save(StateDatumEntity stateDatumEntity) {
-        stateDatumRepository.save(stateDatumEntity);
-    }
-
     public List<StateDatumEntity> findByOwner(String address) {
         return stateDatumRepository.findByOwner(
                 HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)));

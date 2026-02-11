@@ -29,7 +29,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ProxyInitResponse {
     private String unsignedProxyTransaction;
-    private String unsignedStakeRegistrationTransaction;
     private String proxyTxHash;
     private Integer proxyOutputIndex;
     private BuildStatus status;

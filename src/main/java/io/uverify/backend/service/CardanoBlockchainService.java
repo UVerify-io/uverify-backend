@@ -47,6 +47,7 @@ import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
+import com.bloxbean.cardano.client.util.JsonUtil;
 import com.bloxbean.cardano.yaci.core.model.Redeemer;
 import com.bloxbean.cardano.yaci.core.model.RedeemerTag;
 import com.bloxbean.cardano.yaci.core.model.TransactionOutput;
@@ -170,7 +171,7 @@ public class CardanoBlockchainService {
             return forkProxyStateDatum(address, uVerifyCertificate);
         } else {
             StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities);
-            boolean needsToPayFee = (stateDatumEntity.getCountdown() + 1) % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
+            boolean needsToPayFee = stateDatumEntity.getCountdown() % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
             if (needsToPayFee) {
                 log.debug("Fee required for updating state datum. Checking for better conditions.");
                 Address userAddress = new Address(address);
@@ -242,7 +243,7 @@ public class CardanoBlockchainService {
             ScriptTx tx = new ScriptTx()
                     .collectFrom(List.of(utxo))
                     .mintAsset(proxyContract, authToken, initProxyRedeemer)
-                    .payToContract(proxyScriptAddress, List.of(Amount.asset(proxyUnit, 1)), proxyDatum.toPlutusData(), stateContract)
+                    .payToContract(proxyScriptAddress, List.of(Amount.asset(proxyUnit, 1)), proxyDatum.toPlutusData())
                     .withChangeAddress(serviceAddress);
 
             Transaction transaction = quickTxBuilder.compose(tx)
@@ -255,20 +256,8 @@ public class CardanoBlockchainService {
             proxyInitResponse.setProxyTxHash(utxo.getTxHash());
         } else {
             log.info("It seems that there was a previous proxy deployment. Reusing the existing proxy contract.");
-            stateContract = validatorHelper.getParameterizedUVerifyStateContract();
         }
 
-        String stateScriptRewardAddress = AddressProvider.getRewardAddress(stateContract, Networks.preprod()).toBech32();
-        Tx registerStakeAddressTx = new Tx()
-                .from(serviceAddress)
-                .registerStakeAddress(stateScriptRewardAddress);
-
-        Transaction stakeRegistrationTx = quickTxBuilder.compose(registerStakeAddressTx)
-                .feePayer(serviceAddress)
-                .withRequiredSigners(serviceUserAddress)
-                .build();
-
-        proxyInitResponse.setUnsignedStakeRegistrationTransaction(stakeRegistrationTx.serializeToHex());
         return proxyInitResponse;
     }
 
@@ -290,8 +279,8 @@ public class CardanoBlockchainService {
 
         Tx tx = new Tx()
                 .from(serviceUserAddress.getAddress())
-                .payToContract(libraryContractAddress, Amount.ada(1L), PlutusData.unit(), uverifyProxyContract)
-                .payToContract(libraryContractAddress, Amount.ada(1L), PlutusData.unit(), uverifyStateContract)
+                .payToContract(libraryContractAddress, Amount.lovelace(BigInteger.valueOf(1000000)), PlutusData.unit(), uverifyProxyContract)
+                .payToContract(libraryContractAddress, Amount.lovelace(BigInteger.valueOf(1000001)), PlutusData.unit(), uverifyStateContract)
                 .registerStakeAddress(AddressProvider.getRewardAddress(uverifyStateContract, fromCardanoNetwork(network)).toBech32());
 
         QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
@@ -339,11 +328,11 @@ public class CardanoBlockchainService {
         String stateScriptRewardAddress = AddressProvider.getRewardAddress(uverifyStateContract, fromCardanoNetwork(network)).toBech32();
 
         Utxo stateLibraryUtxo = validatorHelper.resolveStateLibraryUtxo(backendService);
+        Utxo proxyLibraryUtxo = validatorHelper.resolveProxyLibraryUtxo(backendService);
 
         ScriptTx updateStateTokenTx = new ScriptTx()
-                .readFrom(proxyStateUtxo, stateLibraryUtxo)
+                .readFrom(proxyStateUtxo, stateLibraryUtxo, proxyLibraryUtxo)
                 .collectFrom(utxo, spendProxyRedeemer)
-                .attachSpendingValidator(uverifyProxyContract)
                 .payToContract(proxyScriptAddress, utxo.getAmount(), nextStateDatum.toPlutusData())
                 .withdraw(stateScriptRewardAddress, BigInteger.valueOf(0), redeemer.toPlutusData());
 
@@ -366,9 +355,16 @@ public class CardanoBlockchainService {
                 .validFrom(validFrom)
                 .validTo(transactionTtl)
                 .collateralPayer(address)
+                .withTxInspector((txn) -> System.out.println(JsonUtil.getPrettyJson(txn)))
+                .preBalanceTx((context, txn) -> {
+                    log.info("Pre balance callback invoked for transaction " + txn + " in context " + context);
+                })
+                .postBalanceTx((context, txn) -> {
+                    log.info("Post balance callback invoked for transaction " + txn + " in context " + context);
+                })
                 .feePayer(address)
                 .withRequiredSigners(userAddress)
-                .withReferenceScripts(uverifyStateContract)
+                .withReferenceScripts(uverifyStateContract, uverifyProxyContract)
                 .build();
     }
 
@@ -424,7 +420,7 @@ public class CardanoBlockchainService {
 
             final StateDatumEntity stateDatumEntity;
             if (optionalStateDatumEntity.isEmpty()) {
-                BootstrapDatumEntity bootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(stateDatum.getBootstrapDatumName())
+                BootstrapDatumEntity bootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(stateDatum.getBootstrapDatumName(), 2)
                         .orElseThrow(() -> new IllegalArgumentException("Bootstrap datum not found"));
                 stateDatumEntity = StateDatumEntity.fromStateDatum(stateDatum, txHash, bootstrapDatumEntity, slot);
                 stateDatumService.updateStateDatum(stateDatumEntity, slot);
@@ -507,10 +503,10 @@ public class CardanoBlockchainService {
                 } else {
                     final StateDatumEntity stateDatumEntity;
                     if (optionalStateDatumEntity.isEmpty()) {
-                        BootstrapDatumEntity bootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(stateDatum.getBootstrapDatumName())
+                        BootstrapDatumEntity bootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(stateDatum.getBootstrapDatumName(), 1)
                                 .orElseThrow(() -> new IllegalArgumentException("Bootstrap datum not found"));
                         stateDatumEntity = StateDatumEntity.fromAddressUtxo(addressUtxo, bootstrapDatumEntity);
-                        stateDatumService.save(stateDatumEntity);
+                        stateDatumService.updateStateDatum(stateDatumEntity, addressUtxo.getSlot());
                     } else {
                         stateDatumEntity = optionalStateDatumEntity.get();
                         stateDatumEntity.setTransactionId(addressUtxo.getTxHash());
@@ -595,7 +591,7 @@ public class CardanoBlockchainService {
     }
 
     public Transaction mintProxyBootstrapDatum(BootstrapDatum bootstrapDatum) {
-        if (bootstrapDatumService.bootstrapDatumAlreadyExists(bootstrapDatum.getTokenName())) {
+        if (bootstrapDatumService.bootstrapDatumAlreadyExists(bootstrapDatum.getTokenName(), 1)) {
             throw new IllegalArgumentException("Bootstrap datum with name " + bootstrapDatum.getTokenName() + " already exists");
         }
 
@@ -661,7 +657,7 @@ public class CardanoBlockchainService {
     }
 
     public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException, CborSerializationException {
-        Optional<BootstrapDatumEntity> optionalBootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(bootstrapTokenName);
+        Optional<BootstrapDatumEntity> optionalBootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(bootstrapTokenName, 2);
 
         if (optionalBootstrapDatumEntity.isEmpty()) {
             throw new IllegalArgumentException("Bootstrap datum with name " + bootstrapTokenName + " not found");
@@ -813,7 +809,7 @@ public class CardanoBlockchainService {
             List<com.bloxbean.cardano.yaci.core.model.Amount> mints = transaction.getBody().getMint();
 
             Optional<com.bloxbean.cardano.yaci.core.model.Amount> maybeMint = mints.stream().filter(amount -> amount.getPolicyId().equals(uverifyProxyScriptHash)).findFirst();
-            boolean containsPotentialSpend = transaction.getBody().getWithdrawals().containsKey(hexStateContractAddress);
+            boolean containsPotentialSpend = transaction.getBody().getWithdrawals() != null && transaction.getBody().getWithdrawals().containsKey(hexStateContractAddress);
 
             if (maybeMint.isPresent()) {
                 com.bloxbean.cardano.yaci.core.model.Amount mint = maybeMint.get();

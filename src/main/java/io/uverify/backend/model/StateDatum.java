@@ -123,6 +123,11 @@ public class StateDatum {
         this.certificateDataHash = DigestUtils.sha256Hex(HexUtil.decodeHexString(textCertificates.toString()));
     }
 
+    public void setCertificates(List<UVerifyCertificate> certificates) {
+        this.certificates = certificates;
+        setCertificateDataHash(certificates);
+    }
+
     public void setCertificateDataHash(String certificateDataHash) {
         this.certificateDataHash = certificateDataHash;
     }

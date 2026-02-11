@@ -79,8 +79,10 @@ public class StatisticsService {
                     } else {
                         switch (templateId.asText()) {
                             case "tadamon" -> usageStatistics.addCertificateToCategory(UseCaseCategory.IDENTITY);
-                            case "socialHub", "linktree" -> usageStatistics.addCertificateToCategory(UseCaseCategory.CONNECTED_GOODS);
-                            case "diploma" -> usageStatistics.addCertificateToCategory(UseCaseCategory.STUDENT_CERTIFICATION);
+                            case "socialHub", "linktree", "productVerification" ->
+                                    usageStatistics.addCertificateToCategory(UseCaseCategory.CONNECTED_GOODS);
+                            case "diploma" ->
+                                    usageStatistics.addCertificateToCategory(UseCaseCategory.STUDENT_CERTIFICATION);
                             default -> usageStatistics.addCertificateToCategory(UseCaseCategory.NOTARY);
                         }
                     }

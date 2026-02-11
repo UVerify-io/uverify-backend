@@ -181,7 +181,7 @@ store:
     host: ${REMOTE_NODE_URL:preprod-node.world.dev.cardano.org}
     port: ${REMOTE_NODE_PORT:30000}
     protocol-magic: ${PROTOCOL_MAGIC:1}
-    sync-start-slot: 114127529 #80086574
-    sync-start-blockhash: f00e553d866557c926b41a42fa5849635a3bb5260ab01a0cbd6826b65ab20a59 #4f9308fcc35bc2fffc399171dc36d3730bcd4f4e9349dd59362f1fdb8604fde8
+    sync-start-slot: 80086574
+    sync-start-blockhash: 4f9308fcc35bc2fffc399171dc36d3730bcd4f4e9349dd59362f1fdb8604fde8
     sync-auto-start: ${YACI_STORE_AUTO_START:true}
 ---

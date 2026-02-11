@@ -58,7 +58,7 @@
         <version.yaci-cardano-test>0.1.1-SNAPSHOT</version.yaci-cardano-test>
         <version.scalus-bloxbean-cardano-client-lib>0.10.3</version.scalus-bloxbean-cardano-client-lib>
         <version.zxing>3.5.3</version.zxing>
-        <version.postgres>42.7.5</version.postgres>
+        <version.postgres>42.7.7</version.postgres>
     </properties>
 
     <dependencyManagement>

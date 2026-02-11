@@ -25,7 +25,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.enums.CardanoNetwork;
-import lombok.*;
+import lombok.Data;
 
 import java.util.List;
 
@@ -45,6 +45,7 @@ public class StateData {
     private Integer countdown;
     @JsonAlias({"bootstrapDatumName", "bootstrap_datum_name"})
     private String bootstrapDatumName;
+    private Integer version;
 
     public static StateData fromStateDatumEntity(StateDatumEntity stateDatumEntity, CardanoNetwork network) {
         StateData stateData = new StateData();
@@ -60,6 +61,7 @@ public class StateData {
         stateData.setBatchSize(stateDatumEntity.getBootstrapDatum().getBatchSize());
         stateData.setCountdown(stateDatumEntity.getCountdown());
         stateData.setBootstrapDatumName(stateDatumEntity.getBootstrapDatum().getTokenName());
+        stateData.setVersion(stateData.getVersion());
         return stateData;
     }
 }

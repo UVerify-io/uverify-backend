@@ -36,14 +36,16 @@ public interface BootstrapDatumRepository extends JpaRepository<BootstrapDatumEn
                 FROM BootstrapDatumEntity bootstrapDatum
                 LEFT JOIN bootstrapDatum.allowedCredentials allowedCredential
                 WHERE allowedCredential.credential = :credential
+                AND bootstrapDatum.version >= :minVersion
                 AND bootstrapDatum.invalidationSlot IS NULL
             """)
-    List<BootstrapDatumEntity> findByAllowedCredential(@Param("credential") String credential);
+    List<BootstrapDatumEntity> findByAllowedCredential(@Param("credential") String credential, @Param("minVersion") Integer minVersion);
 
     @Query(value = """
                 SELECT bootstrapDatum
                 FROM BootstrapDatumEntity bootstrapDatum
                 WHERE bootstrapDatum.allowedCredentials IS EMPTY
+                AND bootstrapDatum.version > 1
                 AND bootstrapDatum.invalidationSlot IS NULL
             """)
     List<BootstrapDatumEntity> findAllWhitelisted();
@@ -61,6 +63,6 @@ public interface BootstrapDatumRepository extends JpaRepository<BootstrapDatumEn
     @Query("UPDATE BootstrapDatumEntity SET invalidationSlot = :invalidationSlot WHERE tokenName = :tokenName")
     void markAsInvalid(@Param("tokenName") String tokenName, @Param("invalidationSlot") long invalidationSlot);
 
-    @Query("SELECT bootstrapDatum FROM BootstrapDatumEntity bootstrapDatum WHERE bootstrapDatum.tokenName = :tokenName AND bootstrapDatum.invalidationSlot IS NULL")
-    Optional<BootstrapDatumEntity> findByTokenName(String tokenName);
+    @Query("SELECT bootstrapDatum FROM BootstrapDatumEntity bootstrapDatum WHERE bootstrapDatum.tokenName = :tokenName AND bootstrapDatum.version >= :minVersion AND bootstrapDatum.invalidationSlot IS NULL")
+    Optional<BootstrapDatumEntity> findByTokenName(@Param("tokenName") String tokenName, @Param("minVersion") Integer minVersion);
 }

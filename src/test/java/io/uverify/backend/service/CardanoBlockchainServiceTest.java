@@ -19,35 +19,26 @@
 package io.uverify.backend.service;
 
 import co.nstant.in.cbor.CborException;
-import com.bloxbean.cardano.client.address.AddressProvider;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Amount;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.api.model.Utxo;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
-import com.bloxbean.cardano.client.common.model.Networks;
 import com.bloxbean.cardano.client.exception.AddressExcepion;
+import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
-import com.bloxbean.cardano.client.function.helper.SignerProviders;
-import com.bloxbean.cardano.client.plutus.spec.PlutusData;
-import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
-import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
-import com.bloxbean.cardano.client.quicktx.ScriptTx;
-import com.bloxbean.cardano.client.quicktx.TxResult;
-import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import io.uverify.backend.CardanoBlockchainTest;
+import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.entity.UVerifyCertificateEntity;
 import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.model.BootstrapDatum;
-import io.uverify.backend.model.ProxyDatum;
-import io.uverify.backend.model.ProxyRedeemer;
 import io.uverify.backend.model.UVerifyCertificate;
-import io.uverify.backend.model.converter.ProxyRedeemerConverter;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.StateDatumRepository;
@@ -120,54 +111,13 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
 
     @Test
     @Order(0)
-    public void initProxyContract() throws ApiException, CborSerializationException {
-        Result<List<Utxo>> result = yaciCardanoContainer.getUtxoService().getUtxos(serviceAccount.baseAddress(), 100, 1);
+    public void initProxyContract() throws ApiException, CborSerializationException, CborDeserializationException, InterruptedException {
+        ProxyInitResponse proxyInitResponse = cardanoBlockchainService.initProxyContract();
+        Result<String> result = cardanoBlockchainService.submitTransaction(Transaction.deserialize(HexUtil.decodeHexString(proxyInitResponse.getUnsignedProxyTransaction())), serviceAccount);
         Assertions.assertTrue(result.isSuccessful());
-        Assertions.assertFalse(result.getValue().isEmpty());
-        List<Utxo> utxos = result.getValue();
 
-        Utxo utxo = utxos.get(0);
-        PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(utxo);
-        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
-
-        PlutusScript stateContract = ValidatorUtils.getUVerifyStateContract(proxyScriptHash, ValidatorUtils.getProxyStateTokenName(utxo.getTxHash(), utxo.getOutputIndex()));
-        String stateScriptHash = ValidatorUtils.validatorToScriptHash(stateContract);
-
-        Optional<byte[]> paymentCredentialHash = serviceAccount.getBaseAddress().getPaymentCredentialHash();
-        Assertions.assertTrue(paymentCredentialHash.isPresent());
-
-        ProxyDatum proxyDatum = ProxyDatum.builder()
-                .ScriptOwner(Hex.encodeHexString(paymentCredentialHash.get()))
-                .ScriptPointer(stateScriptHash)
-                .build();
-
-        String tokenName = ValidatorUtils.getProxyStateTokenName(utxo.getTxHash(), utxo.getOutputIndex());
-        Asset authToken = Asset.builder()
-                .name("0x" + tokenName)
-                .value(BigInteger.valueOf(1))
-                .build();
-
-        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, Networks.preprod()).toBech32();
-        PlutusData initProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.ADMIN_ACTION);
-
-        String proxyUnit = proxyContract.getPolicyId() + tokenName;
-
-        ScriptTx tx = new ScriptTx()
-                .collectFrom(List.of(utxo))
-                .mintAsset(proxyContract, authToken, initProxyRedeemer)
-                .payToContract(proxyScriptAddress, List.of(Amount.asset(proxyUnit, 1)), proxyDatum.toPlutusData())
-                .withChangeAddress(serviceAccount.baseAddress());
-
-        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(yaciCardanoContainer.getBackendService());
-        TxResult txResult = quickTxBuilder.compose(tx)
-                .feePayer(serviceAccount.baseAddress())
-                .withRequiredSigners(serviceAccount.getBaseAddress())
-                .withSigner(SignerProviders.signerFrom(serviceAccount))
-                .completeAndWait();
-
-        Assertions.assertTrue(txResult.isSuccessful());
-
-        validatorHelper.setProxy(utxo.getTxHash(), utxo.getOutputIndex());
+        validatorHelper.setProxy(proxyInitResponse.getProxyTxHash(), proxyInitResponse.getProxyOutputIndex());
+        Thread.sleep(1000);
     }
 
     @Test
@@ -320,7 +270,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                         "", "")
         );
         simulateYaciStoreBehavior(addressUtxos);
-        Optional<BootstrapDatumEntity> optionalBootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_default_test_token");
+        Optional<BootstrapDatumEntity> optionalBootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_default_test_token", 1);
 
         Assertions.assertTrue(optionalBootstrapDatum.isPresent());
         Assertions.assertEquals(optionalBootstrapDatum.get().getTransactionLimit(), 15);
@@ -361,7 +311,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                 .algorithm("SHA256")
                 .hash("b652f076fb4feeb1f934ac9b8c0606852e93d3a73fb2596a51c92e480e246897")
                 .issuer(Hex.encodeHexString(paymentCredentialHash.get()))
-                .extra("{\"test\":\"test\"}")
+                .extra("{\"test\":\"test2\"}")
                 .build()), bootstrapToken);
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
 
@@ -483,7 +433,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         );
 
         simulateYaciStoreBehavior(addressUtxos);
-        Optional<BootstrapDatumEntity> optionalBootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token");
+        Optional<BootstrapDatumEntity> optionalBootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token", 1);
         Assertions.assertTrue(optionalBootstrapDatum.isPresent());
     }
 
@@ -545,7 +495,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                         "", "")
         );
         simulateYaciStoreBehavior(addressUtxos);
-        Optional<BootstrapDatumEntity> optionalBootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token");
+        Optional<BootstrapDatumEntity> optionalBootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token", 1);
         Assertions.assertTrue(optionalBootstrapDatum.isPresent());
         Assertions.assertNull(optionalBootstrapDatum.get().getInvalidationSlot());
     }
@@ -553,7 +503,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
     @Test
     @Order(16)
     public void testRollback() {
-        Optional<BootstrapDatumEntity> bootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token");
+        Optional<BootstrapDatumEntity> bootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token", 1);
         Assertions.assertTrue(bootstrapDatum.isPresent());
 
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
@@ -563,7 +513,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Assertions.assertEquals(10, certificates.size());
 
         cardanoBlockchainService.handleRollbackToSlot(bootstrapDatum.get().getCreationSlot() - 1);
-        bootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token");
+        bootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token", 1);
         Assertions.assertTrue(bootstrapDatum.isEmpty());
 
         certificates = uVerifyCertificateService.getCertificatesByCredential(Hex.encodeHexString(paymentCredentialHash.get()));
@@ -585,7 +535,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                         "", "")
         );
         simulateYaciStoreBehavior(addressUtxos);
-        Optional<BootstrapDatumEntity> optionalBootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_zero_fee_test_token");
+        Optional<BootstrapDatumEntity> optionalBootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_zero_fee_test_token", 1);
         Assertions.assertTrue(optionalBootstrapDatum.isPresent());
     }
 
@@ -609,5 +559,62 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                 .filter(stateDatum -> stateDatum.getBootstrapDatum().getTokenName().equals("uverify_zero_fee_test_token"))
                 .findFirst().orElseThrow();
         Assertions.assertEquals(2, stateDatumEntity.getCountdown());
+    }
+
+    @Test
+    @Order(19)
+    public void testInitializeSpecialBootstrapDatum() throws InterruptedException, CborSerializationException, ApiException, CborException, AddressExcepion {
+        BootstrapDatum bootstrapDatum = BootstrapDatum.generateFrom(List.of());
+        bootstrapDatum.setTokenName("special_partner_token");
+        bootstrapDatum.setFeeInterval(100);
+        bootstrapDatum.setFee(0);
+        bootstrapDatum.setBatchSize(3);
+        bootstrapDatum.setTransactionLimit(10);
+
+        Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
+        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
+
+        if (result.isSuccessful()) {
+            simulateYaciStoreBehavior(result.getValue(), transaction);
+        }
+
+        Assertions.assertTrue(result.isSuccessful());
+    }
+
+    @Test
+    @Order(20)
+    public void testPersistUVerifyBatchCertificates() throws ApiException, CborSerializationException, InterruptedException, CborException, AddressExcepion {
+        Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
+        Assertions.assertTrue(paymentCredentialHash.isPresent());
+
+        List<UVerifyCertificate> uVerifyCertificates = List.of(UVerifyCertificate.builder()
+                        .algorithm("SHA256")
+                        .hash("a652f076fb4feeb1f934ac9b8c0606852e93d3a73fb2596a51c92e480e246897")
+                        .issuer(Hex.encodeHexString(paymentCredentialHash.get()))
+                        .extra("{\"test\":\"test\"}")
+                        .build(),
+                UVerifyCertificate.builder()
+                        .algorithm("SHA256")
+                        .hash("b652f076fb4feeb1f934ac9b8c0606852e93d3a73fb2596a51c92e480e246897")
+                        .issuer(Hex.encodeHexString(paymentCredentialHash.get()))
+                        .extra("{\"hello\":\"world\"}")
+                        .build(),
+                UVerifyCertificate.builder()
+                        .algorithm("SHA256")
+                        .hash("c652f076fb4feeb1f934ac9b8c0606852e93d3a73fb2596a51c92e480e246897")
+                        .issuer(Hex.encodeHexString(paymentCredentialHash.get()))
+                        .extra("{\"one\":\"two\"}")
+                        .build());
+
+        Transaction transaction = cardanoBlockchainService.forkProxyStateDatum(
+                userAccount.baseAddress(),
+                uVerifyCertificates,
+                "special_partner_token");
+        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
+        Assertions.assertTrue(result.isSuccessful());
+
+        if (result.isSuccessful()) {
+            simulateYaciStoreBehavior(result.getValue(), transaction);
+        }
     }
 }

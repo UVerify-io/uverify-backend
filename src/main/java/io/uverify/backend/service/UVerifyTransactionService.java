@@ -165,4 +165,25 @@ public class UVerifyTransactionService {
                     .build();
         }
     }
+
+    public BuildTransactionResponse buildDeployTx() {
+        try {
+            Transaction transaction = cardanoBlockchainService.deployUVerifyContracts();
+            return BuildTransactionResponse.builder()
+                    .unsignedTransaction(transaction.serializeToHex())
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.SUCCESS)
+                            .build())
+                    .type(TransactionType.DEPLOY)
+                    .build();
+        } catch (Exception exception) {
+            return BuildTransactionResponse.builder()
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.ERROR)
+                            .message(exception.getMessage())
+                            .build())
+                    .type(TransactionType.DEPLOY)
+                    .build();
+        }
+    }
 }
