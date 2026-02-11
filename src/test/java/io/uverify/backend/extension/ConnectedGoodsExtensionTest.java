@@ -115,7 +115,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
         super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager, validatorHelper,
                 List.of(serviceWalletAddress));
         RestAssured.port = port;
-        this.connectedGoodsServiceWallet = new Account(Networks.testnet(), serviceWalletMnemonic);
+        this.connectedGoodsServiceWallet = Account.createFromMnemonic(Networks.testnet(), serviceWalletMnemonic);
 
         this.connectedGoodsService = connectedGoodsService;
         this.connectedGoodsService.setBackendService(yaciCardanoContainer.getBackendService());
