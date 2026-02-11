@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.0](https://github.com/UVerify-io/uverify-backend/compare/v1.6.0...v1.7.0) (2026-02-11)
+
+
+### Features
+
+* add new contracts and minting logic ([345a217](https://github.com/UVerify-io/uverify-backend/commit/345a217993e4f639af959f4dff239f24064b55b1))
+* rewrite transaction controller to use UVerify v2 contracts ([c10030c](https://github.com/UVerify-io/uverify-backend/commit/c10030cefadafa68e9fb87f8b58c710187039829))
+
+
+### Bug Fixes
+
+* apply fee in the correct state update ([3615851](https://github.com/UVerify-io/uverify-backend/commit/3615851e92eb571dd9deb67fababa699f86f6467))
+
 ## [1.6.0](https://github.com/UVerify-io/uverify-backend/compare/v1.5.1...v1.6.0) (2025-08-13)
 
 
