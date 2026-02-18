@@ -26,7 +26,6 @@ import io.uverify.backend.dto.BootstrapData;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.UserCredentialEntity;
-import io.uverify.backend.enums.CardanoNetwork;
 import lombok.*;
 
 import java.math.BigInteger;
@@ -164,32 +163,6 @@ public class BootstrapDatum {
                                 .toArray(new PlutusData[0])
                 ),
                 BytesPlutusData.of(this.tokenName),
-                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),
-                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),
-                ListPlutusData.of(
-                        this.feeReceivers.stream()
-                                .map(BytesPlutusData::of)
-                                .toList()
-                                .toArray(new PlutusData[0])
-                ),
-                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),
-                BigIntPlutusData.of(BigInteger.valueOf(this.transactionLimit)),
-                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize))
-        );
-    }
-
-    @Deprecated(forRemoval = true)
-    public PlutusData toPlutusData(CardanoNetwork network) {
-        return ConstrPlutusData.of(0,
-                ListPlutusData.of(
-                        this.allowedCredentials.stream()
-                                .map(BytesPlutusData::of)
-                                .toList()
-                                .toArray(new PlutusData[0])
-                ),
-                BytesPlutusData.of(HexUtil.decodeHexString(getMintOrBurnAuthTokenHash(network))),
-                BytesPlutusData.of(this.tokenName),
-                BytesPlutusData.of(HexUtil.decodeHexString(getUpdateStateTokenHash(network))),
                 BigIntPlutusData.of(BigInteger.valueOf(this.fee)),
                 BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),
                 ListPlutusData.of(

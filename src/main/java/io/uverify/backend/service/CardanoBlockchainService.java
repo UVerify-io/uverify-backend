@@ -34,7 +34,7 @@ import com.bloxbean.cardano.client.backend.koios.Constants;
 import com.bloxbean.cardano.client.backend.koios.KoiosBackendService;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
-import com.bloxbean.cardano.client.common.model.Networks;
+import com.bloxbean.cardano.client.crypto.Blake2bUtil;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.plutus.blueprint.PlutusBlueprintUtil;
 import com.bloxbean.cardano.client.plutus.blueprint.model.PlutusVersion;
@@ -42,7 +42,6 @@ import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
-import com.bloxbean.cardano.client.quicktx.Tx;
 import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
@@ -54,11 +53,13 @@ import com.bloxbean.cardano.yaci.core.model.TransactionOutput;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.events.EventMetadata;
 import com.bloxbean.cardano.yaci.store.events.TransactionEvent;
+import io.uverify.backend.dto.BuildStatus;
 import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.entity.UVerifyCertificateEntity;
+import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.enums.UVerifyScriptPurpose;
 import io.uverify.backend.model.*;
@@ -94,6 +95,8 @@ public class CardanoBlockchainService {
     private final ValidatorHelper validatorHelper;
     private final CardanoNetwork network;
     private final Address serviceUserAddress;
+    @Autowired
+    private final LibraryService libraryService;
     private BackendService backendService;
 
     @Autowired
@@ -104,7 +107,8 @@ public class CardanoBlockchainService {
                                     @Value("${cardano.network}") String network,
                                     UVerifyCertificateService uVerifyCertificateService,
                                     ValidatorHelper validatorHelper,
-                                    BootstrapDatumService bootstrapDatumService, StateDatumService stateDatumService
+                                    BootstrapDatumService bootstrapDatumService, StateDatumService stateDatumService,
+                                    LibraryService libraryService
     ) {
         this.bootstrapDatumService = bootstrapDatumService;
         this.stateDatumService = stateDatumService;
@@ -112,6 +116,7 @@ public class CardanoBlockchainService {
         this.network = CardanoNetwork.valueOf(network);
         this.serviceUserAddress = new Address(serviceUserAddress);
         this.validatorHelper = validatorHelper;
+        this.libraryService = libraryService;
 
         if (cardanoBackendServiceType.equals("blockfrost")) {
             if (blockfrostProjectId == null || blockfrostProjectId.isEmpty()) {
@@ -142,7 +147,7 @@ public class CardanoBlockchainService {
     public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
         Optional<StateDatumEntity> stateDatumEntity = Optional.empty();
         if (bootstrapTokenName.isEmpty()) {
-            List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address);
+            List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address, 2);
             if (stateDatumEntities.size() == 1) {
                 stateDatumEntity = Optional.of(stateDatumEntities.get(0));
             } else if (stateDatumEntities.size() > 1) {
@@ -165,7 +170,7 @@ public class CardanoBlockchainService {
     }
 
     public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate) throws ApiException, CborSerializationException {
-        List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address);
+        List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address, 2);
         if (stateDatumEntities.isEmpty()) {
             log.debug("No state datum found for address " + address + ". Start forking a new state datum.");
             return forkProxyStateDatum(address, uVerifyCertificate);
@@ -204,6 +209,9 @@ public class CardanoBlockchainService {
 
     public ProxyInitResponse initProxyContract() throws ApiException, CborSerializationException {
         ProxyInitResponse proxyInitResponse = new ProxyInitResponse();
+        proxyInitResponse.setStatus(BuildStatus.builder()
+                .code(BuildStatusCode.ERROR)
+                .build());
         QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
         String serviceAddress = this.serviceUserAddress.getAddress();
         PlutusScript stateContract;
@@ -235,7 +243,7 @@ public class CardanoBlockchainService {
                     .value(BigInteger.valueOf(1))
                     .build();
 
-            String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, Networks.preprod()).toBech32();
+            String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, network.toCardaoNetwork()).toBech32();
             PlutusData initProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.ADMIN_ACTION);
 
             String proxyUnit = proxyContract.getPolicyId() + tokenName;
@@ -254,41 +262,18 @@ public class CardanoBlockchainService {
             proxyInitResponse.setUnsignedProxyTransaction(transaction.serializeToHex());
             proxyInitResponse.setProxyOutputIndex(utxo.getOutputIndex());
             proxyInitResponse.setProxyTxHash(utxo.getTxHash());
+            proxyInitResponse.setStatus(BuildStatus.builder()
+                    .code(BuildStatusCode.SUCCESS)
+                    .build());
         } else {
             log.info("It seems that there was a previous proxy deployment. Reusing the existing proxy contract.");
+            proxyInitResponse.setStatus(BuildStatus.builder()
+                    .code(BuildStatusCode.ERROR)
+                    .message("Existing proxy contract found with transaction hash " + existingProxyTxHash + ". Please use this transaction hash to build the transaction.")
+                    .build());
         }
 
         return proxyInitResponse;
-    }
-
-    public Transaction deployUVerifyContracts() {
-        Optional<byte[]> optionalUserPaymentCredential = serviceUserAddress.getPaymentCredentialHash();
-
-        if (optionalUserPaymentCredential.isEmpty()) {
-            throw new IllegalArgumentException("Invalid Cardano payment address");
-        }
-
-        String proxyTransactionHash = validatorHelper.getProxyTransactionHash();
-        Integer proxyOutputIndex = validatorHelper.getProxyOutputIndex();
-
-        PlutusScript libraryContract = getLibraryContract(HexUtil.encodeHexString(optionalUserPaymentCredential.get()));
-        String libraryContractAddress = AddressProvider.getEntAddress(libraryContract, fromCardanoNetwork(network)).toBech32();
-
-        PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTransactionHash, proxyOutputIndex);
-        PlutusScript uverifyStateContract = getUVerifyStateContract(proxyTransactionHash, proxyOutputIndex);
-
-        Tx tx = new Tx()
-                .from(serviceUserAddress.getAddress())
-                .payToContract(libraryContractAddress, Amount.lovelace(BigInteger.valueOf(1000000)), PlutusData.unit(), uverifyProxyContract)
-                .payToContract(libraryContractAddress, Amount.lovelace(BigInteger.valueOf(1000001)), PlutusData.unit(), uverifyStateContract)
-                .registerStakeAddress(AddressProvider.getRewardAddress(uverifyStateContract, fromCardanoNetwork(network)).toBech32());
-
-        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
-        return quickTxBuilder.compose(tx)
-                .feePayer(serviceUserAddress.getAddress())
-                .withRequiredSigners(serviceUserAddress)
-                .mergeOutputs(false)
-                .build();
     }
 
     public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
@@ -327,8 +312,8 @@ public class CardanoBlockchainService {
         PlutusData spendProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);
         String stateScriptRewardAddress = AddressProvider.getRewardAddress(uverifyStateContract, fromCardanoNetwork(network)).toBech32();
 
-        Utxo stateLibraryUtxo = validatorHelper.resolveStateLibraryUtxo(backendService);
-        Utxo proxyLibraryUtxo = validatorHelper.resolveProxyLibraryUtxo(backendService);
+        Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();
+        Utxo proxyLibraryUtxo = libraryService.getProxyLibraryUtxo();
 
         ScriptTx updateStateTokenTx = new ScriptTx()
                 .readFrom(proxyStateUtxo, stateLibraryUtxo, proxyLibraryUtxo)
@@ -623,7 +608,7 @@ public class CardanoBlockchainService {
             return null;
         }
 
-        Utxo stateLibraryUtxo = validatorHelper.resolveStateLibraryUtxo(backendService);
+        Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();
 
         ScriptTx scriptTx = new ScriptTx()
                 .readFrom(proxyStateUtxo, stateLibraryUtxo)
@@ -728,7 +713,7 @@ public class CardanoBlockchainService {
             return null;
         }
 
-        Utxo stateLibraryUtxo = validatorHelper.resolveStateLibraryUtxo(backendService);
+        Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();
 
         ScriptTx scriptTransaction = new ScriptTx()
                 .readFrom(utxo, proxyStateUtxo, stateLibraryUtxo)
@@ -785,6 +770,15 @@ public class CardanoBlockchainService {
         }
     }
 
+    private boolean signedByAddress(com.bloxbean.cardano.yaci.helper.model.Transaction transaction, String address) {
+        return transaction.getWitnesses().getVkeyWitnesses().stream()
+                .anyMatch(vkeyWitness -> {
+                    byte[] vkeyHash = Blake2bUtil.blake2bHash224(HexUtil.decodeHexString(vkeyWitness.getKey()));
+                    Optional<byte[]> paymentCredentialHash = new Address(address).getPaymentCredentialHash();
+                    return paymentCredentialHash.isPresent() && Arrays.equals(vkeyHash, paymentCredentialHash.get());
+                });
+    }
+
     public void processTransactionEvent(TransactionEvent transactionEvent) {
         EventMetadata metadata = transactionEvent.getMetadata();
         if (metadata.isParallelMode()) {
@@ -794,7 +788,11 @@ public class CardanoBlockchainService {
         for (com.bloxbean.cardano.yaci.helper.model.Transaction transaction : transactionEvent.getTransactions()) {
             if (transaction.isInvalid())
                 continue;
-            if (transaction.getWitnesses().getRedeemers() == null || transaction.getWitnesses().getRedeemers().size() == 0)
+
+            final String libraryContractAddress = libraryService.getLibraryAddress();
+            boolean hasLibraryInteraction = transaction.getBody().getOutputs() != null && transaction.getBody().getOutputs().stream().anyMatch(utxo -> utxo.getAddress().equals(libraryContractAddress));
+
+            if (!hasLibraryInteraction && (transaction.getWitnesses().getRedeemers() == null || transaction.getWitnesses().getRedeemers().size() == 0))
                 continue;
 
             final String proxyTxHash = validatorHelper.getProxyTransactionHash();
@@ -803,13 +801,18 @@ public class CardanoBlockchainService {
             final PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
             final String uverifyProxyScriptHash = ValidatorUtils.validatorToScriptHash(uverifyProxyContract);
 
-            final String proxyContractAddress = validatorHelper.getProxyContractAddress();
             String hexStateContractAddress = HexUtil.encodeHexString(new Address(validatorHelper.getStateContractAddress()).getBytes());
 
             List<com.bloxbean.cardano.yaci.core.model.Amount> mints = transaction.getBody().getMint();
 
             Optional<com.bloxbean.cardano.yaci.core.model.Amount> maybeMint = mints.stream().filter(amount -> amount.getPolicyId().equals(uverifyProxyScriptHash)).findFirst();
-            boolean containsPotentialSpend = transaction.getBody().getWithdrawals() != null && transaction.getBody().getWithdrawals().containsKey(hexStateContractAddress);
+            boolean hasStateContractInteraction = transaction.getBody().getWithdrawals() != null && transaction.getBody().getWithdrawals().containsKey(hexStateContractAddress);
+
+            Optional<byte[]> optionalUserPaymentCredential = serviceUserAddress.getPaymentCredentialHash();
+
+            if (optionalUserPaymentCredential.isEmpty()) {
+                throw new IllegalArgumentException("Invalid Cardano payment address");
+            }
 
             if (maybeMint.isPresent()) {
                 com.bloxbean.cardano.yaci.core.model.Amount mint = maybeMint.get();
@@ -851,7 +854,8 @@ public class CardanoBlockchainService {
                     processUVerifyProxyTx(stateRedeemer.get(), transaction.getTxHash(),
                             metadata.getBlockHash(), transaction.getBlockNumber(), metadata.getBlockTime(), metadata.getSlot(), utxo.getInlineDatum());
                 }
-            } else if (containsPotentialSpend) {
+            } else if (hasStateContractInteraction) {
+                final String proxyContractAddress = validatorHelper.getProxyContractAddress();
                 Optional<TransactionOutput> maybeTransactionOutput = transaction.getBody().getOutputs().stream().filter(txOutput -> txOutput.getAddress().equals(proxyContractAddress)
                         && txOutput.getAmounts().stream().anyMatch(amount -> amount.getPolicyId() != null && amount.getPolicyId().equals(uverifyProxyScriptHash))).findFirst();
 
@@ -874,6 +878,17 @@ public class CardanoBlockchainService {
                 TransactionOutput transactionOutput = maybeTransactionOutput.get();
                 processUVerifyProxyTx(stateRedeemer.get(), transaction.getTxHash(),
                         metadata.getBlockHash(), transaction.getBlockNumber(), metadata.getBlockTime(), metadata.getSlot(), transactionOutput.getInlineDatum());
+            }
+
+            if (hasLibraryInteraction) {
+                boolean signedByServiceUser = signedByAddress(transaction, serviceUserAddress.getAddress());
+                if (signedByServiceUser) {
+                    ArrayList<com.bloxbean.cardano.yaci.helper.model.Utxo> utxos = new ArrayList<>(transaction.getUtxos().stream()
+                            .filter(utxo -> utxo.getAddress().equals(libraryContractAddress)).toList());
+                    if (utxos.size() > 0) {
+                        libraryService.deployToLibrary(utxos, transaction.getSlot());
+                    }
+                }
             }
         }
     }

@@ -87,8 +87,9 @@ public interface StateDatumRepository extends JpaRepository<StateDatumEntity, St
 
 
     @Query("SELECT stateDatum FROM StateDatumEntity stateDatum WHERE stateDatum.owner = :credential " +
-            "AND bootstrapDatum.invalidationSlot IS NULL AND stateDatum.countdown > 0")
-    List<StateDatumEntity> findByOwner(@Param("credential") String credential);
+            "AND bootstrapDatum.invalidationSlot IS NULL AND stateDatum.countdown > 0 AND bootstrapDatum.version >= :minVersion")
+    List<StateDatumEntity> findByOwner(@Param("credential") String credential,
+                                       @Param("minVersion") int minVersion);
 
     @Query(value = """
             SELECT stateDatum FROM StateDatumEntity stateDatum

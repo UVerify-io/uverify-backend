@@ -46,6 +46,8 @@ public class UVerifyTransactionService {
 
     @Autowired
     private final CardanoBlockchainService cardanoBlockchainService;
+    @Autowired
+    private final LibraryService libraryService;
 
     public Result<String> submit(String transactionHex, String witnessSetHex) throws CborDeserializationException, CborSerializationException, ApiException {
         Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(transactionHex));
@@ -90,10 +92,6 @@ public class UVerifyTransactionService {
         ProxyInitResponse proxyInitResponse;
         try {
             proxyInitResponse = cardanoBlockchainService.initProxyContract();
-            proxyInitResponse.setStatus(BuildStatus.builder()
-                    .code(BuildStatusCode.SUCCESS)
-                    .build());
-
         } catch (ApiException | CborSerializationException e) {
             proxyInitResponse = ProxyInitResponse.builder()
                     .status(BuildStatus.builder()
@@ -162,27 +160,6 @@ public class UVerifyTransactionService {
                             .message(exception.getMessage())
                             .build())
                     .type(TransactionType.CUSTOM)
-                    .build();
-        }
-    }
-
-    public BuildTransactionResponse buildDeployTx() {
-        try {
-            Transaction transaction = cardanoBlockchainService.deployUVerifyContracts();
-            return BuildTransactionResponse.builder()
-                    .unsignedTransaction(transaction.serializeToHex())
-                    .status(BuildStatus.builder()
-                            .code(BuildStatusCode.SUCCESS)
-                            .build())
-                    .type(TransactionType.DEPLOY)
-                    .build();
-        } catch (Exception exception) {
-            return BuildTransactionResponse.builder()
-                    .status(BuildStatus.builder()
-                            .code(BuildStatusCode.ERROR)
-                            .message(exception.getMessage())
-                            .build())
-                    .type(TransactionType.DEPLOY)
                     .build();
         }
     }

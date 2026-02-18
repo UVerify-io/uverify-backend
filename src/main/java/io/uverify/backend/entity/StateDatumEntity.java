@@ -49,7 +49,7 @@ public class StateDatumEntity {
 
     @Column(name = "transaction_id", nullable = false)
     private String transactionId;
-
+    @Builder.Default
     @OneToMany(
             mappedBy = "stateDatum",
             cascade = CascadeType.ALL,

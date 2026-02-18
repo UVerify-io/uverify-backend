@@ -24,15 +24,21 @@ import com.bloxbean.cardano.client.account.Account;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.backend.model.Block;
+import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
+import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
 import com.bloxbean.cardano.client.common.cbor.CborSerializationUtil;
 import com.bloxbean.cardano.client.common.model.Networks;
 import com.bloxbean.cardano.client.exception.AddressExcepion;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
+import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.client.transaction.spec.TransactionOutput;
+import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.core.model.TransactionBody;
 import com.bloxbean.cardano.yaci.core.model.Witnesses;
 import com.bloxbean.cardano.yaci.core.model.serializers.TransactionBodySerializer;
 import com.bloxbean.cardano.yaci.core.model.serializers.WitnessesSerializer;
+import com.bloxbean.cardano.yaci.helper.model.Utxo;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.events.EventMetadata;
 import com.bloxbean.cardano.yaci.store.events.TransactionEvent;
@@ -42,10 +48,7 @@ import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.StateDatumRepository;
-import io.uverify.backend.service.BootstrapDatumService;
-import io.uverify.backend.service.CardanoBlockchainService;
-import io.uverify.backend.service.StateDatumService;
-import io.uverify.backend.service.UVerifyCertificateService;
+import io.uverify.backend.service.*;
 import io.uverify.backend.simulation.SimulationUtils;
 import io.uverify.backend.util.ValidatorHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -94,6 +97,9 @@ public class CardanoBlockchainTest {
     protected final ValidatorHelper validatorHelper;
 
     @Autowired
+    protected final LibraryService libraryService;
+
+    @Autowired
     public CardanoBlockchainTest(@Value("${cardano.service.user.mnemonic}") String testServiceUserMnemonic,
                                  @Value("${cardano.test.user.mnemonic}") String testUserMnemonic,
                                  @Value("${cardano.service.fee.receiver.mnemonic}") String feeReceiverMnemonic,
@@ -107,8 +113,10 @@ public class CardanoBlockchainTest {
                                  CertificateRepository certificateRepository,
                                  ExtensionManager extensionManager,
                                  ValidatorHelper validatorHelper,
+                                 LibraryService libraryService,
                                  List<String> additionalFundingAddresses) {
         this.cardanoBlockchainService = cardanoBlockchainService;
+        this.libraryService = libraryService;
         this.stateDatumService = stateDatumService;
         this.bootstrapDatumService = bootstrapDatumService;
         this.uVerifyCertificateService = uVerifyCertificateService;
@@ -146,7 +154,8 @@ public class CardanoBlockchainTest {
                     .withInitialFunding(fundingArray)
                     .withLogConsumer(outputFrame -> log.info(outputFrame.getUtf8String()))
                     .start();
-            cardanoBlockchainService.setBackendService(yaciCardanoContainer.getBackendService());
+            this.cardanoBlockchainService.setBackendService(yaciCardanoContainer.getBackendService());
+            this.libraryService.setBackendService(yaciCardanoContainer.getBackendService());
         }
     }
 
@@ -156,6 +165,7 @@ public class CardanoBlockchainTest {
         certificateRepository.deleteAll();
         stateDatumRepository.deleteAll();
         bootstrapDatumRepository.deleteAll();
+        this.validatorHelper.setProxy("", 0);
     }
 
     protected void simulateYaciStoreBehavior(String transactionId) throws InterruptedException, ApiException {
@@ -181,6 +191,36 @@ public class CardanoBlockchainTest {
         DataItem witnessSetDataItem = transaction.getWitnessSet().serialize();
         Witnesses witnesses = WitnessesSerializer.INSTANCE.deserializeDI(witnessSetDataItem);
 
+        Result<TxContentUtxo> transactionUtxos = yaciCardanoContainer.getBackendService().getTransactionService().getTransactionUtxos(transactionId);
+
+        ArrayList<Utxo> utxos = new ArrayList<>();
+        if (transactionUtxos.isSuccessful()) {
+            List<TransactionOutput> txOutputsWithScripts = transaction.getBody().getOutputs()
+                    .stream()
+                    .filter(output -> output.getScriptRef() != null)
+                    .toList();
+
+            for (TxContentUtxoOutputs output : transactionUtxos.getValue().getOutputs()) {
+                String scriptRef = null;
+                if (output.getReferenceScriptHash() != null && !txOutputsWithScripts.isEmpty()) {
+                    for (TransactionOutput txOutput : txOutputsWithScripts) {
+                        PlutusScript script = PlutusScript.deserializeScriptRef(txOutput.getScriptRef());
+                        if (script.getPolicyId().equals(output.getReferenceScriptHash())) {
+                            scriptRef = HexUtil.encodeHexString(txOutput.getScriptRef());
+                        }
+                    }
+                }
+
+                utxos.add(Utxo.builder()
+                        .txHash(transactionId)
+                        .index(output.getOutputIndex())
+                        .address(output.getAddress())
+                        .inlineDatum(output.getInlineDatum())
+                        .scriptRef(scriptRef)
+                        .build());
+            }
+        }
+
         try {
             TransactionEvent transactionEvent = TransactionEvent.builder()
                     .metadata(EventMetadata.builder()
@@ -194,6 +234,7 @@ public class CardanoBlockchainTest {
                             .blockNumber(latestBlock.getValue().getHeight())
                             .txHash(transactionId)
                             .body(txBody)
+                            .utxos(utxos)
                             .slot(latestBlock.getValue().getSlot())
                             .witnesses(witnesses)
                             .build())).build();

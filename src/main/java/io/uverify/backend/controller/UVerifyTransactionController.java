@@ -54,7 +54,6 @@ public class UVerifyTransactionController {
                     - **DEFAULT**: Submits UVerify certificates to the blockchain using the cheapest options. If no state is initialized, it forks a new state from the bootstrap datum with the best service fee conditions. If a user state exists with a valid transaction countdown and no service fee is required, it will be reused.
                     - **BOOTSTRAP**: Initializes a new bootstrap token and datum for forking states. Requires a whitelisted credential to sign the transaction.
                     - **INIT**: Init a new proxy script for UVerify certificate management.
-                    - **DEPLOY**: Deploys the proxy and state contract to the library.
                     - **CUSTOM**: Allows the user to specify a bootstrap datum to fork or consume a state related to a specific bootstrap datum. This is useful for use cases requiring a 'partner datum' and may result in a different certificate UI on the client side."""
     )
     @ApiResponses(value = {
@@ -92,13 +91,6 @@ public class UVerifyTransactionController {
                     return ResponseEntity.ok(proxyInitResponse);
                 } else {
                     return ResponseEntity.badRequest().body(proxyInitResponse);
-                }
-            } else if (request.getType().equals(TransactionType.DEPLOY)) {
-                BuildTransactionResponse buildTransactionResponse = transactionService.buildDeployTx();
-                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
-                    return ResponseEntity.ok(buildTransactionResponse);
-                } else {
-                    return ResponseEntity.badRequest().body(buildTransactionResponse);
                 }
             } else {
                 return ResponseEntity.badRequest().body("Unknown transaction type. Allowed types are: DEFAULT, BOOTSTRAP, CUSTOM.");

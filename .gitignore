@@ -28,6 +28,8 @@ replay_pid*
 .env.development
 .env.test
 .env.production
+.env.preprod
+.env.mainnet
 !.env.example
 fullchain.pem
 keystore.p12

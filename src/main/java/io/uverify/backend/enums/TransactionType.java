@@ -27,8 +27,8 @@ public enum TransactionType {
     CUSTOM("custom"),
     BURN_STATE("burn_state"),
     BURN_BOOTSTRAP("burn_bootstrap"),
-    DEPLOY("deploy"),
-    INIT("init");
+    INIT("init"),
+    DEPLOY("deploy");
 
     private final String value;
 

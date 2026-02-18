@@ -16,22 +16,19 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.enums;
+package io.uverify.backend.dto;
 
-import com.bloxbean.cardano.client.common.model.Network;
-import com.bloxbean.cardano.client.common.model.Networks;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import lombok.Builder;
+import lombok.Data;
 
-public enum CardanoNetwork {
-    MAINNET,
-    PREPROD,
-    PREVIEW,
-    CUSTOM;
-
-    public Network toCardaoNetwork() {
-        if (this.equals(MAINNET)) {
-            return Networks.mainnet();
-        } else {
-            return Networks.preprod();
-        }
-    }
+@Data
+@Builder
+public class LibraryEntry {
+    @JsonAlias({"transactionHash", "transaction_hash"})
+    private String transactionHash;
+    @JsonAlias({"outputIndex", "output_index"})
+    private Integer outputIndex;
+    @JsonAlias({"isActiveContract", "is_active_contract"})
+    private Boolean isActiveContract;
 }

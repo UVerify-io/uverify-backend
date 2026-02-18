@@ -16,22 +16,16 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.enums;
+package io.uverify.backend.dto;
 
-import com.bloxbean.cardano.client.common.model.Network;
-import com.bloxbean.cardano.client.common.model.Networks;
+import lombok.Builder;
+import lombok.Data;
 
-public enum CardanoNetwork {
-    MAINNET,
-    PREPROD,
-    PREVIEW,
-    CUSTOM;
+import java.util.List;
 
-    public Network toCardaoNetwork() {
-        if (this.equals(MAINNET)) {
-            return Networks.mainnet();
-        } else {
-            return Networks.preprod();
-        }
-    }
+@Data
+@Builder
+public class LibraryDeploymentResponse {
+    private String address;
+    private List<LibraryEntry> entries;
 }

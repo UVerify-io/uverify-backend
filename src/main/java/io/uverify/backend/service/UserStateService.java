@@ -150,7 +150,7 @@ public class UserStateService {
     public ExecuteUserActionResponse executeUserOptOut(ExecuteUserActionRequest request) {
         if (signaturesAreValid(request) && hasValidTimeframe(request.getTimestamp())) {
             String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(request.getAddress()));
-            List<StateDatumEntity> stateDatumEntities = stateDatumRepository.findByOwner(userCredential);
+            List<StateDatumEntity> stateDatumEntities = stateDatumRepository.findByOwner(userCredential, 1);
             Address userAddress = new Address(request.getAddress());
             ExecuteUserActionResponse response = ExecuteUserActionResponse.builder().status(HttpStatus.OK).build();
             try {
@@ -207,7 +207,7 @@ public class UserStateService {
 
             bootstrapDatumEntities.addAll(customBootstrapDatumEntities);
 
-            List<StateDatumEntity> stateDatumEntities = stateDatumRepository.findByOwner(userCredential);
+            List<StateDatumEntity> stateDatumEntities = stateDatumRepository.findByOwner(userCredential, 1);
 
             return ExecuteUserActionResponse.builder()
                     .state(UserState.builder()
