@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/UVerify-io/uverify-backend/compare/v1.7.0...v1.8.0) (2026-02-18)
+
+
+### Features
+
+* introduce a library service and fetching deployments automatically from the chain. Closes [#25](https://github.com/UVerify-io/uverify-backend/issues/25) ([dd300a4](https://github.com/UVerify-io/uverify-backend/commit/dd300a4720beddd883616a4158ce08d0f8363a78))
+
 ## [1.7.0](https://github.com/UVerify-io/uverify-backend/compare/v1.6.0...v1.7.0) (2026-02-11)
 
 
