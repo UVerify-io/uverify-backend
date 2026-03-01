@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/UVerify-io/uverify-backend/compare/v1.8.0...v1.9.0) (2026-03-01)
+
+
+### Features
+
+* make network depended constants optional environment variables ([18eb555](https://github.com/UVerify-io/uverify-backend/commit/18eb5553bdb21139729f2875621d254bdbb04668))
+
 ## [1.8.0](https://github.com/UVerify-io/uverify-backend/compare/v1.7.0...v1.8.0) (2026-02-18)
 
 
