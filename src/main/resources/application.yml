@@ -86,7 +86,7 @@ cardano:
   service:
     user:
       mnemonic: ${SERVICE_ACCOUNT_MNEMONIC:}
-      address: ${SERVICE_USER_ADDRESS}
+      address: ${SERVICE_USER_ADDRESS:addr1qxqup4lcghajeawjx3faccuewk2k3ztneps8segrcn28ky223ul5q54jq72wps946c5gw8z5mfjhqa9r8znzk4vd4sls8jqsva}
     fee:
       receiver:
         mnemonic: ${FEE_RECEIVER_MNEMONIC:}
@@ -117,8 +117,8 @@ extensions:
         service-account: ${TADAMON_GOOGLE_SHEETS_SERVICE_ACCOUNT:}
 
 proxy:
-  transaction-hash: ${PROXY_TX_HASH:}
-  output-index: ${PROXY_OUTPUT_INDEX:0}
+  transaction-hash: ${PROXY_TX_HASH:e87045afe5247ef3912b37be23ba7b0df193849f463ad4ddd89216c512613af2}
+  output-index: ${PROXY_OUTPUT_INDEX:1}
 
 ---
 spring:
@@ -152,20 +152,6 @@ spring:
 spring:
   config:
     activate:
-      on-profile: https
-server:
-  port: ${SSL_PORT:8443}
-  http:
-    port: ${PORT:9090}
-  ssl:
-    key-store: classpath:keystore.p12
-    key-store-password: ${KEY_STORE_PASSWORD}
-    key-store-type: PKCS12
-    key-alias: api_uverify_io
----
-spring:
-  config:
-    activate:
       on-profile: preprod
 store:
   sync-auto-start: ${YACI_STORE_AUTO_START:true}
@@ -176,4 +162,11 @@ store:
     sync-start-slot: 80086574
     sync-start-blockhash: 4f9308fcc35bc2fffc399171dc36d3730bcd4f4e9349dd59362f1fdb8604fde8
     sync-auto-start: ${YACI_STORE_AUTO_START:true}
+proxy:
+  transaction-hash: ${PROXY_TX_HASH:ab9ef12a53209db854dddd415d6404cb8323bf9d05bfb174334de150275d4986}
+  output-index: ${PROXY_OUTPUT_INDEX:1}
+cardano:
+  service:
+    user:
+      address: ${SERVICE_USER_ADDRESS:addr_test1qqgmew8y57fsfc3me40zha3gjplehxv0gwgz7sw3mdpenqgs8flgvgd7y0mwwkk5p96a8hfdptxrawepr2evqhl2aj3sr9vgye}
 ---

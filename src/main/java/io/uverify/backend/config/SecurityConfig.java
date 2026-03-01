@@ -21,7 +21,6 @@ package io.uverify.backend.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -38,30 +37,12 @@ public class SecurityConfig {
     @Autowired
     private CorsConfigurationSource corsConfigurationSource;
 
-    @Autowired
-    private Environment environment;
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request -> request.requestMatchers(AnyRequestMatcher.INSTANCE).permitAll())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource));
 
-        if (isHttpsProfileActive()) {
-            http.requiresChannel(channel ->
-                    channel.anyRequest().requiresSecure() // Enforce HTTPS
-            );
-        }
-
         return http.build();
-    }
-
-    private boolean isHttpsProfileActive() {
-        for (String profile : environment.getActiveProfiles()) {
-            if (profile.equalsIgnoreCase("https")) {
-                return true;
-            }
-        }
-        return false;
     }
 }
