@@ -40,7 +40,11 @@ import java.time.LocalDateTime;
 public class TadamonExtensionTest {
 
     @Autowired
-    private TadamonGoogleSheetsService tadamonGoogleSheetsService;
+    private final TadamonGoogleSheetsService tadamonGoogleSheetsService;
+
+    public TadamonExtensionTest(TadamonGoogleSheetsService tadamonGoogleSheetsService) {
+        this.tadamonGoogleSheetsService = tadamonGoogleSheetsService;
+    }
 
     @Test
     public void testWriteToGoogleSheet() {
@@ -67,6 +71,8 @@ public class TadamonExtensionTest {
         String vkey = "51dbae874ef94ba4a42d6bc935696e50b545eb8dc0cd0bb8d3c7ddb2699fa581";
         String addressStr = "addr_test1qpftcj63cky29z6xq69hm454c4ru0tyq89aqcm5kd65wzsevvxgywp50vfnt0raqf0p6y9rq07y4rsrc4fu3k528rc0q8gvagn";
         Address address = new Address(addressStr);
+
+        Assertions.assertTrue(address.getPaymentCredentialHash().isPresent(), "Payment credential hash should be present in the address");
 
         String paymentCredHash = HexUtil.encodeHexString(address.getPaymentCredentialHash().get());
         byte[] vkeyHash = Blake2bUtil.blake2bHash224(HexUtil.decodeHexString(vkey));

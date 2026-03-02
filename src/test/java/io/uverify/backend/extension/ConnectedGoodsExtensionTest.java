@@ -47,6 +47,7 @@ import io.uverify.backend.extension.validators.SocialHubDatum;
 import io.uverify.backend.extension.validators.converter.SocialHubDatumConverter;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
+import io.uverify.backend.repository.LibraryRepository;
 import io.uverify.backend.repository.StateDatumRepository;
 import io.uverify.backend.service.*;
 import io.uverify.backend.util.ValidatorHelper;
@@ -106,11 +107,12 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
+            LibraryRepository libraryRepository,
             ExtensionManager extensionManager,
             ValidatorHelper validatorHelper,
             ConnectedGoodsService connectedGoodsService,
             LibraryService libraryService) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager, validatorHelper,
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper,
                 libraryService, List.of(serviceWalletAddress));
         RestAssured.port = port;
         this.connectedGoodsServiceWallet = Account.createFromMnemonic(Networks.testnet(), serviceWalletMnemonic);

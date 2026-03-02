@@ -47,6 +47,7 @@ import com.bloxbean.cardano.yaci.test.YaciCardanoContainer;
 import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
+import io.uverify.backend.repository.LibraryRepository;
 import io.uverify.backend.repository.StateDatumRepository;
 import io.uverify.backend.service.*;
 import io.uverify.backend.simulation.SimulationUtils;
@@ -91,6 +92,9 @@ public class CardanoBlockchainTest {
     protected final CertificateRepository certificateRepository;
 
     @Autowired
+    protected final LibraryRepository libraryRepository;
+
+    @Autowired
     protected final ExtensionManager extensionManager;
 
     @Autowired
@@ -111,6 +115,7 @@ public class CardanoBlockchainTest {
                                  StateDatumRepository stateDatumRepository,
                                  BootstrapDatumRepository bootstrapDatumRepository,
                                  CertificateRepository certificateRepository,
+                                 LibraryRepository libraryRepository,
                                  ExtensionManager extensionManager,
                                  ValidatorHelper validatorHelper,
                                  LibraryService libraryService,
@@ -123,6 +128,7 @@ public class CardanoBlockchainTest {
         this.stateDatumRepository = stateDatumRepository;
         this.bootstrapDatumRepository = bootstrapDatumRepository;
         this.certificateRepository = certificateRepository;
+        this.libraryRepository = libraryRepository;
         this.extensionManager = extensionManager;
         this.validatorHelper = validatorHelper;
 
@@ -154,6 +160,12 @@ public class CardanoBlockchainTest {
                     .withInitialFunding(fundingArray)
                     .withLogConsumer(outputFrame -> log.info(outputFrame.getUtf8String()))
                     .start();
+            // Ensure UTXOs are available before proceeding with tests
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             this.cardanoBlockchainService.setBackendService(yaciCardanoContainer.getBackendService());
             this.libraryService.setBackendService(yaciCardanoContainer.getBackendService());
         }
@@ -165,6 +177,7 @@ public class CardanoBlockchainTest {
         certificateRepository.deleteAll();
         stateDatumRepository.deleteAll();
         bootstrapDatumRepository.deleteAll();
+        libraryRepository.deleteAll();
         this.validatorHelper.setProxy("", 0);
     }
 

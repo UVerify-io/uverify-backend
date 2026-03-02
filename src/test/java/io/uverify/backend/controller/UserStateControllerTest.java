@@ -41,6 +41,7 @@ import io.uverify.backend.enums.UserAction;
 import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
+import io.uverify.backend.repository.LibraryRepository;
 import io.uverify.backend.repository.StateDatumRepository;
 import io.uverify.backend.service.*;
 import io.uverify.backend.util.ValidatorHelper;
@@ -77,10 +78,11 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
+            LibraryRepository libraryRepository,
             ValidatorHelper validatorHelper,
             ExtensionManager extensionManager,
             LibraryService libraryService) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, extensionManager, validatorHelper, libraryService, List.of());
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper, libraryService, List.of());
         RestAssured.port = port;
         this.feeReceiverPartnerAddress = feeReceiverPartnerAddress;
     }
