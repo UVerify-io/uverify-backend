@@ -200,20 +200,39 @@ public class CardanoBlockchainTest {
         throw new RuntimeException("Timeout: no UTXOs found for address " + address + " after 30 seconds");
     }
 
+    protected void waitForTransaction(String txHash) throws InterruptedException {
+        for (int attempt = 1; attempt <= 30; attempt++) {
+            try {
+                Result<TxContentUtxo> txResult = yaciCardanoContainer.getBackendService()
+                        .getTransactionService().getTransactionUtxos(txHash);
+                if (txResult.isSuccessful() && txResult.getValue() != null
+                        && !txResult.getValue().getOutputs().isEmpty()) {
+                    log.info("TX {} indexed after {} attempt(s)", txHash, attempt);
+                    return;
+                }
+            } catch (Exception e) {
+                log.debug("TX {} not yet available (attempt {}/30)", txHash, attempt);
+            }
+            log.info("Waiting for TX {} (attempt {}/30)...", txHash, attempt);
+            Thread.sleep(1000);
+        }
+        throw new RuntimeException("Timeout: TX " + txHash + " not indexed after 30 seconds");
+    }
+
     protected void simulateYaciStoreBehavior(String transactionId) throws InterruptedException, ApiException {
+        waitForTransaction(transactionId);
         List<AddressUtxo> addressUtxos = SimulationUtils.getAddressUtxos(transactionId, yaciCardanoContainer.getBackendService());
         cardanoBlockchainService.processAddressUtxos(addressUtxos);
         extensionManager.processAddressUtxos(addressUtxos);
-        Thread.sleep(1000);
     }
 
     protected void simulateYaciStoreBehavior(List<AddressUtxo> addressUtxos) throws InterruptedException {
         cardanoBlockchainService.processAddressUtxos(addressUtxos);
         extensionManager.processAddressUtxos(addressUtxos);
-        Thread.sleep(1000);
     }
 
     protected void simulateYaciStoreBehavior(String transactionId, Transaction transaction) throws InterruptedException, ApiException, AddressExcepion, CborSerializationException, CborException {
+        waitForTransaction(transactionId);
         Result<Block> latestBlock = yaciCardanoContainer.getBackendService().getBlockService().getLatestBlock();
 
         DataItem bodyDataItem = transaction.getBody().serialize();
@@ -275,7 +294,5 @@ public class CardanoBlockchainTest {
         } catch (Exception exception) {
             log.error("Unable to process tx scripts: " + exception.getMessage());
         }
-
-        Thread.sleep(1000);
     }
 }

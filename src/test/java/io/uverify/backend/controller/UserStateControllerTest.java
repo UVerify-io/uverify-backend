@@ -170,10 +170,9 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        Thread.sleep(1000);
+        waitForTransaction(result.getValue());
 
         validatorHelper.setProxy(buildTransactionResponse.getProxyTxHash(), buildTransactionResponse.getProxyOutputIndex());
-        Thread.sleep(1000);
     }
 
     @Test
@@ -191,16 +190,12 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        Thread.sleep(1000);
-
         if (result.isSuccessful()) {
             // The signed transaction needs to be submitted as the processor
             // ensures it has been signed by the service account
             Transaction signedTransaction = TransactionSigner.INSTANCE.sign(transaction, serviceAccount.hdKeyPair());
             simulateYaciStoreBehavior(result.getValue(), signedTransaction);
         }
-
-        Thread.sleep(1000);
     }
 
     @Test
@@ -241,7 +236,6 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         }
 
         Assertions.assertTrue(result.isSuccessful());
-        Thread.sleep(1000);
     }
 
     @Test
@@ -275,7 +269,6 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         }
 
         Assertions.assertTrue(result.isSuccessful());
-        Thread.sleep(1000);
     }
 
     @Test
