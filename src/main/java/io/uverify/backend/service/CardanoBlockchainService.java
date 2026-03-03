@@ -42,6 +42,7 @@ import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
+import com.bloxbean.cardano.client.quicktx.Tx;
 import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
@@ -891,5 +892,34 @@ public class CardanoBlockchainService {
                 }
             }
         }
+    }
+
+    /**
+     * Build, sign, and submit a simple ADA transfer from the given sender account to the
+     * recipient address, creating {@code utxoCount} separate outputs each carrying
+     * {@code lovelacePerUtxo} lovelace.
+     *
+     * @param senderAccount  The account whose UTXOs fund the transaction.
+     * @param recipientAddress Target Cardano address (bech32).
+     * @param utxoCount      Number of separate outputs to create.
+     * @param lovelacePerUtxo Amount of lovelace per output.
+     * @return Cardano transaction hash on success.
+     */
+    public Result<String> sendAda(Account senderAccount, String recipientAddress,
+                                  int utxoCount, BigInteger lovelacePerUtxo)
+            throws CborSerializationException, ApiException {
+        Tx tx = new Tx();
+        for (int i = 0; i < utxoCount; i++) {
+            tx.payToAddress(recipientAddress, Amount.lovelace(lovelacePerUtxo));
+        }
+        tx.from(senderAccount.baseAddress());
+
+        Transaction unsignedTx = new QuickTxBuilder(backendService)
+                .compose(tx)
+                .feePayer(senderAccount.baseAddress())
+                .build();
+
+        Transaction signedTx = TransactionSigner.INSTANCE.sign(unsignedTx, senderAccount.hdKeyPair());
+        return submitTransaction(signedTx);
     }
 }

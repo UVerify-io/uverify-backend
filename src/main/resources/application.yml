@@ -116,6 +116,13 @@ extensions:
         private-key: ${TADAMON_GOOGLE_SHEETS_PRIVATE_KEY:}
         service-account: ${TADAMON_GOOGLE_SHEETS_SERVICE_ACCOUNT:}
 
+faucet:
+  enabled: ${FAUCET_ENABLED:false}
+  mnemonic: ${FAUCET_MNEMONIC:}
+  utxo-count: ${FAUCET_UTXO_COUNT:3}
+  utxo-amount-lovelace: ${FAUCET_UTXO_AMOUNT_LOVELACE:10000000}
+  cooldown-ms: ${FAUCET_COOLDOWN_MS:120000}
+
 proxy:
   transaction-hash: ${PROXY_TX_HASH:e87045afe5247ef3912b37be23ba7b0df193849f463ad4ddd89216c512613af2}
   output-index: ${PROXY_OUTPUT_INDEX:1}

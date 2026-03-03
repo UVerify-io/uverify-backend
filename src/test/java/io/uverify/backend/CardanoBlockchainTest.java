@@ -21,8 +21,10 @@ package io.uverify.backend;
 import co.nstant.in.cbor.CborException;
 import co.nstant.in.cbor.model.DataItem;
 import com.bloxbean.cardano.client.account.Account;
+import com.bloxbean.cardano.client.api.UtxoSupplier;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Result;
+import com.bloxbean.cardano.client.backend.api.DefaultUtxoSupplier;
 import com.bloxbean.cardano.client.backend.model.Block;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
@@ -54,6 +56,7 @@ import io.uverify.backend.simulation.SimulationUtils;
 import io.uverify.backend.util.ValidatorHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -152,6 +155,8 @@ public class CardanoBlockchainTest {
             for (String address : additionalFundingAddresses) {
                 fundingList.add(new Funding(address, 200));
                 fundingList.add(new Funding(address, 20));
+                fundingList.add(new Funding(address, 20));
+                fundingList.add(new Funding(address, 20));
             }
 
             Funding[] fundingArray = fundingList.toArray(new Funding[0]);
@@ -160,12 +165,7 @@ public class CardanoBlockchainTest {
                     .withInitialFunding(fundingArray)
                     .withLogConsumer(outputFrame -> log.info(outputFrame.getUtf8String()))
                     .start();
-            // Ensure UTXOs are available before proceeding with tests
-            try {
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+
             this.cardanoBlockchainService.setBackendService(yaciCardanoContainer.getBackendService());
             this.libraryService.setBackendService(yaciCardanoContainer.getBackendService());
         }
@@ -179,6 +179,25 @@ public class CardanoBlockchainTest {
         bootstrapDatumRepository.deleteAll();
         libraryRepository.deleteAll();
         this.validatorHelper.setProxy("", 0);
+    }
+
+    @BeforeAll
+    public void waitForFaucetFunding() throws InterruptedException {
+        waitForUtxos(facilitatorAccount.baseAddress());
+    }
+
+    protected void waitForUtxos(String address) throws InterruptedException {
+        UtxoSupplier utxoSupplier = new DefaultUtxoSupplier(yaciCardanoContainer.getBackendService().getUtxoService());
+        for (int attempt = 1; attempt <= 30; attempt++) {
+            var utxos = utxoSupplier.getAll(address);
+            if (!utxos.isEmpty()) {
+                log.info("UTXOs available at {} after {} attempt(s)", address, attempt);
+                return;
+            }
+            log.info("Waiting for UTXOs at {} (attempt {}/30)...", address, attempt);
+            Thread.sleep(1000);
+        }
+        throw new RuntimeException("Timeout: no UTXOs found for address " + address + " after 30 seconds");
     }
 
     protected void simulateYaciStoreBehavior(String transactionId) throws InterruptedException, ApiException {
