@@ -49,6 +49,15 @@ jobs:
           
           echo "TADAMON_EXTENSION_ENABLED=false" >> src/test/resources/.env
 
+          echo "PROXY_TX_HASH=" >> src/test/resources/.env
+          echo "PROXY_OUTPUT_INDEX=0" >> src/test/resources/.env
+
+          echo "FAUCET_ENABLED=true" >> src/test/resources/.env
+          echo "FAUCET_MNEMONIC=abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art" >> src/test/resources/.env
+          echo "FAUCET_UTXO_COUNT=3" >> src/test/resources/.env
+          echo "FAUCET_UTXO_AMOUNT_LOVELACE=10000000" >> src/test/resources/.env
+          echo "FAUCET_COOLDOWN_MS=120000" >> src/test/resources/.env
+
       - name: 🎳 Test
         run: |
           ./mvnw clean verify
