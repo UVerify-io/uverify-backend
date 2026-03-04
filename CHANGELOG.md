@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/UVerify-io/uverify-backend/compare/v1.9.0...v1.10.0) (2026-03-04)
+
+
+### Features
+
+* introduce a testnet faucet for UVerify to make the onboarding more frictionless ([dcaac1c](https://github.com/UVerify-io/uverify-backend/commit/dcaac1c2a1bde91617f09912332e8e6863570892))
+
 ## [1.9.0](https://github.com/UVerify-io/uverify-backend/compare/v1.8.0...v1.9.0) (2026-03-01)
 
 
