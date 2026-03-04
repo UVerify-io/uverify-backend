@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LibraryService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.service</a> &gt; <span class="el_source">LibraryService.java</span></div><h1>LibraryService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.service;
+
+import com.bloxbean.cardano.client.address.Address;
+import com.bloxbean.cardano.client.address.AddressProvider;
+import com.bloxbean.cardano.client.api.exception.ApiException;
+import com.bloxbean.cardano.client.api.model.Amount;
+import com.bloxbean.cardano.client.api.model.Result;
+import com.bloxbean.cardano.client.api.model.Utxo;
+import com.bloxbean.cardano.client.backend.api.BackendService;
+import com.bloxbean.cardano.client.backend.blockfrost.service.BFBackendService;
+import com.bloxbean.cardano.client.backend.koios.Constants;
+import com.bloxbean.cardano.client.backend.koios.KoiosBackendService;
+import com.bloxbean.cardano.client.common.model.Network;
+import com.bloxbean.cardano.client.exception.CborSerializationException;
+import com.bloxbean.cardano.client.plutus.blueprint.PlutusBlueprintUtil;
+import com.bloxbean.cardano.client.plutus.blueprint.model.PlutusVersion;
+import com.bloxbean.cardano.client.plutus.spec.PlutusData;
+import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
+import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
+import com.bloxbean.cardano.client.quicktx.ScriptTx;
+import com.bloxbean.cardano.client.quicktx.Tx;
+import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.client.util.HexUtil;
+import io.uverify.backend.dto.BuildStatus;
+import io.uverify.backend.dto.BuildTransactionResponse;
+import io.uverify.backend.dto.LibraryDeploymentResponse;
+import io.uverify.backend.dto.LibraryEntry;
+import io.uverify.backend.entity.LibraryEntity;
+import io.uverify.backend.enums.BuildStatusCode;
+import io.uverify.backend.enums.CardanoNetwork;
+import io.uverify.backend.enums.TransactionType;
+import io.uverify.backend.model.ProxyDatum;
+import io.uverify.backend.repository.LibraryRepository;
+import io.uverify.backend.util.ValidatorHelper;
+import io.uverify.backend.util.ValidatorUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Hex;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static io.uverify.backend.util.ValidatorUtils.*;
+
+@Service
+<span class="fc" id="L69">@Slf4j</span>
+public class LibraryService {
+
+    @Autowired
+    private final ValidatorHelper validatorHelper;
+    private final Address serviceUserAddress;
+    private final String libraryContractAddress;
+    private final PlutusScript libraryContract;
+    @Autowired
+    private final LibraryRepository libraryRepository;
+    private final Network network;
+    private Utxo proxyLibraryUtxo;
+    private Utxo stateLibraryUtxo;
+    private BackendService backendService;
+
+    @Autowired
+    public LibraryService(@Value(&quot;${cardano.service.user.address}&quot;) String serviceUserAddress,
+                          @Value(&quot;${cardano.backend.service.type}&quot;) String cardanoBackendServiceType,
+                          @Value(&quot;${cardano.backend.blockfrost.baseUrl}&quot;) String blockfrostBaseUrl,
+                          @Value(&quot;${cardano.backend.blockfrost.projectId}&quot;) String blockfrostProjectId,
+                          @Value(&quot;${cardano.network}&quot;) String network,
+                          ValidatorHelper validatorHelper,
+                          LibraryRepository libraryRepository
+<span class="fc" id="L92">    ) {</span>
+<span class="fc" id="L93">        this.serviceUserAddress = new Address(serviceUserAddress);</span>
+<span class="fc" id="L94">        this.validatorHelper = validatorHelper;</span>
+<span class="fc" id="L95">        this.libraryRepository = libraryRepository;</span>
+<span class="fc" id="L96">        this.network = CardanoNetwork.valueOf(network).toCardaoNetwork();</span>
+
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">        if (cardanoBackendServiceType.equals(&quot;blockfrost&quot;)) {</span>
+<span class="nc bnc" id="L99" title="All 4 branches missed.">            if (blockfrostProjectId == null || blockfrostProjectId.isEmpty()) {</span>
+<span class="nc" id="L100">                throw new IllegalArgumentException(&quot;Blockfrost projectId is required when using Blockfrost backend service&quot;);</span>
+            }
+
+<span class="nc" id="L103">            this.backendService = new BFBackendService(</span>
+                    blockfrostBaseUrl,
+                    blockfrostProjectId);
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">        } else if (cardanoBackendServiceType.equals(&quot;koios&quot;)) {</span>
+<span class="nc" id="L107">            this.backendService = new KoiosBackendService(Constants.KOIOS_PREPROD_URL);</span>
+        }
+
+<span class="fc" id="L110">        Optional&lt;byte[]&gt; optionalUserPaymentCredential = this.serviceUserAddress.getPaymentCredentialHash();</span>
+
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">        if (optionalUserPaymentCredential.isEmpty()) {</span>
+<span class="nc" id="L113">            throw new IllegalArgumentException(&quot;Invalid Cardano payment address&quot;);</span>
+        }
+
+<span class="fc" id="L116">        this.libraryContract = getLibraryContract(optionalUserPaymentCredential.get());</span>
+<span class="fc" id="L117">        this.libraryContractAddress = AddressProvider.getEntAddress(libraryContract, this.network).toBech32();</span>
+<span class="fc" id="L118">        reloadLibraryCache();</span>
+<span class="fc" id="L119">    }</span>
+
+    public void setBackendService(BackendService backendService) {
+<span class="fc" id="L122">        this.backendService = backendService;</span>
+<span class="fc" id="L123">    }</span>
+
+    public Utxo getProxyLibraryUtxo() {
+<span class="fc bfc" id="L126" title="All 2 branches covered.">        if (proxyLibraryUtxo == null) {</span>
+<span class="fc" id="L127">            reloadLibraryCache();</span>
+        }
+<span class="fc" id="L129">        return proxyLibraryUtxo;</span>
+    }
+
+    public Utxo getStateLibraryUtxo() {
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">        if (stateLibraryUtxo == null) {</span>
+<span class="nc" id="L134">            reloadLibraryCache();</span>
+        }
+<span class="fc" id="L136">        return stateLibraryUtxo;</span>
+    }
+
+    public Transaction deployUVerifyContracts() {
+<span class="fc" id="L140">        Optional&lt;byte[]&gt; optionalUserPaymentCredential = serviceUserAddress.getPaymentCredentialHash();</span>
+
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">        if (optionalUserPaymentCredential.isEmpty()) {</span>
+<span class="nc" id="L143">            throw new IllegalArgumentException(&quot;Invalid Cardano payment address&quot;);</span>
+        }
+
+<span class="fc" id="L146">        String proxyTransactionHash = validatorHelper.getProxyTransactionHash();</span>
+<span class="fc" id="L147">        Integer proxyOutputIndex = validatorHelper.getProxyOutputIndex();</span>
+
+<span class="fc" id="L149">        PlutusScript libraryContract = getLibraryContract(optionalUserPaymentCredential.get());</span>
+<span class="fc" id="L150">        String libraryContractAddress = AddressProvider.getEntAddress(libraryContract, network).toBech32();</span>
+
+<span class="fc" id="L152">        PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTransactionHash, proxyOutputIndex);</span>
+<span class="fc" id="L153">        PlutusScript uverifyStateContract = getUVerifyStateContract(proxyTransactionHash, proxyOutputIndex);</span>
+
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">        if (libraryRepository.count() &gt; 0) {</span>
+<span class="nc" id="L156">            throw new IllegalStateException(&quot;Library contracts have already been deployed. Multiple deployments are not allowed.&quot;);</span>
+        }
+
+<span class="fc" id="L159">        Tx tx = new Tx()</span>
+<span class="fc" id="L160">                .from(serviceUserAddress.getAddress())</span>
+<span class="fc" id="L161">                .payToContract(libraryContractAddress, Amount.ada(1L), PlutusData.unit(), uverifyProxyContract)</span>
+<span class="fc" id="L162">                .payToContract(libraryContractAddress, Amount.ada(1L), PlutusData.unit(), uverifyStateContract)</span>
+<span class="fc" id="L163">                .registerStakeAddress(AddressProvider.getRewardAddress(uverifyStateContract, network).toBech32());</span>
+
+<span class="fc" id="L165">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
+<span class="fc" id="L166">        return quickTxBuilder.compose(tx)</span>
+<span class="fc" id="L167">                .feePayer(serviceUserAddress.getAddress())</span>
+<span class="fc" id="L168">                .withRequiredSigners(serviceUserAddress)</span>
+<span class="fc" id="L169">                .mergeOutputs(false)</span>
+<span class="fc" id="L170">                .build();</span>
+    }
+
+    public BuildTransactionResponse buildDeployTransaction() {
+<span class="fc" id="L174">        return buildDeployTransaction(&quot;&quot;);</span>
+    }
+
+    public BuildTransactionResponse buildDeployTransaction(String compiledCode) {
+        try {
+            Transaction transaction;
+<span class="pc bpc" id="L180" title="1 of 4 branches missed.">            if (compiledCode != null &amp;&amp; !compiledCode.isEmpty()) {</span>
+<span class="fc" id="L181">                transaction = upgradeProxy(compiledCode);</span>
+            } else {
+<span class="fc" id="L183">                transaction = deployUVerifyContracts();</span>
+            }
+<span class="fc" id="L185">            return BuildTransactionResponse.builder()</span>
+<span class="fc" id="L186">                    .unsignedTransaction(transaction.serializeToHex())</span>
+<span class="fc" id="L187">                    .status(BuildStatus.builder()</span>
+<span class="fc" id="L188">                            .code(BuildStatusCode.SUCCESS)</span>
+<span class="fc" id="L189">                            .build())</span>
+<span class="fc" id="L190">                    .type(TransactionType.DEPLOY)</span>
+<span class="fc" id="L191">                    .build();</span>
+<span class="nc" id="L192">        } catch (Exception exception) {</span>
+<span class="nc" id="L193">            return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L194">                    .status(BuildStatus.builder()</span>
+<span class="nc" id="L195">                            .code(BuildStatusCode.ERROR)</span>
+<span class="nc" id="L196">                            .message(exception.getMessage())</span>
+<span class="nc" id="L197">                            .build())</span>
+<span class="nc" id="L198">                    .type(TransactionType.DEPLOY)</span>
+<span class="nc" id="L199">                    .build();</span>
+        }
+    }
+
+    private Transaction upgradeProxy(String compiledCode) {
+<span class="fc" id="L204">        PlutusScript script = PlutusBlueprintUtil.getPlutusScriptFromCompiledCode(compiledCode, PlutusVersion.v3);</span>
+
+<span class="fc" id="L206">        Optional&lt;byte[]&gt; optionalUserPaymentCredential = serviceUserAddress.getPaymentCredentialHash();</span>
+
+<span class="pc bpc" id="L208" title="1 of 2 branches missed.">        if (optionalUserPaymentCredential.isEmpty()) {</span>
+<span class="nc" id="L209">            throw new IllegalArgumentException(&quot;Invalid Cardano payment address&quot;);</span>
+        }
+
+        Utxo proxyStateUtxo;
+        try {
+<span class="fc" id="L214">            proxyStateUtxo = validatorHelper.resolveProxyStateUtxo(backendService);</span>
+<span class="nc" id="L215">        } catch (ApiException e) {</span>
+<span class="nc" id="L216">            throw new RuntimeException(e);</span>
+<span class="fc" id="L217">        }</span>
+
+<span class="fc" id="L219">        PlutusScript libraryContract = getLibraryContract(optionalUserPaymentCredential.get());</span>
+<span class="fc" id="L220">        String libraryContractAddress = AddressProvider.getEntAddress(libraryContract, network).toBech32();</span>
+
+<span class="fc" id="L222">        Tx tx = new Tx()</span>
+<span class="fc" id="L223">                .from(serviceUserAddress.getAddress())</span>
+<span class="fc" id="L224">                .registerStakeAddress(AddressProvider.getRewardAddress(script, network).toBech32())</span>
+<span class="fc" id="L225">                .payToAddress(serviceUserAddress.getAddress(), Amount.ada(1L));</span>
+
+<span class="fc" id="L227">        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();</span>
+<span class="fc" id="L228">        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, network).toBech32();</span>
+
+<span class="fc" id="L230">        ProxyDatum proxyDatum = ProxyDatum.builder()</span>
+<span class="fc" id="L231">                .ScriptOwner(Hex.encodeHexString(optionalUserPaymentCredential.get()))</span>
+<span class="fc" id="L232">                .ScriptPointer(validatorToScriptHash(script))</span>
+<span class="fc" id="L233">                .build();</span>
+
+<span class="fc" id="L235">        ScriptTx scriptTx = new ScriptTx()</span>
+<span class="fc" id="L236">                .readFrom(proxyLibraryUtxo)</span>
+<span class="fc" id="L237">                .payToContract(libraryContractAddress, Amount.ada(1L), PlutusData.unit(), script)</span>
+<span class="fc" id="L238">                .collectFrom(proxyStateUtxo, PlutusData.unit())</span>
+<span class="fc" id="L239">                .payToContract(proxyScriptAddress, proxyStateUtxo.getAmount(), proxyDatum.toPlutusData());</span>
+
+<span class="fc" id="L241">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
+<span class="fc" id="L242">        return quickTxBuilder.compose(tx, scriptTx)</span>
+<span class="fc" id="L243">                .feePayer(serviceUserAddress.getAddress())</span>
+<span class="fc" id="L244">                .withRequiredSigners(serviceUserAddress)</span>
+<span class="fc" id="L245">                .withReferenceScripts(proxyContract)</span>
+<span class="fc" id="L246">                .build();</span>
+    }
+
+    private void reloadLibraryCache() {
+<span class="fc" id="L250">        Optional&lt;LibraryEntity&gt; proxyEntry = libraryRepository.findById(0L);</span>
+<span class="fc" id="L251">        Optional&lt;LibraryEntity&gt; stateEntry = libraryRepository.getLatestScript();</span>
+
+<span class="pc bpc" id="L253" title="1 of 4 branches missed.">        if (proxyEntry.isPresent() &amp;&amp; stateEntry.isPresent()) {</span>
+            try {
+<span class="fc" id="L255">                this.proxyLibraryUtxo = resolveUtxo(proxyEntry.get().getTransactionId(), proxyEntry.get().getOutputIndex());</span>
+<span class="fc" id="L256">                this.stateLibraryUtxo = resolveUtxo(stateEntry.get().getTransactionId(), stateEntry.get().getOutputIndex());</span>
+<span class="nc" id="L257">            } catch (Exception e) {</span>
+<span class="nc" id="L258">                log.error(&quot;Failed to reload library cache: {}&quot;, e.getMessage());</span>
+<span class="pc" id="L259">            }</span>
+        } else {
+<span class="fc" id="L261">            log.error(&quot;Failed to reload library cache: Missing library entries in the database.&quot;);</span>
+        }
+<span class="fc" id="L263">    }</span>
+
+    private Utxo resolveUtxo(String transactionId, Integer outputIndex) {
+        try {
+<span class="fc" id="L267">            Result&lt;Utxo&gt; utxoResult = backendService.getUtxoService().getTxOutput(transactionId, outputIndex);</span>
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">            if (utxoResult.isSuccessful()) {</span>
+<span class="fc" id="L269">                return utxoResult.getValue();</span>
+            } else {
+<span class="nc" id="L271">                log.error(&quot;Failed to fetch UTXO: {}&quot;, utxoResult.getResponse());</span>
+<span class="nc" id="L272">                return null;</span>
+            }
+<span class="nc" id="L274">        } catch (ApiException e) {</span>
+<span class="nc" id="L275">            log.error(&quot;Failed to fetch UTXO: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L276">            return null;</span>
+        }
+    }
+
+    private List&lt;LibraryEntry&gt; getLibraryEntries() {
+<span class="fc" id="L281">        List&lt;Utxo&gt; utxos = new ArrayList&lt;&gt;();</span>
+        try {
+<span class="fc" id="L283">            Result&lt;List&lt;Utxo&gt;&gt; utxoResult = backendService.getUtxoService().getUtxos(libraryContractAddress, 100, 1);</span>
+<span class="pc bpc" id="L284" title="2 of 4 branches missed.">            if (utxoResult.isSuccessful() &amp;&amp; utxoResult.getValue() != null) {</span>
+<span class="fc" id="L285">                utxos = utxoResult.getValue();</span>
+            }
+<span class="nc" id="L287">        } catch (ApiException e) {</span>
+<span class="nc" id="L288">            log.error(&quot;Error fetching UTXOs for library contract address {}: {}&quot;, libraryContractAddress, e.getMessage());</span>
+<span class="fc" id="L289">        }</span>
+
+<span class="fc" id="L291">        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(validatorHelper.getParameterizedProxyContract());</span>
+<span class="fc" id="L292">        String stateScriptHash = ValidatorUtils.validatorToScriptHash(validatorHelper.getParameterizedUVerifyStateContract());</span>
+
+<span class="fc" id="L294">        ArrayList&lt;LibraryEntry&gt; entries = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L295" title="All 2 branches covered.">        for (Utxo utxo : utxos) {</span>
+<span class="pc bpc" id="L296" title="1 of 6 branches missed.">            boolean isActiveContract = utxo.getReferenceScriptHash() != null &amp;&amp; (utxo.getReferenceScriptHash().equals(proxyScriptHash) || utxo.getReferenceScriptHash().equals(stateScriptHash));</span>
+<span class="fc" id="L297">            entries.add(LibraryEntry.builder()</span>
+<span class="fc" id="L298">                    .transactionHash(utxo.getTxHash())</span>
+<span class="fc" id="L299">                    .outputIndex(utxo.getOutputIndex())</span>
+<span class="fc" id="L300">                    .isActiveContract(isActiveContract)</span>
+<span class="fc" id="L301">                    .build());</span>
+<span class="fc" id="L302">        }</span>
+<span class="fc" id="L303">        return entries;</span>
+    }
+
+    public LibraryDeploymentResponse getDeployments() {
+<span class="fc" id="L307">        List&lt;LibraryEntry&gt; entries = getLibraryEntries();</span>
+
+<span class="fc" id="L309">        return LibraryDeploymentResponse.builder()</span>
+<span class="fc" id="L310">                .address(libraryContractAddress)</span>
+<span class="fc" id="L311">                .entries(entries)</span>
+<span class="fc" id="L312">                .build();</span>
+    }
+
+    public BuildTransactionResponse undeployUnusedContracts() {
+<span class="fc" id="L316">        List&lt;LibraryEntry&gt; entries = getLibraryEntries();</span>
+
+<span class="pc bpc" id="L318" title="1 of 2 branches missed.">        if (entries.isEmpty()) {</span>
+<span class="nc" id="L319">            return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L320">                    .status(BuildStatus.builder()</span>
+<span class="nc" id="L321">                            .code(BuildStatusCode.ERROR)</span>
+<span class="nc" id="L322">                            .message(</span>
+                                    &quot;No contracts found in library&quot;
+<span class="nc" id="L324">                            ).build())</span>
+<span class="nc" id="L325">                    .build();</span>
+        }
+
+<span class="fc" id="L328">        List&lt;LibraryEntry&gt; entriesToUndeploy = entries.stream()</span>
+<span class="fc bfc" id="L329" title="All 2 branches covered.">                .filter(entry -&gt; !entry.getIsActiveContract())</span>
+<span class="fc" id="L330">                .toList();</span>
+
+<span class="pc bpc" id="L332" title="1 of 2 branches missed.">        if (entriesToUndeploy.isEmpty()) {</span>
+<span class="nc" id="L333">            return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L334">                    .status(BuildStatus.builder()</span>
+<span class="nc" id="L335">                            .code(BuildStatusCode.SUCCESS)</span>
+<span class="nc" id="L336">                            .message(</span>
+                                    &quot;No unused contracts to undeploy&quot;
+<span class="nc" id="L338">                            ).build())</span>
+<span class="nc" id="L339">                    .build();</span>
+        } else {
+<span class="fc" id="L341">            ArrayList&lt;Utxo&gt; utxosToUndeploy = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L342" title="All 2 branches covered.">            for (LibraryEntry entry : entriesToUndeploy) {</span>
+                try {
+<span class="fc" id="L344">                    Result&lt;Utxo&gt; utxoResult = backendService.getUtxoService().getTxOutput(entry.getTransactionHash(), entry.getOutputIndex());</span>
+<span class="pc bpc" id="L345" title="2 of 4 branches missed.">                    if (utxoResult.isSuccessful() &amp;&amp; utxoResult.getValue() != null) {</span>
+<span class="fc" id="L346">                        utxosToUndeploy.add(utxoResult.getValue());</span>
+                    } else {
+<span class="nc" id="L348">                        log.error(&quot;Failed to fetch UTXO for transaction hash {} and output index {}&quot;, entry.getTransactionHash(), entry.getOutputIndex());</span>
+                    }
+<span class="nc" id="L350">                } catch (ApiException e) {</span>
+<span class="nc" id="L351">                    log.error(&quot;Error fetching UTXO for transaction hash {} and output index {}: {}&quot;, entry.getTransactionHash(), entry.getOutputIndex(), e.getMessage());</span>
+<span class="fc" id="L352">                }</span>
+<span class="fc" id="L353">            }</span>
+<span class="fc" id="L354">            ScriptTx tx = new ScriptTx()</span>
+<span class="fc" id="L355">                    .collectFrom(utxosToUndeploy, PlutusData.unit())</span>
+<span class="fc" id="L356">                    .attachSpendingValidator(libraryContract)</span>
+<span class="fc" id="L357">                    .payToAddress(serviceUserAddress.getAddress(),</span>
+<span class="fc" id="L358">                            utxosToUndeploy.stream()</span>
+<span class="fc" id="L359">                                    .map(Utxo::getAmount)</span>
+<span class="fc" id="L360">                                    .flatMap(Collection::stream)</span>
+<span class="fc" id="L361">                                    .collect(Collectors.toList()));</span>
+
+<span class="fc" id="L363">            QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
+
+<span class="fc" id="L365">            Transaction unsignedTx = quickTxBuilder.compose(tx)</span>
+<span class="fc" id="L366">                    .feePayer(serviceUserAddress.getAddress())</span>
+<span class="fc" id="L367">                    .withRequiredSigners(serviceUserAddress)</span>
+<span class="fc" id="L368">                    .build();</span>
+
+<span class="fc" id="L370">            String serializedTx = &quot;&quot;;</span>
+            try {
+<span class="fc" id="L372">                serializedTx = HexUtil.encodeHexString(unsignedTx.serialize());</span>
+<span class="nc" id="L373">            } catch (CborSerializationException e) {</span>
+<span class="nc" id="L374">                log.error(&quot;Error serializing transaction: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L375">            }</span>
+
+<span class="pc bpc" id="L377" title="1 of 2 branches missed.">            if (serializedTx.equals(&quot;&quot;)) {</span>
+<span class="nc" id="L378">                return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L379">                        .status(BuildStatus.builder()</span>
+<span class="nc" id="L380">                                .code(BuildStatusCode.ERROR)</span>
+<span class="nc" id="L381">                                .message(</span>
+                                        &quot;Failed to serialize transaction&quot;
+<span class="nc" id="L383">                                ).build())</span>
+<span class="nc" id="L384">                        .build();</span>
+            }
+
+<span class="fc" id="L387">            return BuildTransactionResponse.builder()</span>
+<span class="fc" id="L388">                    .unsignedTransaction(serializedTx)</span>
+<span class="fc" id="L389">                    .status(BuildStatus.builder()</span>
+<span class="fc" id="L390">                            .code(BuildStatusCode.SUCCESS)</span>
+<span class="fc" id="L391">                            .build()</span>
+<span class="fc" id="L392">                    ).build();</span>
+        }
+    }
+
+    public BuildTransactionResponse undeployContract(String transactionHash, Integer outputIndex) {
+<span class="fc" id="L397">        List&lt;LibraryEntry&gt; entries = getLibraryEntries();</span>
+<span class="pc bpc" id="L398" title="1 of 4 branches missed.">        LibraryEntry libraryEntry = entries.stream().filter(entry -&gt; entry.getTransactionHash().equals(transactionHash) &amp;&amp; entry.getOutputIndex().equals(outputIndex)).findFirst().orElse(null);</span>
+<span class="pc bpc" id="L399" title="2 of 4 branches missed.">        if (libraryEntry == null || libraryEntry.getIsActiveContract()) {</span>
+<span class="fc" id="L400">            return BuildTransactionResponse.builder()</span>
+<span class="fc" id="L401">                    .status(BuildStatus.builder()</span>
+<span class="fc" id="L402">                            .code(BuildStatusCode.ERROR)</span>
+<span class="fc" id="L403">                            .message(</span>
+                                    &quot;The library entry is either not found or is an active contract and cannot be undeployed&quot;
+<span class="fc" id="L405">                            ).build())</span>
+<span class="fc" id="L406">                    .build();</span>
+        }
+
+<span class="nc" id="L409">        Utxo utxoToUndeploy = null;</span>
+        try {
+<span class="nc" id="L411">            Result&lt;Utxo&gt; utxoResult = backendService.getUtxoService().getTxOutput(transactionHash, outputIndex);</span>
+<span class="nc bnc" id="L412" title="All 4 branches missed.">            if (utxoResult.isSuccessful() &amp;&amp; utxoResult.getValue() != null) {</span>
+<span class="nc" id="L413">                utxoToUndeploy = utxoResult.getValue();</span>
+            } else {
+<span class="nc" id="L415">                log.error(&quot;Failed to fetch UTXO for transaction hash {} and output index {}&quot;, transactionHash, outputIndex);</span>
+            }
+<span class="nc" id="L417">        } catch (ApiException e) {</span>
+<span class="nc" id="L418">            log.error(&quot;Error fetching UTXO for transaction hash {} and output index {}: {}&quot;, transactionHash, outputIndex, e.getMessage());</span>
+<span class="nc" id="L419">        }</span>
+
+<span class="nc bnc" id="L421" title="All 2 branches missed.">        if (utxoToUndeploy == null) {</span>
+<span class="nc" id="L422">            return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L423">                    .status(BuildStatus.builder()</span>
+<span class="nc" id="L424">                            .code(BuildStatusCode.ERROR)</span>
+<span class="nc" id="L425">                            .message(</span>
+                                    &quot;Failed to fetch UTXO for the library entry to undeploy&quot;
+<span class="nc" id="L427">                            ).build())</span>
+<span class="nc" id="L428">                    .build();</span>
+        }
+
+<span class="nc" id="L431">        ScriptTx tx = new ScriptTx()</span>
+<span class="nc" id="L432">                .collectFrom(utxoToUndeploy, PlutusData.unit())</span>
+<span class="nc" id="L433">                .attachSpendingValidator(libraryContract)</span>
+<span class="nc" id="L434">                .payToAddress(serviceUserAddress.getAddress(),</span>
+<span class="nc" id="L435">                        utxoToUndeploy.getAmount());</span>
+
+<span class="nc" id="L437">        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);</span>
+<span class="nc" id="L438">        Transaction unsignedTx = quickTxBuilder.compose(tx)</span>
+<span class="nc" id="L439">                .feePayer(serviceUserAddress.getAddress())</span>
+<span class="nc" id="L440">                .withRequiredSigners(serviceUserAddress)</span>
+<span class="nc" id="L441">                .build();</span>
+
+<span class="nc" id="L443">        String serializedTx = &quot;&quot;;</span>
+        try {
+<span class="nc" id="L445">            serializedTx = HexUtil.encodeHexString(unsignedTx.serialize());</span>
+<span class="nc" id="L446">        } catch (CborSerializationException e) {</span>
+<span class="nc" id="L447">            log.error(&quot;Error serializing transaction: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L448">        }</span>
+
+<span class="nc bnc" id="L450" title="All 2 branches missed.">        if (serializedTx.equals(&quot;&quot;)) {</span>
+<span class="nc" id="L451">            return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L452">                    .status(BuildStatus.builder()</span>
+<span class="nc" id="L453">                            .code(BuildStatusCode.ERROR)</span>
+<span class="nc" id="L454">                            .message(</span>
+                                    &quot;Failed to serialize transaction&quot;
+<span class="nc" id="L456">                            ).build())</span>
+<span class="nc" id="L457">                    .build();</span>
+        } else {
+<span class="nc" id="L459">            return BuildTransactionResponse.builder()</span>
+<span class="nc" id="L460">                    .unsignedTransaction(serializedTx)</span>
+<span class="nc" id="L461">                    .status(BuildStatus.builder()</span>
+<span class="nc" id="L462">                            .code(BuildStatusCode.SUCCESS)</span>
+<span class="nc" id="L463">                            .build()</span>
+<span class="nc" id="L464">                    ).build();</span>
+        }
+    }
+
+    private boolean hasProxyScriptRef(com.bloxbean.cardano.yaci.helper.model.Utxo utxo) {
+<span class="fc" id="L469">        String compiledCode = utxo.getScriptRef();</span>
+<span class="fc" id="L470">        PlutusScript script = PlutusScript.deserializeScriptRef(HexUtil.decodeHexString(compiledCode));</span>
+
+        try {
+<span class="fc" id="L473">            return validatorHelper.getParameterizedProxyContract().getPolicyId().equals(script.getPolicyId());</span>
+<span class="nc" id="L474">        } catch (Exception e) {</span>
+<span class="nc" id="L475">            log.error(&quot;Failed to get policy id from scripts: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L476">            return false;</span>
+        }
+    }
+
+    private boolean isFirstDeployment() {
+<span class="fc bfc" id="L481" title="All 2 branches covered.">        return libraryRepository.count() == 0;</span>
+    }
+
+    private void deployUtxoScript(com.bloxbean.cardano.yaci.helper.model.Utxo utxo, Long slot) {
+        try {
+<span class="fc" id="L486">            String compiledCode = utxo.getScriptRef();</span>
+<span class="fc" id="L487">            PlutusScript script = PlutusScript.deserializeScriptRef(HexUtil.decodeHexString(compiledCode));</span>
+<span class="fc" id="L488">            LibraryEntity libraryEntity = LibraryEntity.builder()</span>
+<span class="fc" id="L489">                    .slot(slot)</span>
+<span class="fc" id="L490">                    .transactionId(utxo.getTxHash())</span>
+<span class="fc" id="L491">                    .outputIndex(utxo.getIndex())</span>
+<span class="fc" id="L492">                    .compiledCode(script.getCborHex())</span>
+<span class="fc" id="L493">                    .hash(script.getPolicyId()).build();</span>
+<span class="fc" id="L494">            libraryRepository.save(libraryEntity);</span>
+<span class="nc" id="L495">        } catch (Exception e) {</span>
+<span class="nc" id="L496">            log.error(&quot;Potential script deployment skipped. Failed to deserialize inline datum for library UTXO: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L497">        }</span>
+<span class="fc" id="L498">    }</span>
+
+    private void deployAllUtxoScripts(List&lt;com.bloxbean.cardano.yaci.helper.model.Utxo&gt; utxos, Long slot) {
+<span class="fc bfc" id="L501" title="All 2 branches covered.">        for (com.bloxbean.cardano.yaci.helper.model.Utxo utxo : utxos) {</span>
+<span class="fc" id="L502">            deployUtxoScript(utxo, slot);</span>
+<span class="fc" id="L503">        }</span>
+<span class="fc" id="L504">    }</span>
+
+    public void deployToLibrary(ArrayList&lt;com.bloxbean.cardano.yaci.helper.model.Utxo&gt; utxos, Long slot) {
+<span class="fc bfc" id="L507" title="All 2 branches covered.">        if (isFirstDeployment()) {</span>
+<span class="fc" id="L508">            boolean proxyScriptInUtxos = utxos.stream().anyMatch(this::hasProxyScriptRef);</span>
+<span class="pc bpc" id="L509" title="1 of 2 branches missed.">            if (!proxyScriptInUtxos) {</span>
+<span class="nc" id="L510">                log.error(&quot;No proxy script found in the provided UTXOs for the first deployment. Deployment skipped.&quot;);</span>
+            } else {
+<span class="fc" id="L512">                Optional&lt;com.bloxbean.cardano.yaci.helper.model.Utxo&gt; proxyUtxo = utxos.stream().filter(this::hasProxyScriptRef).findFirst();</span>
+<span class="fc" id="L513">                proxyUtxo.ifPresent(utxos::remove);</span>
+
+<span class="pc bpc" id="L515" title="1 of 2 branches missed.">                if (proxyUtxo.isPresent()) {</span>
+<span class="fc" id="L516">                    deployUtxoScript(proxyUtxo.get(), slot);</span>
+                } else {
+<span class="nc" id="L518">                    log.error(&quot;Failed to find the proxy script UTXO for the first deployment. Deployment skipped.&quot;);</span>
+<span class="nc" id="L519">                    return;</span>
+                }
+
+<span class="fc" id="L522">                deployAllUtxoScripts(utxos, slot);</span>
+            }
+<span class="fc" id="L524">        } else {</span>
+<span class="fc" id="L525">            deployAllUtxoScripts(utxos, slot);</span>
+        }
+<span class="fc" id="L527">    }</span>
+
+    public String getLibraryAddress() {
+<span class="fc" id="L530">        return libraryContractAddress;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

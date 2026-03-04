@@ -150,7 +150,7 @@ public class UserStateService {
     public ExecuteUserActionResponse executeUserOptOut(ExecuteUserActionRequest request) {
 <span class="nc bnc" id="L151" title="All 4 branches missed.">        if (signaturesAreValid(request) &amp;&amp; hasValidTimeframe(request.getTimestamp())) {</span>
 <span class="nc" id="L152">            String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(request.getAddress()));</span>
-<span class="nc" id="L153">            List&lt;StateDatumEntity&gt; stateDatumEntities = stateDatumRepository.findByOwner(userCredential);</span>
+<span class="nc" id="L153">            List&lt;StateDatumEntity&gt; stateDatumEntities = stateDatumRepository.findByOwner(userCredential, 1);</span>
 <span class="nc" id="L154">            Address userAddress = new Address(request.getAddress());</span>
 <span class="nc" id="L155">            ExecuteUserActionResponse response = ExecuteUserActionResponse.builder().status(HttpStatus.OK).build();</span>
             try {
@@ -207,7 +207,7 @@ public class UserStateService {
 
 <span class="fc" id="L208">            bootstrapDatumEntities.addAll(customBootstrapDatumEntities);</span>
 
-<span class="fc" id="L210">            List&lt;StateDatumEntity&gt; stateDatumEntities = stateDatumRepository.findByOwner(userCredential);</span>
+<span class="fc" id="L210">            List&lt;StateDatumEntity&gt; stateDatumEntities = stateDatumRepository.findByOwner(userCredential, 1);</span>
 
 <span class="fc" id="L212">            return ExecuteUserActionResponse.builder()</span>
 <span class="fc" id="L213">                    .state(UserState.builder()</span>

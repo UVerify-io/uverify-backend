@@ -26,7 +26,6 @@ import io.uverify.backend.dto.BootstrapData;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.UserCredentialEntity;
-import io.uverify.backend.enums.CardanoNetwork;
 import lombok.*;
 
 import java.math.BigInteger;
@@ -36,171 +35,145 @@ import java.util.Optional;
 import static io.uverify.backend.util.ValidatorUtils.*;
 
 @Getter
-<span class="fc" id="L39">@Setter</span>
-<span class="fc" id="L40">@AllArgsConstructor</span>
-<span class="fc" id="L41">@NoArgsConstructor</span>
-<span class="nc" id="L42">@Builder</span>
+<span class="fc" id="L38">@Setter</span>
+<span class="fc" id="L39">@AllArgsConstructor</span>
+<span class="fc" id="L40">@NoArgsConstructor</span>
+<span class="nc" id="L41">@Builder</span>
 public class BootstrapDatum {
-<span class="fc" id="L44">    private List&lt;byte[]&gt; allowedCredentials;</span>
-<span class="fc" id="L45">    private String tokenName;</span>
-<span class="fc" id="L46">    private Integer fee;</span>
-<span class="fc" id="L47">    private Integer feeInterval;</span>
-<span class="fc" id="L48">    private List&lt;byte[]&gt; feeReceivers;</span>
-<span class="fc" id="L49">    private Long ttl;</span>
-<span class="fc" id="L50">    private Integer transactionLimit;</span>
-<span class="fc" id="L51">    private Integer batchSize;</span>
+<span class="fc" id="L43">    private List&lt;byte[]&gt; allowedCredentials;</span>
+<span class="fc" id="L44">    private String tokenName;</span>
+<span class="fc" id="L45">    private Integer fee;</span>
+<span class="fc" id="L46">    private Integer feeInterval;</span>
+<span class="fc" id="L47">    private List&lt;byte[]&gt; feeReceivers;</span>
+<span class="fc" id="L48">    private Long ttl;</span>
+<span class="fc" id="L49">    private Integer transactionLimit;</span>
+<span class="fc" id="L50">    private Integer batchSize;</span>
 
     public static BootstrapDatum fromBootstrapData(BootstrapData bootstrapData) {
-<span class="fc" id="L54">        return new BootstrapDatum(</span>
-<span class="fc" id="L55">                bootstrapData.getWhitelistedAddresses().stream().map(BootstrapDatum::extractCredentialFromAddress).toList(),</span>
-<span class="fc" id="L56">                bootstrapData.getName(),</span>
-<span class="fc" id="L57">                bootstrapData.getFee(),</span>
-<span class="fc" id="L58">                bootstrapData.getFeeInterval(),</span>
-<span class="fc" id="L59">                bootstrapData.getFeeReceiverAddresses().stream().map(BootstrapDatum::extractCredentialFromAddress).toList(),</span>
-<span class="fc" id="L60">                bootstrapData.getTtl(),</span>
-<span class="fc" id="L61">                bootstrapData.getTransactionLimit(),</span>
-<span class="fc" id="L62">                bootstrapData.getBatchSize()</span>
+<span class="fc" id="L53">        return new BootstrapDatum(</span>
+<span class="fc" id="L54">                bootstrapData.getWhitelistedAddresses().stream().map(BootstrapDatum::extractCredentialFromAddress).toList(),</span>
+<span class="fc" id="L55">                bootstrapData.getName(),</span>
+<span class="fc" id="L56">                bootstrapData.getFee(),</span>
+<span class="fc" id="L57">                bootstrapData.getFeeInterval(),</span>
+<span class="fc" id="L58">                bootstrapData.getFeeReceiverAddresses().stream().map(BootstrapDatum::extractCredentialFromAddress).toList(),</span>
+<span class="fc" id="L59">                bootstrapData.getTtl(),</span>
+<span class="fc" id="L60">                bootstrapData.getTransactionLimit(),</span>
+<span class="fc" id="L61">                bootstrapData.getBatchSize()</span>
         );
     }
 
     public static BootstrapDatum generateFrom(List&lt;String&gt; feeReceivers) {
-<span class="fc" id="L67">        return new BootstrapDatum(</span>
-<span class="fc" id="L68">                List.of(),</span>
+<span class="fc" id="L66">        return new BootstrapDatum(</span>
+<span class="fc" id="L67">                List.of(),</span>
                 &quot;UVerify_Default_Token&quot;,
-<span class="fc" id="L70">                2000000,</span>
-<span class="fc" id="L71">                10,</span>
-<span class="fc" id="L72">                feeReceivers.stream().map(BootstrapDatum::extractCredentialFromAddress).toList(),</span>
-<span class="fc" id="L73">                System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000,</span>
-<span class="fc" id="L74">                1000,</span>
-<span class="fc" id="L75">                1</span>
+<span class="fc" id="L69">                2000000,</span>
+<span class="fc" id="L70">                10,</span>
+<span class="fc" id="L71">                feeReceivers.stream().map(BootstrapDatum::extractCredentialFromAddress).toList(),</span>
+<span class="fc" id="L72">                System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000,</span>
+<span class="fc" id="L73">                1000,</span>
+<span class="fc" id="L74">                1</span>
         );
     }
 
     public static byte[] extractCredentialFromAddress(String address) {
-<span class="fc" id="L80">        Optional&lt;byte[]&gt; maybeServiceAccountPaymentCredential = new Address(address).getPaymentCredentialHash();</span>
-<span class="pc bpc" id="L81" title="1 of 2 branches missed.">        if (maybeServiceAccountPaymentCredential.isEmpty()) {</span>
-<span class="nc" id="L82">            throw new IllegalArgumentException(&quot;Invalid payment address&quot;);</span>
+<span class="fc" id="L79">        Optional&lt;byte[]&gt; maybeServiceAccountPaymentCredential = new Address(address).getPaymentCredentialHash();</span>
+<span class="pc bpc" id="L80" title="1 of 2 branches missed.">        if (maybeServiceAccountPaymentCredential.isEmpty()) {</span>
+<span class="nc" id="L81">            throw new IllegalArgumentException(&quot;Invalid payment address&quot;);</span>
         }
-<span class="fc" id="L84">        return maybeServiceAccountPaymentCredential.get();</span>
+<span class="fc" id="L83">        return maybeServiceAccountPaymentCredential.get();</span>
     }
 
     public static BootstrapDatum fromBootstapDatumEntity(BootstrapDatumEntity bootstrapDatumEntity) {
-<span class="fc" id="L88">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
-<span class="fc" id="L89">        bootstrapDatum.setAllowedCredentials(bootstrapDatumEntity.getAllowedCredentials().stream()</span>
-<span class="fc" id="L90">                .map(UserCredentialEntity::getCredential)</span>
-<span class="fc" id="L91">                .map(String::getBytes).toList());</span>
-<span class="fc" id="L92">        bootstrapDatum.setTokenName(bootstrapDatumEntity.getTokenName());</span>
-<span class="fc" id="L93">        bootstrapDatum.setFee(bootstrapDatumEntity.getFee());</span>
-<span class="fc" id="L94">        bootstrapDatum.setFeeInterval(bootstrapDatumEntity.getFeeInterval());</span>
-<span class="fc" id="L95">        bootstrapDatum.setFeeReceivers(bootstrapDatumEntity.getFeeReceivers().stream()</span>
-<span class="fc" id="L96">                .map(FeeReceiverEntity::getCredential)</span>
-<span class="fc" id="L97">                .map(String::getBytes).toList());</span>
-<span class="fc" id="L98">        bootstrapDatum.setTtl(bootstrapDatumEntity.getTtl());</span>
-<span class="fc" id="L99">        bootstrapDatum.setTransactionLimit(bootstrapDatumEntity.getTransactionLimit());</span>
-<span class="fc" id="L100">        bootstrapDatum.setBatchSize(bootstrapDatumEntity.getBatchSize());</span>
-<span class="fc" id="L101">        return bootstrapDatum;</span>
+<span class="fc" id="L87">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
+<span class="fc" id="L88">        bootstrapDatum.setAllowedCredentials(bootstrapDatumEntity.getAllowedCredentials().stream()</span>
+<span class="fc" id="L89">                .map(UserCredentialEntity::getCredential)</span>
+<span class="fc" id="L90">                .map(String::getBytes).toList());</span>
+<span class="fc" id="L91">        bootstrapDatum.setTokenName(bootstrapDatumEntity.getTokenName());</span>
+<span class="fc" id="L92">        bootstrapDatum.setFee(bootstrapDatumEntity.getFee());</span>
+<span class="fc" id="L93">        bootstrapDatum.setFeeInterval(bootstrapDatumEntity.getFeeInterval());</span>
+<span class="fc" id="L94">        bootstrapDatum.setFeeReceivers(bootstrapDatumEntity.getFeeReceivers().stream()</span>
+<span class="fc" id="L95">                .map(FeeReceiverEntity::getCredential)</span>
+<span class="fc" id="L96">                .map(String::getBytes).toList());</span>
+<span class="fc" id="L97">        bootstrapDatum.setTtl(bootstrapDatumEntity.getTtl());</span>
+<span class="fc" id="L98">        bootstrapDatum.setTransactionLimit(bootstrapDatumEntity.getTransactionLimit());</span>
+<span class="fc" id="L99">        bootstrapDatum.setBatchSize(bootstrapDatumEntity.getBatchSize());</span>
+<span class="fc" id="L100">        return bootstrapDatum;</span>
     }
 
     public static BootstrapDatum fromLegancyUtxoDatum(String inlineDatum) {
-<span class="fc" id="L105">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
+<span class="fc" id="L104">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
         try {
-<span class="fc" id="L107">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
-<span class="fc" id="L108">            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));</span>
-<span class="fc" id="L109">            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(2)));</span>
-<span class="fc" id="L110">            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(4)));</span>
-<span class="fc" id="L111">            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(5)));</span>
-<span class="fc" id="L112">            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(6)));</span>
-<span class="fc" id="L113">            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(7)));</span>
-<span class="fc" id="L114">            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(8)));</span>
-<span class="fc" id="L115">            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(9)));</span>
-<span class="nc" id="L116">        } catch (CborDeserializationException e) {</span>
-<span class="nc" id="L117">            throw new RuntimeException(e);</span>
-<span class="fc" id="L118">        }</span>
-<span class="fc" id="L119">        return bootstrapDatum;</span>
+<span class="fc" id="L106">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
+<span class="fc" id="L107">            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));</span>
+<span class="fc" id="L108">            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(2)));</span>
+<span class="fc" id="L109">            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(4)));</span>
+<span class="fc" id="L110">            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(5)));</span>
+<span class="fc" id="L111">            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(6)));</span>
+<span class="fc" id="L112">            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(7)));</span>
+<span class="fc" id="L113">            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(8)));</span>
+<span class="fc" id="L114">            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(9)));</span>
+<span class="nc" id="L115">        } catch (CborDeserializationException e) {</span>
+<span class="nc" id="L116">            throw new RuntimeException(e);</span>
+<span class="fc" id="L117">        }</span>
+<span class="fc" id="L118">        return bootstrapDatum;</span>
     }
 
     public static BootstrapDatum fromUtxoDatum(String inlineDatum) {
-<span class="fc" id="L123">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
+<span class="fc" id="L122">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
         try {
-<span class="fc" id="L125">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
-<span class="fc" id="L126">            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));</span>
-<span class="fc" id="L127">            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(1)));</span>
-<span class="fc" id="L128">            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(2)));</span>
-<span class="fc" id="L129">            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(3)));</span>
-<span class="fc" id="L130">            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(4)));</span>
-<span class="fc" id="L131">            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(5)));</span>
-<span class="fc" id="L132">            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(6)));</span>
-<span class="fc" id="L133">            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(7)));</span>
-<span class="nc" id="L134">        } catch (CborDeserializationException e) {</span>
-<span class="nc" id="L135">            throw new RuntimeException(e);</span>
-<span class="fc" id="L136">        }</span>
-<span class="fc" id="L137">        return bootstrapDatum;</span>
+<span class="fc" id="L124">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
+<span class="fc" id="L125">            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));</span>
+<span class="fc" id="L126">            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(1)));</span>
+<span class="fc" id="L127">            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(2)));</span>
+<span class="fc" id="L128">            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(3)));</span>
+<span class="fc" id="L129">            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(4)));</span>
+<span class="fc" id="L130">            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(5)));</span>
+<span class="fc" id="L131">            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(6)));</span>
+<span class="fc" id="L132">            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(7)));</span>
+<span class="nc" id="L133">        } catch (CborDeserializationException e) {</span>
+<span class="nc" id="L134">            throw new RuntimeException(e);</span>
+<span class="fc" id="L135">        }</span>
+<span class="fc" id="L136">        return bootstrapDatum;</span>
     }
 
     public static BootstrapDatum fromScriptTxDatum(String inlineDatum) {
-<span class="fc" id="L141">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
+<span class="fc" id="L140">        BootstrapDatum bootstrapDatum = new BootstrapDatum();</span>
         try {
-<span class="fc" id="L143">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
-<span class="fc" id="L144">            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));</span>
-<span class="fc" id="L145">            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(1)));</span>
-<span class="fc" id="L146">            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(2)));</span>
-<span class="fc" id="L147">            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(3)));</span>
-<span class="fc" id="L148">            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(4)));</span>
-<span class="fc" id="L149">            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(5)));</span>
-<span class="fc" id="L150">            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(6)));</span>
-<span class="fc" id="L151">            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(7)));</span>
-<span class="nc" id="L152">        } catch (CborDeserializationException e) {</span>
-<span class="nc" id="L153">            throw new RuntimeException(e);</span>
-<span class="fc" id="L154">        }</span>
-<span class="fc" id="L155">        return bootstrapDatum;</span>
+<span class="fc" id="L142">            List&lt;PlutusData&gt; datum = ((ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatum))).getData().getPlutusDataList();</span>
+<span class="fc" id="L143">            bootstrapDatum.setAllowedCredentials(extractListFromPlutusData(datum.get(0)));</span>
+<span class="fc" id="L144">            bootstrapDatum.setTokenName(extractStringFromPlutusData(datum.get(1)));</span>
+<span class="fc" id="L145">            bootstrapDatum.setFee(extractIntegerFromPlutusData(datum.get(2)));</span>
+<span class="fc" id="L146">            bootstrapDatum.setFeeInterval(extractIntegerFromPlutusData(datum.get(3)));</span>
+<span class="fc" id="L147">            bootstrapDatum.setFeeReceivers(extractListFromPlutusData(datum.get(4)));</span>
+<span class="fc" id="L148">            bootstrapDatum.setTtl(extractLongFromPlutusData(datum.get(5)));</span>
+<span class="fc" id="L149">            bootstrapDatum.setTransactionLimit(extractIntegerFromPlutusData(datum.get(6)));</span>
+<span class="fc" id="L150">            bootstrapDatum.setBatchSize(extractIntegerFromPlutusData(datum.get(7)));</span>
+<span class="nc" id="L151">        } catch (CborDeserializationException e) {</span>
+<span class="nc" id="L152">            throw new RuntimeException(e);</span>
+<span class="fc" id="L153">        }</span>
+<span class="fc" id="L154">        return bootstrapDatum;</span>
     }
 
     public PlutusData toPlutusData() {
-<span class="fc" id="L159">        return ConstrPlutusData.of(0,</span>
-<span class="fc" id="L160">                ListPlutusData.of(</span>
-<span class="fc" id="L161">                        this.allowedCredentials.stream()</span>
-<span class="fc" id="L162">                                .map(BytesPlutusData::of)</span>
-<span class="fc" id="L163">                                .toList()</span>
-<span class="fc" id="L164">                                .toArray(new PlutusData[0])</span>
+<span class="fc" id="L158">        return ConstrPlutusData.of(0,</span>
+<span class="fc" id="L159">                ListPlutusData.of(</span>
+<span class="fc" id="L160">                        this.allowedCredentials.stream()</span>
+<span class="fc" id="L161">                                .map(BytesPlutusData::of)</span>
+<span class="fc" id="L162">                                .toList()</span>
+<span class="fc" id="L163">                                .toArray(new PlutusData[0])</span>
                 ),
-<span class="fc" id="L166">                BytesPlutusData.of(this.tokenName),</span>
-<span class="fc" id="L167">                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),</span>
-<span class="fc" id="L168">                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),</span>
-<span class="fc" id="L169">                ListPlutusData.of(</span>
-<span class="fc" id="L170">                        this.feeReceivers.stream()</span>
-<span class="fc" id="L171">                                .map(BytesPlutusData::of)</span>
-<span class="fc" id="L172">                                .toList()</span>
-<span class="fc" id="L173">                                .toArray(new PlutusData[0])</span>
+<span class="fc" id="L165">                BytesPlutusData.of(this.tokenName),</span>
+<span class="fc" id="L166">                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),</span>
+<span class="fc" id="L167">                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),</span>
+<span class="fc" id="L168">                ListPlutusData.of(</span>
+<span class="fc" id="L169">                        this.feeReceivers.stream()</span>
+<span class="fc" id="L170">                                .map(BytesPlutusData::of)</span>
+<span class="fc" id="L171">                                .toList()</span>
+<span class="fc" id="L172">                                .toArray(new PlutusData[0])</span>
                 ),
-<span class="fc" id="L175">                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),</span>
-<span class="fc" id="L176">                BigIntPlutusData.of(BigInteger.valueOf(this.transactionLimit)),</span>
-<span class="fc" id="L177">                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize))</span>
-        );
-    }
-
-    @Deprecated(forRemoval = true)
-    public PlutusData toPlutusData(CardanoNetwork network) {
-<span class="nc" id="L183">        return ConstrPlutusData.of(0,</span>
-<span class="nc" id="L184">                ListPlutusData.of(</span>
-<span class="nc" id="L185">                        this.allowedCredentials.stream()</span>
-<span class="nc" id="L186">                                .map(BytesPlutusData::of)</span>
-<span class="nc" id="L187">                                .toList()</span>
-<span class="nc" id="L188">                                .toArray(new PlutusData[0])</span>
-                ),
-<span class="nc" id="L190">                BytesPlutusData.of(HexUtil.decodeHexString(getMintOrBurnAuthTokenHash(network))),</span>
-<span class="nc" id="L191">                BytesPlutusData.of(this.tokenName),</span>
-<span class="nc" id="L192">                BytesPlutusData.of(HexUtil.decodeHexString(getUpdateStateTokenHash(network))),</span>
-<span class="nc" id="L193">                BigIntPlutusData.of(BigInteger.valueOf(this.fee)),</span>
-<span class="nc" id="L194">                BigIntPlutusData.of(BigInteger.valueOf(this.feeInterval)),</span>
-<span class="nc" id="L195">                ListPlutusData.of(</span>
-<span class="nc" id="L196">                        this.feeReceivers.stream()</span>
-<span class="nc" id="L197">                                .map(BytesPlutusData::of)</span>
-<span class="nc" id="L198">                                .toList()</span>
-<span class="nc" id="L199">                                .toArray(new PlutusData[0])</span>
-                ),
-<span class="nc" id="L201">                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),</span>
-<span class="nc" id="L202">                BigIntPlutusData.of(BigInteger.valueOf(this.transactionLimit)),</span>
-<span class="nc" id="L203">                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize))</span>
+<span class="fc" id="L174">                BigIntPlutusData.of(BigInteger.valueOf(this.ttl)),</span>
+<span class="fc" id="L175">                BigIntPlutusData.of(BigInteger.valueOf(this.transactionLimit)),</span>
+<span class="fc" id="L176">                BigIntPlutusData.of(BigInteger.valueOf(this.batchSize))</span>
         );
     }
 }

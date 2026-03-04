@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LibraryController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.controller</a> &gt; <span class="el_source">LibraryController.java</span></div><h1>LibraryController.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.controller;
+
+import io.uverify.backend.dto.BuildTransactionResponse;
+import io.uverify.backend.dto.LibraryDeploymentResponse;
+import io.uverify.backend.enums.BuildStatusCode;
+import io.uverify.backend.service.LibraryService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@SuppressWarnings(&quot;unused&quot;)
+@RequestMapping(&quot;/api/v1/library&quot;)
+<span class="fc" id="L32">public class LibraryController {</span>
+
+    @Autowired
+    LibraryService libraryService;
+
+    @GetMapping(&quot;/deployments&quot;)
+    public ResponseEntity&lt;?&gt; getLibraryDeployments() {
+<span class="fc" id="L39">        LibraryDeploymentResponse libraryDeploymentResponse = libraryService.getDeployments();</span>
+
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        if (libraryDeploymentResponse == null) {</span>
+<span class="nc" id="L42">            return ResponseEntity.badRequest().body(&quot;Failed to retrieve library deployments.&quot;);</span>
+        }
+
+<span class="fc" id="L45">        return ResponseEntity.ok(libraryDeploymentResponse);</span>
+    }
+
+    @PostMapping(&quot;/deploy/proxy&quot;)
+    public ResponseEntity&lt;?&gt; deployContracts() {
+<span class="fc" id="L50">        BuildTransactionResponse buildTransactionResponse = libraryService.buildDeployTransaction();</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">        if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="fc" id="L52">            return ResponseEntity.ok(buildTransactionResponse);</span>
+        } else {
+<span class="nc" id="L54">            return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+        }
+    }
+
+    @PostMapping(&quot;/upgrade/proxy&quot;)
+    public ResponseEntity&lt;?&gt; upgradeStateContract(@RequestBody String request) {
+<span class="fc" id="L60">        BuildTransactionResponse buildTransactionResponse = libraryService.buildDeployTransaction(request);</span>
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">        if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="fc" id="L62">            return ResponseEntity.ok(buildTransactionResponse);</span>
+        } else {
+<span class="nc" id="L64">            return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+        }
+    }
+
+    @GetMapping(&quot;/undeploy/unused&quot;)
+    public ResponseEntity&lt;?&gt; undeployUnusedContracts() {
+<span class="fc" id="L70">        BuildTransactionResponse undeployUnusedContractsResponse = libraryService.undeployUnusedContracts();</span>
+
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">        if (undeployUnusedContractsResponse.getStatus().getCode().equals(BuildStatusCode.ERROR)) {</span>
+<span class="nc" id="L73">            return ResponseEntity.badRequest().body(undeployUnusedContractsResponse);</span>
+        }
+
+<span class="fc" id="L76">        return ResponseEntity.ok(undeployUnusedContractsResponse);</span>
+    }
+
+    @GetMapping(&quot;/undeploy/{transactionHash}/{outputIndex}&quot;)
+    public ResponseEntity&lt;?&gt; undeployContract(@PathVariable String transactionHash, @PathVariable Integer outputIndex) {
+<span class="fc" id="L81">        BuildTransactionResponse undeployContractResponse = libraryService.undeployContract(transactionHash, outputIndex);</span>
+
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">        if (undeployContractResponse.getStatus().getCode().equals(BuildStatusCode.ERROR)) {</span>
+<span class="fc" id="L84">            return ResponseEntity.badRequest().body(undeployContractResponse);</span>
+        }
+
+<span class="nc" id="L87">        return ResponseEntity.ok(undeployContractResponse);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

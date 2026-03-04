@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FaucetController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.controller</a> &gt; <span class="el_source">FaucetController.java</span></div><h1>FaucetController.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.uverify.backend.dto.FaucetChallengeRequest;
+import io.uverify.backend.dto.FaucetChallengeResponse;
+import io.uverify.backend.dto.FaucetClaimRequest;
+import io.uverify.backend.dto.FaucetClaimResponse;
+import io.uverify.backend.service.FaucetService;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@SuppressWarnings(&quot;unused&quot;)
+@RequestMapping(&quot;/api/v1/faucet&quot;)
+@ConditionalOnProperty(name = &quot;faucet.enabled&quot;, havingValue = &quot;true&quot;)
+@Tag(name = &quot;Dev Faucet&quot;, description = &quot;Optional testnet faucet — enabled only when FAUCET_ENABLED=true. &quot; +
+        &quot;Sends tADA to a requesting address after ownership is verified via a challenge-sign flow.&quot;)
+<span class="fc" id="L48">public class FaucetController {</span>
+
+    @Autowired
+    private FaucetService faucetService;
+
+    @PostMapping(&quot;/request&quot;)
+    @Operation(
+            summary = &quot;Request a faucet challenge&quot;,
+            description = &quot;&quot;&quot;
+                    Step 1 of 2 in the faucet flow. Provide your Cardano address to receive a
+                    server-signed challenge message. Sign the returned `message` with your wallet
+                    (CIP-30 `signData`) and use all returned fields in the `/api/v1/faucet/claim` step.
+
+                    The endpoint returns HTTP 429 if the address is still within its cooldown period.&quot;&quot;&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Challenge created successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;,
+                            schema = @Schema(implementation = FaucetChallengeResponse.class))),
+            @ApiResponse(responseCode = &quot;429&quot;, description = &quot;Address is in cooldown — too many recent requests&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;,
+                            schema = @Schema(implementation = FaucetChallengeResponse.class))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;FaucetChallengeResponse&gt; requestChallenge(
+            @RequestBody @NotNull FaucetChallengeRequest request) {
+<span class="fc" id="L74">        FaucetChallengeResponse response = faucetService.requestChallenge(request);</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (response.getStatus() == HttpStatus.TOO_MANY_REQUESTS) {</span>
+<span class="fc" id="L76">            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);</span>
+        }
+<span class="fc" id="L78">        return ResponseEntity.ok(response);</span>
+    }
+
+    @PostMapping(&quot;/claim&quot;)
+    @Operation(
+            summary = &quot;Claim testnet ADA from the faucet&quot;,
+            description = &quot;&quot;&quot;
+                    Step 2 of 2 in the faucet flow. Submit the challenge fields from `/api/v1/faucet/request`
+                    together with your CIP-30 wallet signature (`userSignature`, `userPublicKey`).
+
+                    On success, the backend signs and submits a transaction sending multiple UTXOs of tADA
+                    from the faucet wallet to your address. Returns the Cardano transaction hash.
+
+                    The address enters a cooldown period after a successful claim to prevent abuse.&quot;&quot;&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Funds sent successfully — txHash is the Cardano transaction hash&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;,
+                            schema = @Schema(implementation = FaucetClaimResponse.class))),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid or expired signatures&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;,
+                            schema = @Schema(implementation = FaucetClaimResponse.class))),
+            @ApiResponse(responseCode = &quot;429&quot;, description = &quot;Address is in cooldown&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;,
+                            schema = @Schema(implementation = FaucetClaimResponse.class))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;FaucetClaimResponse&gt; claimFunds(
+            @RequestBody @NotNull FaucetClaimRequest request) {
+<span class="fc" id="L107">        FaucetClaimResponse response = faucetService.claimFunds(request);</span>
+<span class="pc bpc" id="L108" title="2 of 4 branches missed.">        return switch (response.getStatus()) {</span>
+<span class="fc" id="L109">            case BAD_REQUEST -&gt; ResponseEntity.badRequest().body(response);</span>
+<span class="nc" id="L110">            case TOO_MANY_REQUESTS -&gt; ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);</span>
+<span class="nc" id="L111">            case INTERNAL_SERVER_ERROR -&gt; ResponseEntity.internalServerError().body(response);</span>
+<span class="fc" id="L112">            default -&gt; ResponseEntity.ok(response);</span>
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

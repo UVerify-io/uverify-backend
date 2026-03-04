@@ -18,10 +18,21 @@
 
 package io.uverify.backend.enums;
 
-<span class="fc" id="L21">public enum CardanoNetwork {</span>
-<span class="fc" id="L22">    MAINNET,</span>
-<span class="fc" id="L23">    PREPROD,</span>
-<span class="fc" id="L24">    PREVIEW,</span>
-<span class="fc" id="L25">    CUSTOM</span>
+import com.bloxbean.cardano.client.common.model.Network;
+import com.bloxbean.cardano.client.common.model.Networks;
+
+<span class="fc" id="L24">public enum CardanoNetwork {</span>
+<span class="fc" id="L25">    MAINNET,</span>
+<span class="fc" id="L26">    PREPROD,</span>
+<span class="fc" id="L27">    PREVIEW,</span>
+<span class="fc" id="L28">    CUSTOM;</span>
+
+    public Network toCardaoNetwork() {
+<span class="pc bpc" id="L31" title="1 of 2 branches missed.">        if (this.equals(MAINNET)) {</span>
+<span class="nc" id="L32">            return Networks.mainnet();</span>
+        } else {
+<span class="fc" id="L34">            return Networks.preprod();</span>
+        }
+    }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

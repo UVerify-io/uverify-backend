@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FaucetService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.service</a> &gt; <span class="el_source">FaucetService.java</span></div><h1>FaucetService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.service;
+
+import com.bloxbean.cardano.client.account.Account;
+import com.bloxbean.cardano.client.api.exception.ApiException;
+import com.bloxbean.cardano.client.api.model.Result;
+import com.bloxbean.cardano.client.crypto.api.impl.EdDSASigningProvider;
+import com.bloxbean.cardano.client.exception.CborSerializationException;
+import com.bloxbean.cardano.client.util.HexUtil;
+import io.uverify.backend.dto.FaucetChallengeRequest;
+import io.uverify.backend.dto.FaucetChallengeResponse;
+import io.uverify.backend.dto.FaucetClaimRequest;
+import io.uverify.backend.dto.FaucetClaimResponse;
+import io.uverify.backend.enums.CardanoNetwork;
+import io.uverify.backend.util.CardanoUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.cardanofoundation.cip30.AddressFormat;
+import org.cardanofoundation.cip30.CIP30Verifier;
+import org.cardanofoundation.cip30.Cip30VerificationResult;
+import org.cardanofoundation.cip30.MessageFormat;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
+
+<span class="fc" id="L52">@Slf4j</span>
+@Service
+@ConditionalOnProperty(name = &quot;faucet.enabled&quot;, havingValue = &quot;true&quot;)
+public class FaucetService {
+
+    private static final String ACTION_NAME = &quot;FAUCET_REQUEST&quot;;
+
+    private final Account faucetAccount;
+    private final int utxoCount;
+    private final BigInteger lovelacePerUtxo;
+    private final long cooldownMs;
+
+    /**
+     * Payment-credential-hex → timestamp of last successful claim.
+     */
+<span class="fc" id="L67">    private final Map&lt;String, Long&gt; cooldownMap = new ConcurrentHashMap&lt;&gt;();</span>
+
+    @Autowired
+    private CardanoBlockchainService cardanoBlockchainService;
+
+    @Autowired
+    public FaucetService(
+            @Value(&quot;${faucet.mnemonic:}&quot;) String faucetMnemonic,
+            @Value(&quot;${faucet.utxo-count:3}&quot;) int utxoCount,
+            @Value(&quot;${faucet.utxo-amount-lovelace:10000000}&quot;) long utxoAmountLovelace,
+            @Value(&quot;${faucet.cooldown-ms:120000}&quot;) long cooldownMs,
+<span class="fc" id="L78">            @Value(&quot;${cardano.network}&quot;) String network) {</span>
+
+<span class="fc" id="L80">        CardanoNetwork cardanoNetwork = CardanoNetwork.valueOf(network);</span>
+<span class="fc" id="L81">        this.utxoCount = utxoCount;</span>
+<span class="fc" id="L82">        this.lovelacePerUtxo = BigInteger.valueOf(utxoAmountLovelace);</span>
+<span class="fc" id="L83">        this.cooldownMs = cooldownMs;</span>
+
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">        if (faucetMnemonic.isEmpty()) {</span>
+<span class="nc" id="L86">            log.warn(&quot;Faucet mnemonic is not set. Generating a temporary faucet account. &quot; +</span>
+                    &quot;This account will have no funds — set FAUCET_MNEMONIC to a pre-funded testnet wallet.&quot;);
+<span class="nc" id="L88">            this.faucetAccount = new Account(fromCardanoNetwork(cardanoNetwork));</span>
+        } else {
+<span class="fc" id="L90">            this.faucetAccount = Account.createFromMnemonic(fromCardanoNetwork(cardanoNetwork), faucetMnemonic);</span>
+        }
+
+<span class="fc" id="L93">        log.info(&quot;Faucet enabled. Faucet address: {}&quot;, this.faucetAccount.baseAddress());</span>
+<span class="fc" id="L94">    }</span>
+
+    public FaucetChallengeResponse requestChallenge(FaucetChallengeRequest request) {
+<span class="fc" id="L97">        String address = request.getAddress();</span>
+
+<span class="fc bfc" id="L99" title="All 2 branches covered.">        if (isInCooldown(address)) {</span>
+<span class="fc" id="L100">            return FaucetChallengeResponse.builder()</span>
+<span class="fc" id="L101">                    .status(HttpStatus.TOO_MANY_REQUESTS)</span>
+<span class="fc" id="L102">                    .error(&quot;This address has recently received funds. Please wait before requesting again.&quot;)</span>
+<span class="fc" id="L103">                    .build();</span>
+        }
+
+<span class="fc" id="L106">        long timestamp = System.currentTimeMillis();</span>
+<span class="fc" id="L107">        String message = buildMessage(address, timestamp);</span>
+
+<span class="fc" id="L109">        EdDSASigningProvider edDSASigningProvider = new EdDSASigningProvider();</span>
+<span class="fc" id="L110">        String signature = HexUtil.encodeHexString(</span>
+<span class="fc" id="L111">                edDSASigningProvider.signExtended(message.getBytes(StandardCharsets.UTF_8), faucetAccount.privateKeyBytes()));</span>
+
+<span class="fc" id="L113">        return FaucetChallengeResponse.builder()</span>
+<span class="fc" id="L114">                .address(address)</span>
+<span class="fc" id="L115">                .message(message)</span>
+<span class="fc" id="L116">                .signature(signature)</span>
+<span class="fc" id="L117">                .timestamp(timestamp)</span>
+<span class="fc" id="L118">                .status(HttpStatus.OK)</span>
+<span class="fc" id="L119">                .build();</span>
+    }
+
+    public FaucetClaimResponse claimFunds(FaucetClaimRequest request) {
+<span class="fc bfc" id="L123" title="All 2 branches covered.">        if (!signaturesAreValid(request)) {</span>
+<span class="fc" id="L124">            return FaucetClaimResponse.builder()</span>
+<span class="fc" id="L125">                    .status(HttpStatus.BAD_REQUEST)</span>
+<span class="fc" id="L126">                    .error(&quot;The provided signatures are not valid or the request is outdated (older than 10 minutes).&quot;)</span>
+<span class="fc" id="L127">                    .build();</span>
+        }
+
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">        if (!hasValidTimeframe(request.getTimestamp())) {</span>
+<span class="nc" id="L131">            return FaucetClaimResponse.builder()</span>
+<span class="nc" id="L132">                    .status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L133">                    .error(&quot;The request is outdated. Please request a new challenge.&quot;)</span>
+<span class="nc" id="L134">                    .build();</span>
+        }
+
+<span class="pc bpc" id="L137" title="1 of 2 branches missed.">        if (isInCooldown(request.getAddress())) {</span>
+<span class="nc" id="L138">            return FaucetClaimResponse.builder()</span>
+<span class="nc" id="L139">                    .status(HttpStatus.TOO_MANY_REQUESTS)</span>
+<span class="nc" id="L140">                    .error(&quot;This address has recently received funds. Please wait before requesting again.&quot;)</span>
+<span class="nc" id="L141">                    .build();</span>
+        }
+
+        // Record cooldown before submitting to prevent race conditions
+<span class="fc" id="L145">        String credentialHex = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(request.getAddress()));</span>
+<span class="fc" id="L146">        cooldownMap.put(credentialHex, System.currentTimeMillis());</span>
+
+        try {
+<span class="fc" id="L149">            Result&lt;String&gt; result = cardanoBlockchainService.sendAda(</span>
+<span class="fc" id="L150">                    faucetAccount, request.getAddress(), utxoCount, lovelacePerUtxo);</span>
+
+<span class="pc bpc" id="L152" title="1 of 2 branches missed.">            if (!result.isSuccessful()) {</span>
+                // Remove cooldown entry so the user can retry
+<span class="nc" id="L154">                cooldownMap.remove(credentialHex);</span>
+<span class="nc" id="L155">                log.error(&quot;Faucet transaction failed: {}&quot;, result.getResponse());</span>
+<span class="nc" id="L156">                return FaucetClaimResponse.builder()</span>
+<span class="nc" id="L157">                        .status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="nc" id="L158">                        .error(&quot;Failed to submit faucet transaction: &quot; + result.getResponse())</span>
+<span class="nc" id="L159">                        .build();</span>
+            }
+
+<span class="fc" id="L162">            log.info(&quot;Faucet sent {} UTXOs of {} lovelace to {} (tx: {})&quot;,</span>
+<span class="fc" id="L163">                    utxoCount, lovelacePerUtxo, request.getAddress(), result.getValue());</span>
+
+<span class="fc" id="L165">            return FaucetClaimResponse.builder()</span>
+<span class="fc" id="L166">                    .txHash(result.getValue())</span>
+<span class="fc" id="L167">                    .status(HttpStatus.OK)</span>
+<span class="fc" id="L168">                    .build();</span>
+
+<span class="nc" id="L170">        } catch (CborSerializationException | ApiException e) {</span>
+<span class="nc" id="L171">            cooldownMap.remove(credentialHex);</span>
+<span class="nc" id="L172">            log.error(&quot;Faucet transaction error for address {}&quot;, request.getAddress(), e);</span>
+<span class="nc" id="L173">            return FaucetClaimResponse.builder()</span>
+<span class="nc" id="L174">                    .status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="nc" id="L175">                    .error(&quot;Failed to submit faucet transaction.&quot;)</span>
+<span class="nc" id="L176">                    .build();</span>
+        }
+    }
+
+    private boolean isInCooldown(String address) {
+        String credentialHex;
+        try {
+<span class="fc" id="L183">            credentialHex = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address));</span>
+<span class="nc" id="L184">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L185">            return false;</span>
+<span class="fc" id="L186">        }</span>
+
+<span class="fc" id="L188">        Long lastClaim = cooldownMap.get(credentialHex);</span>
+<span class="fc bfc" id="L189" title="All 2 branches covered.">        if (lastClaim == null) {</span>
+<span class="fc" id="L190">            return false;</span>
+        }
+
+<span class="pc bpc" id="L193" title="1 of 2 branches missed.">        if (System.currentTimeMillis() - lastClaim &gt;= cooldownMs) {</span>
+<span class="nc" id="L194">            cooldownMap.remove(credentialHex);</span>
+<span class="nc" id="L195">            return false;</span>
+        }
+
+<span class="fc" id="L198">        return true;</span>
+    }
+
+    private boolean signaturesAreValid(FaucetClaimRequest request) {
+<span class="fc" id="L202">        String expectedMessage = buildMessage(request.getAddress(), request.getTimestamp());</span>
+<span class="pc bpc" id="L203" title="1 of 2 branches missed.">        if (!expectedMessage.equals(request.getMessage())) {</span>
+<span class="nc" id="L204">            return false;</span>
+        }
+
+<span class="fc" id="L207">        EdDSASigningProvider edDSASigningProvider = new EdDSASigningProvider();</span>
+<span class="fc" id="L208">        boolean backendSignatureValid = edDSASigningProvider.verify(</span>
+<span class="fc" id="L209">                HexUtil.decodeHexString(request.getSignature()),</span>
+<span class="fc" id="L210">                request.getMessage().getBytes(StandardCharsets.UTF_8),</span>
+<span class="fc" id="L211">                faucetAccount.publicKeyBytes());</span>
+
+<span class="pc bpc" id="L213" title="1 of 2 branches missed.">        if (!backendSignatureValid) {</span>
+<span class="nc" id="L214">            return false;</span>
+        }
+
+<span class="fc" id="L217">        CIP30Verifier cip30Verifier = new CIP30Verifier(request.getUserSignature(), request.getUserPublicKey());</span>
+<span class="fc" id="L218">        Cip30VerificationResult result = cip30Verifier.verify();</span>
+<span class="fc" id="L219">        Optional&lt;String&gt; optionalUserAddress = result.getAddress(AddressFormat.TEXT);</span>
+
+<span class="fc bfc" id="L221" title="All 2 branches covered.">        if (optionalUserAddress.isEmpty()) {</span>
+<span class="fc" id="L222">            return false;</span>
+        }
+
+<span class="pc bpc" id="L225" title="1 of 2 branches missed.">        return result.isValid()</span>
+<span class="pc bpc" id="L226" title="1 of 2 branches missed.">                &amp;&amp; expectedMessage.equals(result.getMessage(MessageFormat.TEXT))</span>
+<span class="pc bpc" id="L227" title="1 of 2 branches missed.">                &amp;&amp; request.getAddress().equals(optionalUserAddress.get());</span>
+    }
+
+    private boolean hasValidTimeframe(long timestamp) {
+<span class="pc bpc" id="L231" title="1 of 2 branches missed.">        return Math.abs(System.currentTimeMillis() - timestamp) &lt;= 600_000;</span>
+    }
+
+    private String buildMessage(String address, long timestamp) {
+<span class="fc" id="L235">        return &quot;[&quot; + ACTION_NAME + &quot;@&quot; + timestamp + &quot;] Please sign this message with your private key to verify, &quot; +</span>
+                &quot;that you are the owner of the address &quot; + address + &quot;.&quot;;
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

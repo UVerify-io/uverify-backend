@@ -109,9 +109,9 @@ public class StateDatumService {
 <span class="fc" id="L109">        return stateDatumRepository.findById(id);</span>
     }
 
-    public List&lt;StateDatumEntity&gt; findByOwner(String address) {
+    public List&lt;StateDatumEntity&gt; findByOwner(String address, int minVersion) {
 <span class="fc" id="L113">        return stateDatumRepository.findByOwner(</span>
-<span class="fc" id="L114">                HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)));</span>
+<span class="fc" id="L114">                HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)), minVersion);</span>
     }
 
     public Optional&lt;StateDatumEntity&gt; findByUserAndBootstrapToken(String address, String bootstrapTokenName) {
