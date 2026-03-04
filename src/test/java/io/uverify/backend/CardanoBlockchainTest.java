@@ -184,6 +184,7 @@ public class CardanoBlockchainTest {
     @BeforeAll
     public void waitForFaucetFunding() throws InterruptedException {
         waitForUtxos(facilitatorAccount.baseAddress());
+        waitForUtxos(serviceAccount.baseAddress());
     }
 
     protected void waitForUtxos(String address) throws InterruptedException {
