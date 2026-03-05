@@ -32,6 +32,7 @@ import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.model.BootstrapDatum;
 import io.uverify.backend.model.UVerifyCertificate;
+import io.uverify.backend.repository.TransactionRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
