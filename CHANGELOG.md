@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/UVerify-io/uverify-backend/compare/v1.10.0...v1.10.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* split the faucet utxos correctly ([633f717](https://github.com/UVerify-io/uverify-backend/commit/633f7173c4fa118545744392b4814afc8dbca67b))
+
 ## [1.10.0](https://github.com/UVerify-io/uverify-backend/compare/v1.9.0...v1.10.0) (2026-03-04)
 
 
