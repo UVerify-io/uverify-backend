@@ -18,6 +18,7 @@
 
 package io.uverify.backend.controller;
 
+import com.bloxbean.cardano.client.api.model.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -33,18 +34,13 @@ import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.service.UVerifyTransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @SuppressWarnings(&quot;unused&quot;)
 @RequestMapping(&quot;/api/v1/transaction&quot;)
 @Tag(name = &quot;Transaction Management&quot;, description = &quot;Endpoints for building and submitting UVerify certificate transactions to the Cardano blockchain.&quot;)
-<span class="fc" id="L47">public class UVerifyTransactionController {</span>
+<span class="fc" id="L43">public class UVerifyTransactionController {</span>
     @Autowired
     private UVerifyTransactionService transactionService;
 
@@ -60,10 +56,10 @@ import org.springframework.web.bind.annotation.RestController;
     })
     public ResponseEntity&lt;?&gt; confirmTransaction(@PathVariable String hash) {
         try {
-<span class="nc" id="L63">            boolean confirmed = transactionService.isTransactionConfirmed(hash);</span>
-<span class="nc bnc" id="L64" title="All 2 branches missed.">            return confirmed ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();</span>
-<span class="nc" id="L65">        } catch (Exception e) {</span>
-<span class="nc" id="L66">            return ResponseEntity.internalServerError().build();</span>
+<span class="nc" id="L59">            boolean confirmed = transactionService.isTransactionConfirmed(hash);</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">            return confirmed ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();</span>
+<span class="nc" id="L61">        } catch (Exception e) {</span>
+<span class="nc" id="L62">            return ResponseEntity.internalServerError().build();</span>
         }
     }
 
@@ -85,39 +81,39 @@ import org.springframework.web.bind.annotation.RestController;
     })
     public ResponseEntity&lt;?&gt; buildTransaction(@RequestBody BuildTransactionRequest request) {
         try {
-<span class="fc bfc" id="L88" title="All 2 branches covered.">            if (request.getType().equals(TransactionType.DEFAULT)) {</span>
-<span class="fc" id="L89">                BuildTransactionResponse buildTransactionResponse = transactionService.buildUVerifyTransaction(request.getCertificates(), request.getAddress());</span>
-<span class="pc bpc" id="L90" title="1 of 2 branches missed.">                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
-<span class="fc" id="L91">                    return ResponseEntity.ok(buildTransactionResponse);</span>
+<span class="fc bfc" id="L84" title="All 2 branches covered.">            if (request.getType().equals(TransactionType.DEFAULT)) {</span>
+<span class="fc" id="L85">                BuildTransactionResponse buildTransactionResponse = transactionService.buildUVerifyTransaction(request.getCertificates(), request.getAddress());</span>
+<span class="pc bpc" id="L86" title="1 of 2 branches missed.">                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="fc" id="L87">                    return ResponseEntity.ok(buildTransactionResponse);</span>
                 } else {
-<span class="nc" id="L93">                    return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+<span class="nc" id="L89">                    return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
                 }
-<span class="fc bfc" id="L95" title="All 2 branches covered.">            } else if (request.getType().equals(TransactionType.BOOTSTRAP)) {</span>
-<span class="fc" id="L96">                BuildTransactionResponse buildTransactionResponse = transactionService.buildBootstrapDatum(request.getBootstrapDatum());</span>
-<span class="pc bpc" id="L97" title="1 of 2 branches missed.">                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
-<span class="fc" id="L98">                    return ResponseEntity.ok(buildTransactionResponse);</span>
+<span class="fc bfc" id="L91" title="All 2 branches covered.">            } else if (request.getType().equals(TransactionType.BOOTSTRAP)) {</span>
+<span class="fc" id="L92">                BuildTransactionResponse buildTransactionResponse = transactionService.buildBootstrapDatum(request.getBootstrapDatum());</span>
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="fc" id="L94">                    return ResponseEntity.ok(buildTransactionResponse);</span>
                 } else {
-<span class="nc" id="L100">                    return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+<span class="nc" id="L96">                    return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
                 }
-<span class="pc bpc" id="L102" title="1 of 2 branches missed.">            } else if (request.getType().equals(TransactionType.CUSTOM)) {</span>
-<span class="nc" id="L103">                BuildTransactionResponse buildTransactionResponse = transactionService.buildCustomTransaction(request.getCertificates(), request.getAddress(), request.getBootstrapDatum().getName());</span>
-<span class="nc bnc" id="L104" title="All 2 branches missed.">                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
-<span class="nc" id="L105">                    return ResponseEntity.ok(buildTransactionResponse);</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">            } else if (request.getType().equals(TransactionType.CUSTOM)) {</span>
+<span class="nc" id="L99">                BuildTransactionResponse buildTransactionResponse = transactionService.buildCustomTransaction(request.getCertificates(), request.getAddress(), request.getBootstrapDatum().getName());</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="nc" id="L101">                    return ResponseEntity.ok(buildTransactionResponse);</span>
                 } else {
-<span class="nc" id="L107">                    return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+<span class="nc" id="L103">                    return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
                 }
-<span class="pc bpc" id="L109" title="1 of 2 branches missed.">            } else if (request.getType().equals(TransactionType.INIT)) {</span>
-<span class="fc" id="L110">                ProxyInitResponse proxyInitResponse = transactionService.buildInitProxyTx();</span>
-<span class="pc bpc" id="L111" title="1 of 2 branches missed.">                if (proxyInitResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
-<span class="fc" id="L112">                    return ResponseEntity.ok(proxyInitResponse);</span>
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">            } else if (request.getType().equals(TransactionType.INIT)) {</span>
+<span class="fc" id="L106">                ProxyInitResponse proxyInitResponse = transactionService.buildInitProxyTx();</span>
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">                if (proxyInitResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="fc" id="L108">                    return ResponseEntity.ok(proxyInitResponse);</span>
                 } else {
-<span class="nc" id="L114">                    return ResponseEntity.badRequest().body(proxyInitResponse);</span>
+<span class="nc" id="L110">                    return ResponseEntity.badRequest().body(proxyInitResponse);</span>
                 }
             } else {
-<span class="nc" id="L117">                return ResponseEntity.badRequest().body(&quot;Unknown transaction type. Allowed types are: DEFAULT, BOOTSTRAP, CUSTOM.&quot;);</span>
+<span class="nc" id="L113">                return ResponseEntity.badRequest().body(&quot;Unknown transaction type. Allowed types are: DEFAULT, BOOTSTRAP, CUSTOM.&quot;);</span>
             }
-<span class="nc" id="L119">        } catch (Exception e) {</span>
-<span class="nc" id="L120">            return ResponseEntity.internalServerError().build();</span>
+<span class="nc" id="L115">        } catch (Exception e) {</span>
+<span class="nc" id="L116">            return ResponseEntity.internalServerError().build();</span>
         }
     }
 
@@ -134,7 +130,11 @@ import org.springframework.web.bind.annotation.RestController;
     })
     public ResponseEntity&lt;?&gt; submitTransaction(@RequestBody SubmitTransactionRequest request) {
         try {
-<span class="nc" id="L137">            return ResponseEntity.ok(transactionService.submit(request.getTransaction(), request.getWitnessSet()));</span>
+<span class="nc" id="L133">            Result&lt;String&gt; result = transactionService.submit(request.getTransaction(), request.getWitnessSet());</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">            if (result.isSuccessful()) {</span>
+<span class="nc" id="L135">                return ResponseEntity.ok(java.util.Map.of(&quot;transactionHash&quot;, result.getValue()));</span>
+            }
+<span class="nc" id="L137">            return ResponseEntity.badRequest().body(result.getResponse());</span>
 <span class="nc" id="L138">        } catch (Exception e) {</span>
 <span class="nc" id="L139">            return ResponseEntity.internalServerError().build();</span>
         }

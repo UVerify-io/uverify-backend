@@ -36,7 +36,7 @@ Uverify Backend,io.uverify.backend.dto,LibraryEntry.LibraryEntryBuilder,8,28,0,0
 Uverify Backend,io.uverify.backend.dto,UserActionResponse.UserActionResponseBuilder,23,51,0,0,0,1,2,8,2,8
 Uverify Backend,io.uverify.backend.controller,CertificateController,38,10,4,0,8,4,5,1,3,1
 Uverify Backend,io.uverify.backend.controller,StatisticsController,14,3,0,0,4,1,2,1,2,1
-Uverify Backend,io.uverify.backend.controller,UVerifyTransactionController,74,68,9,9,17,14,9,4,2,2
+Uverify Backend,io.uverify.backend.controller,UVerifyTransactionController,88,68,11,9,20,14,10,4,2,2
 Uverify Backend,io.uverify.backend.controller,FaucetController,9,38,2,4,2,9,2,5,0,3
 Uverify Backend,io.uverify.backend.controller,UserStateController,75,30,12,2,16,6,7,3,0,3
 Uverify Backend,io.uverify.backend.controller,LibraryController,19,68,5,5,5,16,5,6,0,6
@@ -74,10 +74,10 @@ Uverify Backend,io.uverify.backend.extension.validators.converter,SocialHubRedee
 Uverify Backend,io.uverify.backend.extension.validators.converter,SocialHubDatumConverter,105,1133,6,50,23,218,8,27,2,5
 Uverify Backend,io.uverify.backend.extension.validators.converter,ConnectedGoodsDatumItemConverter,56,65,0,0,17,14,4,3,4,3
 Uverify Backend,io.uverify.backend.extension.utils,ConnectedGoodUtils,11,248,1,17,3,42,2,26,1,18
-Uverify Backend,io.uverify.backend.service,UVerifyTransactionService,151,68,10,0,61,25,9,6,4,6
+Uverify Backend,io.uverify.backend.service,UVerifyTransactionService,151,71,10,0,61,25,9,6,4,6
 Uverify Backend,io.uverify.backend.service,BootstrapDatumService,9,108,3,5,3,27,4,9,1,8
 Uverify Backend,io.uverify.backend.service,FaucetService,79,280,11,19,29,72,11,12,0,8
-Uverify Backend,io.uverify.backend.service,CardanoBlockchainService,572,2043,70,104,132,427,68,61,7,35
+Uverify Backend,io.uverify.backend.service,CardanoBlockchainService,563,2042,70,104,130,427,67,61,6,35
 Uverify Backend,io.uverify.backend.service,LibraryService,322,796,35,47,102,189,29,35,0,23
 Uverify Backend,io.uverify.backend.service,UVerifyCertificateService,11,22,0,0,2,8,2,4,2,4
 Uverify Backend,io.uverify.backend.service,StateDatumService,61,106,11,5,14,32,10,10,2,10
@@ -120,7 +120,7 @@ Uverify Backend,io.uverify.backend.extension.dto,ClaimUpdateConnectedGoodsReques
 Uverify Backend,io.uverify.backend.extension.dto,Item.ItemBuilder,6,21,0,0,0,1,1,4,1,4
 Uverify Backend,io.uverify.backend.util,ValidatorHelper,19,120,3,3,4,27,4,10,1,10
 Uverify Backend,io.uverify.backend.util,CardanoUtils,38,59,7,5,7,14,8,5,1,5
-Uverify Backend,io.uverify.backend.util,ValidatorUtils,121,376,25,23,30,70,26,36,8,30
+Uverify Backend,io.uverify.backend.util,ValidatorUtils,204,357,30,22,42,66,30,35,10,29
 Uverify Backend,io.uverify.backend.extension.validators,ConnectedGoodsDatum.ConnectedGoodsDatumBuilder,29,0,0,0,1,0,5,0,5,0
 Uverify Backend,io.uverify.backend.extension.validators,ConnectedGoodsDatumItem.ConnectedGoodsDatumItemBuilder,28,0,0,0,1,0,5,0,5,0
 Uverify Backend,io.uverify.backend.extension.validators,SocialHubRedeemer,0,15,0,0,0,3,0,1,0,1

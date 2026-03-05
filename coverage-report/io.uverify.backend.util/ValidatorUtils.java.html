@@ -175,17 +175,17 @@ import java.util.stream.Collectors;
     public static Optional&lt;Utxo&gt; getUtxoByTransactionAndUnit(String transactionHash, String unit, BackendService backendService) {
         Result&lt;TxContentUtxo&gt; transactionUtxos;
         try {
-<span class="fc" id="L178">            transactionUtxos = backendService.getTransactionService().getTransactionUtxos(transactionHash);</span>
+<span class="nc" id="L178">            transactionUtxos = backendService.getTransactionService().getTransactionUtxos(transactionHash);</span>
 <span class="nc" id="L179">        } catch (ApiException e) {</span>
 <span class="nc" id="L180">            log.error(&quot;Error getting transaction utxos: {}&quot;, e.getMessage());</span>
 <span class="nc" id="L181">            return Optional.empty();</span>
-<span class="fc" id="L182">        }</span>
+<span class="nc" id="L182">        }</span>
 
-<span class="pc bpc" id="L184" title="1 of 2 branches missed.">        if (transactionUtxos.isSuccessful()) {</span>
-<span class="pc bpc" id="L185" title="1 of 2 branches missed.">            for (TxContentUtxoOutputs output : transactionUtxos.getValue().getOutputs()) {</span>
-<span class="fc" id="L186">                Optional&lt;TxContentOutputAmount&gt; outputWithUnit = output.getAmount().stream().filter(amount -&gt; amount.getUnit().equals(unit)).findFirst();</span>
-<span class="pc bpc" id="L187" title="1 of 2 branches missed.">                if (outputWithUnit.isPresent()) {</span>
-<span class="fc" id="L188">                    return Optional.of(output.toUtxos(transactionHash));</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        if (transactionUtxos.isSuccessful()) {</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">            for (TxContentUtxoOutputs output : transactionUtxos.getValue().getOutputs()) {</span>
+<span class="nc" id="L186">                Optional&lt;TxContentOutputAmount&gt; outputWithUnit = output.getAmount().stream().filter(amount -&gt; amount.getUnit().equals(unit)).findFirst();</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">                if (outputWithUnit.isPresent()) {</span>
+<span class="nc" id="L188">                    return Optional.of(output.toUtxos(transactionHash));</span>
                 }
 <span class="nc" id="L190">            }</span>
         } else {
@@ -195,68 +195,87 @@ import java.util.stream.Collectors;
 <span class="nc" id="L195">        return Optional.empty();</span>
     }
 
+    /**
+     * Returns the current (unspent) UTxO at {@code scriptAddress} that contains {@code unit}.
+     *
+     * Unlike {@link #getUtxoByTransactionAndUnit}, this queries the live UTxO set so it will
+     * never return an output that has already been consumed by a previous transaction.
+     */
+    public static Optional&lt;Utxo&gt; getCurrentUtxoByUnit(String scriptAddress, String unit, BackendService backendService) {
+        try {
+<span class="fc" id="L206">            Result&lt;List&lt;Utxo&gt;&gt; result = backendService.getUtxoService().getUtxos(scriptAddress, unit, 1, 1);</span>
+<span class="pc bpc" id="L207" title="2 of 4 branches missed.">            if (result.isSuccessful() &amp;&amp; !result.getValue().isEmpty()) {</span>
+<span class="fc" id="L208">                return Optional.of(result.getValue().get(0));</span>
+            }
+<span class="nc" id="L210">            log.error(&quot;No current UTxO found for unit {} at {}: {}&quot;, unit, scriptAddress, result.getResponse());</span>
+<span class="nc" id="L211">        } catch (ApiException e) {</span>
+<span class="nc" id="L212">            log.error(&quot;Error fetching current UTxO by unit {} at {}: {}&quot;, unit, scriptAddress, e.getMessage());</span>
+<span class="nc" id="L213">        }</span>
+<span class="nc" id="L214">        return Optional.empty();</span>
+    }
+
     public static String extractStringFromPlutusData(PlutusData plutusData) {
-<span class="fc" id="L199">        return new String(((BytesPlutusData) plutusData).getValue());</span>
+<span class="fc" id="L218">        return new String(((BytesPlutusData) plutusData).getValue());</span>
     }
 
     public static String extractByteArrayFromPlutusData(PlutusData plutusData) {
-<span class="fc" id="L203">        return HexUtil.encodeHexString(((BytesPlutusData) plutusData).getValue());</span>
+<span class="fc" id="L222">        return HexUtil.encodeHexString(((BytesPlutusData) plutusData).getValue());</span>
     }
 
     public static List&lt;byte[]&gt; extractListFromPlutusData(PlutusData plutusData) {
-<span class="fc" id="L207">        return ((ListPlutusData) plutusData).getPlutusDataList().stream()</span>
-<span class="fc" id="L208">                .map(item -&gt; ((BytesPlutusData) item).getValue())</span>
-<span class="fc" id="L209">                .collect(Collectors.toList());</span>
+<span class="fc" id="L226">        return ((ListPlutusData) plutusData).getPlutusDataList().stream()</span>
+<span class="fc" id="L227">                .map(item -&gt; ((BytesPlutusData) item).getValue())</span>
+<span class="fc" id="L228">                .collect(Collectors.toList());</span>
     }
 
     public static Integer extractIntegerFromPlutusData(PlutusData plutusData) {
-<span class="fc" id="L213">        return ((BigIntPlutusData) plutusData).getValue().intValue();</span>
+<span class="fc" id="L232">        return ((BigIntPlutusData) plutusData).getValue().intValue();</span>
     }
 
     public static Boolean extractBooleanFromPlutusData(PlutusData plutusData) {
-<span class="pc bpc" id="L217" title="1 of 2 branches missed.">        return ((ConstrPlutusData) plutusData).getAlternative() == 1;</span>
+<span class="pc bpc" id="L236" title="1 of 2 branches missed.">        return ((ConstrPlutusData) plutusData).getAlternative() == 1;</span>
     }
 
     public static Long extractLongFromPlutusData(PlutusData plutusData) {
-<span class="fc" id="L221">        return ((BigIntPlutusData) plutusData).getValue().longValue();</span>
+<span class="fc" id="L240">        return ((BigIntPlutusData) plutusData).getValue().longValue();</span>
     }
 
     public static boolean includesStateToken(TransactionOutput output) {
-<span class="nc" id="L225">        return output.getValue().getMultiAssets().stream().anyMatch(</span>
-<span class="nc bnc" id="L226" title="All 4 branches missed.">                asset -&gt; asset.getPolicyId() != null &amp;&amp; asset.getPolicyId().equalsIgnoreCase(getMintStateTokenHash(CardanoNetwork.MAINNET))</span>
-<span class="nc bnc" id="L227" title="All 2 branches missed.">                        || asset.getPolicyId().equalsIgnoreCase(getMintStateTokenHash(CardanoNetwork.PREPROD))</span>
+<span class="nc" id="L244">        return output.getValue().getMultiAssets().stream().anyMatch(</span>
+<span class="nc bnc" id="L245" title="All 4 branches missed.">                asset -&gt; asset.getPolicyId() != null &amp;&amp; asset.getPolicyId().equalsIgnoreCase(getMintStateTokenHash(CardanoNetwork.MAINNET))</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">                        || asset.getPolicyId().equalsIgnoreCase(getMintStateTokenHash(CardanoNetwork.PREPROD))</span>
         );
     }
 
     public static boolean includesStateToken(AddressUtxo addressUtxo, CardanoNetwork network) {
-<span class="fc" id="L232">        return addressUtxo.getAmounts().stream()</span>
-<span class="fc bfc" id="L233" title="All 4 branches covered.">                .anyMatch(asset -&gt; asset.getPolicyId() != null &amp;&amp; asset.getPolicyId().equals(ValidatorUtils.getMintStateTokenHash(network)));</span>
+<span class="fc" id="L251">        return addressUtxo.getAmounts().stream()</span>
+<span class="fc bfc" id="L252" title="All 4 branches covered.">                .anyMatch(asset -&gt; asset.getPolicyId() != null &amp;&amp; asset.getPolicyId().equals(ValidatorUtils.getMintStateTokenHash(network)));</span>
 
     }
 
     public static boolean includesBootstrapToken(AddressUtxo addressUtxo, CardanoNetwork network) {
-<span class="fc" id="L238">        return addressUtxo.getAmounts().stream()</span>
-<span class="fc bfc" id="L239" title="All 4 branches covered.">                .anyMatch(asset -&gt; asset.getPolicyId() != null &amp;&amp; asset.getPolicyId().equals(ValidatorUtils.getMintOrBurnAuthTokenHash(network)));</span>
+<span class="fc" id="L257">        return addressUtxo.getAmounts().stream()</span>
+<span class="fc bfc" id="L258" title="All 4 branches covered.">                .anyMatch(asset -&gt; asset.getPolicyId() != null &amp;&amp; asset.getPolicyId().equals(ValidatorUtils.getMintOrBurnAuthTokenHash(network)));</span>
     }
 
     public static boolean isMintingTransaction(AddressUtxo addressUtxo, String policyId) {
-<span class="fc" id="L243">        return addressUtxo.getAmounts().stream()</span>
-<span class="pc bpc" id="L244" title="1 of 4 branches missed.">                .anyMatch(input -&gt; input.getPolicyId() != null &amp;&amp; input.getPolicyId().equals(policyId) &amp;&amp;</span>
-<span class="pc bpc" id="L245" title="1 of 2 branches missed.">                        input.getQuantity().equals(BigInteger.ONE));</span>
+<span class="fc" id="L262">        return addressUtxo.getAmounts().stream()</span>
+<span class="pc bpc" id="L263" title="1 of 4 branches missed.">                .anyMatch(input -&gt; input.getPolicyId() != null &amp;&amp; input.getPolicyId().equals(policyId) &amp;&amp;</span>
+<span class="pc bpc" id="L264" title="1 of 2 branches missed.">                        input.getQuantity().equals(BigInteger.ONE));</span>
     }
 
     public static boolean isBurningTransaction(AddressUtxo addressUtxo, String policyId) {
-<span class="fc" id="L249">        return addressUtxo.getAmounts().stream()</span>
-<span class="pc bpc" id="L250" title="1 of 4 branches missed.">                .anyMatch(input -&gt; input.getPolicyId() != null &amp;&amp; input.getPolicyId().equals(policyId) &amp;&amp;</span>
-<span class="pc bpc" id="L251" title="1 of 2 branches missed.">                        input.getQuantity().equals(BigInteger.valueOf(-1)));</span>
+<span class="fc" id="L268">        return addressUtxo.getAmounts().stream()</span>
+<span class="pc bpc" id="L269" title="1 of 4 branches missed.">                .anyMatch(input -&gt; input.getPolicyId() != null &amp;&amp; input.getPolicyId().equals(policyId) &amp;&amp;</span>
+<span class="pc bpc" id="L270" title="1 of 2 branches missed.">                        input.getQuantity().equals(BigInteger.valueOf(-1)));</span>
     }
 
     public static String getBootstrapTokenName(AddressUtxo addressUtxo, CardanoNetwork network) {
-<span class="nc" id="L255">        return addressUtxo.getAmounts().stream()</span>
-<span class="nc bnc" id="L256" title="All 4 branches missed.">                .filter(input -&gt; input.getPolicyId() != null &amp;&amp; input.getPolicyId().equals(getMintOrBurnAuthTokenHash(network)))</span>
-<span class="nc" id="L257">                .findFirst()</span>
-<span class="nc" id="L258">                .map(Amt::getAssetName)</span>
-<span class="nc" id="L259">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Bootstrap token not found&quot;));</span>
+<span class="nc" id="L274">        return addressUtxo.getAmounts().stream()</span>
+<span class="nc bnc" id="L275" title="All 4 branches missed.">                .filter(input -&gt; input.getPolicyId() != null &amp;&amp; input.getPolicyId().equals(getMintOrBurnAuthTokenHash(network)))</span>
+<span class="nc" id="L276">                .findFirst()</span>
+<span class="nc" id="L277">                .map(Amt::getAssetName)</span>
+<span class="nc" id="L278">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Bootstrap token not found&quot;));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
