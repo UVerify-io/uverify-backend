@@ -195,6 +195,25 @@ public class ValidatorUtils {
         return Optional.empty();
     }
 
+    /**
+     * Returns the current (unspent) UTxO at {@code scriptAddress} that contains {@code unit}.
+     *
+     * Unlike {@link #getUtxoByTransactionAndUnit}, this queries the live UTxO set so it will
+     * never return an output that has already been consumed by a previous transaction.
+     */
+    public static Optional<Utxo> getCurrentUtxoByUnit(String scriptAddress, String unit, BackendService backendService) {
+        try {
+            Result<List<Utxo>> result = backendService.getUtxoService().getUtxos(scriptAddress, unit, 1, 1);
+            if (result.isSuccessful() && !result.getValue().isEmpty()) {
+                return Optional.of(result.getValue().get(0));
+            }
+            log.error("No current UTxO found for unit {} at {}: {}", unit, scriptAddress, result.getResponse());
+        } catch (ApiException e) {
+            log.error("Error fetching current UTxO by unit {} at {}: {}", unit, scriptAddress, e.getMessage());
+        }
+        return Optional.empty();
+    }
+
     public static String extractStringFromPlutusData(PlutusData plutusData) {
         return new String(((BytesPlutusData) plutusData).getValue());
     }

@@ -134,7 +134,11 @@ public class UVerifyTransactionController {
     })
     public ResponseEntity<?> submitTransaction(@RequestBody SubmitTransactionRequest request) {
         try {
-            return ResponseEntity.ok(transactionService.submit(request.getTransaction(), request.getWitnessSet()));
+            Result<String> result = transactionService.submit(request.getTransaction(), request.getWitnessSet());
+            if (result.isSuccessful()) {
+                return ResponseEntity.ok(java.util.Map.of("transactionHash", result.getValue()));
+            }
+            return ResponseEntity.badRequest().body(result.getResponse());
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

@@ -145,11 +145,6 @@ public class CardanoBlockchainService {
         this.backendService = backendService;
     }
 
-    public boolean isTransactionConfirmed(String txHash) throws ApiException {
-        Result<TxContentUtxo> result = backendService.getTransactionService().getTransactionUtxos(txHash);
-        return result.isSuccessful();
-    }
-
     public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
         Optional<StateDatumEntity> stateDatumEntity = Optional.empty();
         if (bootstrapTokenName.isEmpty()) {
@@ -290,14 +285,14 @@ public class CardanoBlockchainService {
         PlutusScript uverifyStateContract = validatorHelper.getParameterizedUVerifyStateContract();
 
         String unit = proxyScriptHash + stateDatum.getId();
-        Optional<Utxo> optionalUtxo = ValidatorUtils.getUtxoByTransactionAndUnit(stateDatum.getTransactionId(), unit, backendService);
+        String proxyScriptAddress = AddressProvider.getEntAddress(uverifyProxyContract, fromCardanoNetwork(network)).toBech32();
+        Optional<Utxo> optionalUtxo = ValidatorUtils.getCurrentUtxoByUnit(proxyScriptAddress, unit, backendService);
 
         if (optionalUtxo.isEmpty()) {
-            throw new IllegalArgumentException("State token not found in transaction outputs");
+            throw new IllegalArgumentException("State token not found in current UTxO set");
         }
 
         Utxo utxo = optionalUtxo.get();
-        String proxyScriptAddress = AddressProvider.getEntAddress(uverifyProxyContract, fromCardanoNetwork(network)).toBech32();
 
         StateDatum nextStateDatum = StateDatum.fromPreviousStateDatum(utxo.getInlineDatum());
         nextStateDatum.setCertificates(uVerifyCertificates);
