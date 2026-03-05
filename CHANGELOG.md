@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/UVerify-io/uverify-backend/compare/v1.10.1...v1.11.0) (2026-03-05)
+
+
+### Features
+
+* add transaction verification endpoint ([5cccada](https://github.com/UVerify-io/uverify-backend/commit/5cccadaae752aad7a9cb5c475d2cf413eb346d15))
+
 ## [1.10.1](https://github.com/UVerify-io/uverify-backend/compare/v1.10.0...v1.10.1) (2026-03-05)
 
 
