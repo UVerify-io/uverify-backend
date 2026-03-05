@@ -46,8 +46,6 @@ public class UVerifyTransactionService {
 
     @Autowired
     private final CardanoBlockchainService cardanoBlockchainService;
-    @Autowired
-    private final LibraryService libraryService;
 
     public Result<String> submit(String transactionHex, String witnessSetHex) throws CborDeserializationException, CborSerializationException, ApiException {
         Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(transactionHex));
@@ -122,6 +120,10 @@ public class UVerifyTransactionService {
                     .type(TransactionType.BOOTSTRAP)
                     .build();
         }
+    }
+
+    public boolean isTransactionConfirmed(String txHash) throws ApiException {
+        return cardanoBlockchainService.isTransactionConfirmed(txHash);
     }
 
     public BuildTransactionResponse buildCustomTransaction(List<CertificateData> certificates, String address, String bootstrapDatumName) {

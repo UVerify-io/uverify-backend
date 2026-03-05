@@ -145,6 +145,11 @@ public class CardanoBlockchainService {
         this.backendService = backendService;
     }
 
+    public boolean isTransactionConfirmed(String txHash) throws ApiException {
+        Result<TxContentUtxo> result = backendService.getTransactionService().getTransactionUtxos(txHash);
+        return result.isSuccessful();
+    }
+
     public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
         Optional<StateDatumEntity> stateDatumEntity = Optional.empty();
         if (bootstrapTokenName.isEmpty()) {
@@ -899,10 +904,10 @@ public class CardanoBlockchainService {
      * recipient address, creating {@code utxoCount} separate outputs each carrying
      * {@code lovelacePerUtxo} lovelace.
      *
-     * @param senderAccount  The account whose UTXOs fund the transaction.
+     * @param senderAccount    The account whose UTXOs fund the transaction.
      * @param recipientAddress Target Cardano address (bech32).
-     * @param utxoCount      Number of separate outputs to create.
-     * @param lovelacePerUtxo Amount of lovelace per output.
+     * @param utxoCount        Number of separate outputs to create.
+     * @param lovelacePerUtxo  Amount of lovelace per output.
      * @return Cardano transaction hash on success.
      */
     public Result<String> sendAda(Account senderAccount, String recipientAddress,

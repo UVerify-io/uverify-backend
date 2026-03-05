@@ -33,6 +33,8 @@ import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.service.UVerifyTransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,6 +47,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class UVerifyTransactionController {
     @Autowired
     private UVerifyTransactionService transactionService;
+
+    @GetMapping("/confirm/{hash}")
+    @Operation(
+            summary = "Check if a transaction has been confirmed on-chain",
+            description = "Returns 200 if the transaction is confirmed on the Cardano blockchain, 404 if it is not yet confirmed."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Transaction confirmed on-chain"),
+            @ApiResponse(responseCode = "404", description = "Transaction not yet confirmed"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<?> confirmTransaction(@PathVariable String hash) {
+        try {
+            boolean confirmed = transactionService.isTransactionConfirmed(hash);
+            return confirmed ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 
     @PostMapping("/build")
     @Operation(
