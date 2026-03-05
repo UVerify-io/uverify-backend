@@ -917,10 +917,11 @@ public class CardanoBlockchainService {
 <span class="fc" id="L917">        Transaction unsignedTx = new QuickTxBuilder(backendService)</span>
 <span class="fc" id="L918">                .compose(tx)</span>
 <span class="fc" id="L919">                .feePayer(senderAccount.baseAddress())</span>
-<span class="fc" id="L920">                .build();</span>
+<span class="fc" id="L920">                .mergeOutputs(false)</span>
+<span class="fc" id="L921">                .build();</span>
 
-<span class="fc" id="L922">        Transaction signedTx = TransactionSigner.INSTANCE.sign(unsignedTx, senderAccount.hdKeyPair());</span>
-<span class="fc" id="L923">        return submitTransaction(signedTx);</span>
+<span class="fc" id="L923">        Transaction signedTx = TransactionSigner.INSTANCE.sign(unsignedTx, senderAccount.hdKeyPair());</span>
+<span class="fc" id="L924">        return submitTransaction(signedTx);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
