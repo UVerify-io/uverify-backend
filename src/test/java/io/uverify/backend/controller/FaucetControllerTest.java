@@ -19,6 +19,8 @@
 package io.uverify.backend.controller;
 
 import com.bloxbean.cardano.client.account.Account;
+import com.bloxbean.cardano.client.api.exception.ApiException;
+import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.cip.cip30.CIP30DataSigner;
 import com.bloxbean.cardano.client.cip.cip30.DataSignError;
 import com.bloxbean.cardano.client.cip.cip30.DataSignature;
@@ -122,7 +124,7 @@ public class FaucetControllerTest extends CardanoBlockchainTest {
 
     @Test
     @Order(2)
-    public void testClaimFaucetFunds() throws DataSignError {
+    public void testClaimFaucetFunds() throws DataSignError, InterruptedException, ApiException {
         DataSignature dataSignature = CIP30DataSigner.INSTANCE.signData(
                 userAccount.getBaseAddress().getBytes(),
                 this.challengeResponse.getMessage().getBytes(),
@@ -149,6 +151,18 @@ public class FaucetControllerTest extends CardanoBlockchainTest {
         Assertions.assertEquals(HttpStatus.OK, claimResponse.getStatus());
         Assertions.assertNotNull(claimResponse.getTxHash());
         Assertions.assertFalse(claimResponse.getTxHash().isBlank());
+
+        // Verify the faucet produced the expected number of separate UTxOs instead
+        // of merging them into one (mergeOutputs must be false in sendAda).
+        waitForTransaction(claimResponse.getTxHash());
+        Result<List<com.bloxbean.cardano.client.api.model.Utxo>> utxosResult =
+                yaciCardanoContainer.getBackendService().getUtxoService()
+                        .getUtxos(userAccount.baseAddress(), 100, 1);
+        long faucetUtxos = utxosResult.getValue().stream()
+                .filter(u -> u.getTxHash().equals(claimResponse.getTxHash()))
+                .count();
+        Assertions.assertEquals(3, faucetUtxos,
+                "Faucet should produce 3 separate UTxOs (mergeOutputs=false)");
     }
 
     @Test

@@ -917,6 +917,7 @@ public class CardanoBlockchainService {
         Transaction unsignedTx = new QuickTxBuilder(backendService)
                 .compose(tx)
                 .feePayer(senderAccount.baseAddress())
+                .mergeOutputs(false)
                 .build();
 
         Transaction signedTx = TransactionSigner.INSTANCE.sign(unsignedTx, senderAccount.hdKeyPair());
