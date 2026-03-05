@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/UVerify-io/uverify-backend/compare/v1.11.0...v1.11.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* use latest utxo set in transaction building ([8419310](https://github.com/UVerify-io/uverify-backend/commit/8419310e9dd9d0d390ee7e212dc4c03aa4467b81))
+
 ## [1.11.0](https://github.com/UVerify-io/uverify-backend/compare/v1.10.1...v1.11.0) (2026-03-05)
 
 
