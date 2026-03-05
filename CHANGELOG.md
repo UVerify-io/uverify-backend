@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.2](https://github.com/UVerify-io/uverify-backend/compare/v1.11.1...v1.11.2) (2026-03-05)
+
+
+### Bug Fixes
+
+* repair broken import ([2b49004](https://github.com/UVerify-io/uverify-backend/commit/2b49004037213a2c0c57b02b543a9b6484f09c6a))
+
 ## [1.11.1](https://github.com/UVerify-io/uverify-backend/compare/v1.11.0...v1.11.1) (2026-03-05)
 
 
