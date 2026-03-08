@@ -40,6 +40,11 @@ public class CertificateMapper {
         certificateResponse.setCreationTime(UVerifyCertificateEntity.getCreationTime().getTime());
         certificateResponse.setMetadata(UVerifyCertificateEntity.getExtra());
         certificateResponse.setIssuer(AddressProvider.getEntAddress(Credential.fromKey(UVerifyCertificateEntity.getPaymentCredential()), fromCardanoNetwork(network)).toBech32());
+        if (UVerifyCertificateEntity.getStateDatum() != null &&
+                UVerifyCertificateEntity.getStateDatum().getBootstrapDatum() != null) {
+            certificateResponse.setBootstrapTokenName(
+                    UVerifyCertificateEntity.getStateDatum().getBootstrapDatum().getTokenName());
+        }
         return certificateResponse;
     }
 }

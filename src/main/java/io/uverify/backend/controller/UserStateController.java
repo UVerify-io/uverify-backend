@@ -34,10 +34,8 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @SuppressWarnings("unused")
@@ -47,6 +45,17 @@ public class UserStateController {
 
     @Autowired
     private UserStateService userStateService;
+
+    @GetMapping("/bootstrap-access")
+    @Operation(
+            summary = "Check if a user has access to a specific bootstrap token",
+            description = "Returns true if the user has an active state derived from the given bootstrap token, false otherwise."
+    )
+    public ResponseEntity<Boolean> checkBootstrapAccess(
+            @RequestParam String address,
+            @RequestParam String tokenName) {
+        return ResponseEntity.ok(userStateService.hasBootstrapAccess(address, tokenName));
+    }
 
     @PostMapping("/request/action")
     @Operation(

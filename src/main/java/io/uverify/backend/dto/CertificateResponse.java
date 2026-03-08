@@ -37,4 +37,6 @@ public class CertificateResponse {
     private Long creationTime;
     private String metadata;
     private String issuer;
+    @JsonAlias({"bootstrapTokenName", "bootstrap_token_name"})
+    private String bootstrapTokenName;
 }

@@ -226,6 +226,11 @@ public class UserStateService {
                 .error("The provided signatures are not valid or the request is outdated (signature older than 10 minutes).").build();
     }
 
+    public boolean hasBootstrapAccess(String address, String tokenName) {
+        String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address));
+        return stateDatumRepository.findByUserAndBootstrapToken(userCredential, tokenName).isPresent();
+    }
+
     private boolean hasValidTimeframe(long timestamp) {
         long currentTime = System.currentTimeMillis();
         long timeDifference = Math.abs(currentTime - timestamp);
