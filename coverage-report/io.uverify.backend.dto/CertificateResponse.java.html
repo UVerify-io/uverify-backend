@@ -22,7 +22,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
-<span class="nc bnc" id="L25" title="All 78 branches missed.">@Data</span>
+<span class="nc bnc" id="L25" title="All 86 branches missed.">@Data</span>
 public class CertificateResponse {
 <span class="nc" id="L27">    private String hash;</span>
 <span class="nc" id="L28">    private String address;</span>
@@ -37,5 +37,7 @@ public class CertificateResponse {
 <span class="nc" id="L37">    private Long creationTime;</span>
 <span class="nc" id="L38">    private String metadata;</span>
 <span class="nc" id="L39">    private String issuer;</span>
+    @JsonAlias({&quot;bootstrapTokenName&quot;, &quot;bootstrap_token_name&quot;})
+<span class="nc" id="L41">    private String bootstrapTokenName;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

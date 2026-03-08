@@ -12,7 +12,7 @@ Uverify Backend,io.uverify.backend.dto,BootstrapData,338,167,78,0,0,31,44,23,5,2
 Uverify Backend,io.uverify.backend.dto,FaucetClaimResponse,132,40,30,0,0,7,19,9,4,9
 Uverify Backend,io.uverify.backend.dto,UserState.UserStateBuilder,8,21,0,0,0,1,1,4,1,4
 Uverify Backend,io.uverify.backend.dto,FaucetClaimResponse.FaucetClaimResponseBuilder,9,28,0,0,0,1,1,5,1,5
-Uverify Backend,io.uverify.backend.dto,CertificateResponse,395,0,78,0,10,0,62,0,23,0
+Uverify Backend,io.uverify.backend.dto,CertificateResponse,435,0,86,0,11,0,68,0,25,0
 Uverify Backend,io.uverify.backend.dto,BuildTransactionRequest.BuildTransactionRequestBuilder,57,0,0,0,1,0,8,0,8,0
 Uverify Backend,io.uverify.backend.dto,FaucetChallengeResponse.FaucetChallengeResponseBuilder,15,49,0,0,0,1,1,8,1,8
 Uverify Backend,io.uverify.backend.dto,BuildTransactionResponse.BuildTransactionResponseBuilder,10,28,0,0,0,1,1,5,1,5
@@ -38,7 +38,7 @@ Uverify Backend,io.uverify.backend.controller,CertificateController,38,10,4,0,8,
 Uverify Backend,io.uverify.backend.controller,StatisticsController,14,3,0,0,4,1,2,1,2,1
 Uverify Backend,io.uverify.backend.controller,UVerifyTransactionController,88,68,11,9,20,14,10,4,2,2
 Uverify Backend,io.uverify.backend.controller,FaucetController,9,38,2,4,2,9,2,5,0,3
-Uverify Backend,io.uverify.backend.controller,UserStateController,75,30,12,2,16,6,7,3,0,3
+Uverify Backend,io.uverify.backend.controller,UserStateController,83,30,12,2,17,6,8,3,1,3
 Uverify Backend,io.uverify.backend.controller,LibraryController,19,68,5,5,5,16,5,6,0,6
 Uverify Backend,io.uverify.backend.extension.validators.impl,SocialHubRedeemerData,33,0,0,0,9,0,7,0,7,0
 Uverify Backend,io.uverify.backend.extension.validators.impl,ConnectedGoodsDatumItemData,24,0,0,0,7,0,6,0,6,0
@@ -68,7 +68,7 @@ Uverify Backend,io.uverify.backend.model,ProxyRedeemer,0,15,0,0,0,3,0,1,0,1
 Uverify Backend,io.uverify.backend.extension.service,TadamonGoogleSheetsService,552,0,38,0,125,0,30,0,11,0
 Uverify Backend,io.uverify.backend.extension.service,ConnectedGoodsService,152,1091,17,27,34,232,18,31,5,22
 Uverify Backend,io.uverify.backend.extension.service,TadamonService,356,0,28,0,78,0,22,0,8,0
-Uverify Backend,io.uverify.backend.mapper,CertificateMapper,56,0,0,0,13,0,3,0,3,0
+Uverify Backend,io.uverify.backend.mapper,CertificateMapper,69,0,4,0,17,0,5,0,3,0
 Uverify Backend,io.uverify.backend.extension.validators.converter,ConnectedGoodsDatumConverter,33,130,0,4,10,30,2,7,2,5
 Uverify Backend,io.uverify.backend.extension.validators.converter,SocialHubRedeemerConverter,87,27,5,3,24,5,8,3,5,2
 Uverify Backend,io.uverify.backend.extension.validators.converter,SocialHubDatumConverter,105,1133,6,50,23,218,8,27,2,5
@@ -81,7 +81,7 @@ Uverify Backend,io.uverify.backend.service,CardanoBlockchainService,563,2042,70,
 Uverify Backend,io.uverify.backend.service,LibraryService,322,796,35,47,102,189,29,35,0,23
 Uverify Backend,io.uverify.backend.service,UVerifyCertificateService,11,22,0,0,2,8,2,4,2,4
 Uverify Backend,io.uverify.backend.service,StateDatumService,61,106,11,5,14,32,10,10,2,10
-Uverify Backend,io.uverify.backend.service,UserStateService,193,226,22,12,48,58,21,10,4,10
+Uverify Backend,io.uverify.backend.service,UserStateService,204,226,22,12,50,58,22,10,5,10
 Uverify Backend,io.uverify.backend.service,StatisticsService,146,16,18,0,34,6,13,2,3,2
 Uverify Backend,io.uverify.backend.enums,BuildStatusCode,0,15,0,0,0,3,0,1,0,1
 Uverify Backend,io.uverify.backend.enums,TransactionType,6,86,1,3,1,15,1,5,0,4

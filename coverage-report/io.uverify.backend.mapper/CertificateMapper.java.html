@@ -40,7 +40,12 @@ import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 <span class="nc" id="L40">        certificateResponse.setCreationTime(UVerifyCertificateEntity.getCreationTime().getTime());</span>
 <span class="nc" id="L41">        certificateResponse.setMetadata(UVerifyCertificateEntity.getExtra());</span>
 <span class="nc" id="L42">        certificateResponse.setIssuer(AddressProvider.getEntAddress(Credential.fromKey(UVerifyCertificateEntity.getPaymentCredential()), fromCardanoNetwork(network)).toBech32());</span>
-<span class="nc" id="L43">        return certificateResponse;</span>
+<span class="nc bnc" id="L43" title="All 2 branches missed.">        if (UVerifyCertificateEntity.getStateDatum() != null &amp;&amp;</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">                UVerifyCertificateEntity.getStateDatum().getBootstrapDatum() != null) {</span>
+<span class="nc" id="L45">            certificateResponse.setBootstrapTokenName(</span>
+<span class="nc" id="L46">                    UVerifyCertificateEntity.getStateDatum().getBootstrapDatum().getTokenName());</span>
+        }
+<span class="nc" id="L48">        return certificateResponse;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
