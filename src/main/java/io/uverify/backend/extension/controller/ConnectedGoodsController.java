@@ -23,10 +23,12 @@ import com.bloxbean.cardano.client.address.Credential;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.uverify.backend.dto.BuildTransactionResponse;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.extension.dto.ClaimUpdateConnectedGoodsRequest;
@@ -57,6 +59,7 @@ import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 @RestController
 @SuppressWarnings("unused")
 @RequestMapping("/api/v1/extension/connected-goods")
+@Tag(name = "Connected Goods", description = "Extension endpoints for managing NFT-based connected physical goods on Cardano.")
 public class ConnectedGoodsController {
 
     @Autowired
@@ -82,7 +85,19 @@ public class ConnectedGoodsController {
     }
 
     @GetMapping("/{batchIds}/{itemId}")
-    public ResponseEntity<?> getConnectedGood(@PathVariable String batchIds, @PathVariable String itemId) {
+    @Operation(
+            summary = "Retrieve a connected good",
+            description = "Decrypts and returns the social-hub data for the connected good identified by its batch ID and item ID."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Social hub data retrieved and decrypted successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SocialHub.class))),
+            @ApiResponse(responseCode = "400", description = "Decryption failed for the given item ID"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<?> getConnectedGood(
+            @Parameter(description = "Batch ID of the connected good collection", required = true) @PathVariable String batchIds,
+            @Parameter(description = "Item ID (claiming password hash) used to decrypt the social hub", required = true) @PathVariable String itemId) {
         batchIds = correctBatchIds(batchIds);
 
         SocialHubEntity socialHubEntity = connectedGoodsService.getSocialHubByBatchIdsAndItemId(batchIds, itemId);
@@ -126,6 +141,18 @@ public class ConnectedGoodsController {
     }
 
     @PostMapping("/claim/item")
+    @Operation(
+            summary = "Claim a connected good",
+            description = "Builds and returns an unsigned Cardano transaction that claims ownership of a connected good using the item's password. "
+                    + "The transaction must be signed by the user wallet before submission."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Unsigned claim transaction built successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(type = "string", description = "Hex-encoded CBOR unsigned transaction"))),
+            @ApiResponse(responseCode = "400", description = "Invalid request, wrong password, or invalid user address"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<?> claimItem(@RequestBody @NotNull ClaimUpdateConnectedGoodsRequest claimUpdateConnectedGoodsRequest) {
         String batchId = correctBatchIds(claimUpdateConnectedGoodsRequest.getBatchId());
 
@@ -165,6 +192,18 @@ public class ConnectedGoodsController {
     }
 
     @PostMapping("/update/item")
+    @Operation(
+            summary = "Update a connected good",
+            description = "Builds and returns an unsigned Cardano transaction that updates the social-hub data of a previously claimed connected good. "
+                    + "The transaction must be signed by the owner wallet before submission."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Unsigned update transaction built successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(type = "string", description = "Hex-encoded CBOR unsigned transaction"))),
+            @ApiResponse(responseCode = "400", description = "Invalid request, wrong password, or invalid user address"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<?> updateItem(@RequestBody @NotNull ClaimUpdateConnectedGoodsRequest claimUpdateConnectedGoodsRequest) {
         String batchId = correctBatchIds(claimUpdateConnectedGoodsRequest.getBatchId());
 

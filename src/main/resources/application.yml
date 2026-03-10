@@ -1,5 +1,6 @@
 server:
   port: ${PORT:9090}
+  forward-headers-strategy: FRAMEWORK
 
 spring:
   profiles:
