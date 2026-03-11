@@ -18,6 +18,13 @@
 
 package io.uverify.backend.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.uverify.backend.dto.BuildTransactionResponse;
 import io.uverify.backend.dto.LibraryDeploymentResponse;
 import io.uverify.backend.enums.BuildStatusCode;
@@ -29,62 +36,123 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @SuppressWarnings(&quot;unused&quot;)
 @RequestMapping(&quot;/api/v1/library&quot;)
-<span class="fc" id="L32">public class LibraryController {</span>
+@Tag(name = &quot;Library&quot;, description = &quot;Endpoints for managing on-chain Aiken/Plutus script deployments.&quot;)
+<span class="fc" id="L40">public class LibraryController {</span>
 
     @Autowired
     LibraryService libraryService;
 
     @GetMapping(&quot;/deployments&quot;)
+    @Operation(
+            summary = &quot;List script deployments&quot;,
+            description = &quot;Returns the current on-chain deployment state of the UVerify Plutus/Aiken library scripts.&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Deployments retrieved successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = LibraryDeploymentResponse.class))),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Failed to retrieve library deployments&quot;),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
     public ResponseEntity&lt;?&gt; getLibraryDeployments() {
-<span class="fc" id="L39">        LibraryDeploymentResponse libraryDeploymentResponse = libraryService.getDeployments();</span>
+<span class="fc" id="L57">        LibraryDeploymentResponse libraryDeploymentResponse = libraryService.getDeployments();</span>
 
-<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        if (libraryDeploymentResponse == null) {</span>
-<span class="nc" id="L42">            return ResponseEntity.badRequest().body(&quot;Failed to retrieve library deployments.&quot;);</span>
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        if (libraryDeploymentResponse == null) {</span>
+<span class="nc" id="L60">            return ResponseEntity.badRequest().body(&quot;Failed to retrieve library deployments.&quot;);</span>
         }
 
-<span class="fc" id="L45">        return ResponseEntity.ok(libraryDeploymentResponse);</span>
+<span class="fc" id="L63">        return ResponseEntity.ok(libraryDeploymentResponse);</span>
     }
 
     @PostMapping(&quot;/deploy/proxy&quot;)
+    @Operation(
+            summary = &quot;Deploy proxy contract&quot;,
+            description = &quot;Builds an unsigned Cardano transaction that deploys the UVerify proxy script on-chain. &quot;
+                    + &quot;The returned transaction must be signed by the service wallet before submission.&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Unsigned deployment transaction built successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Transaction build failed&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
     public ResponseEntity&lt;?&gt; deployContracts() {
-<span class="fc" id="L50">        BuildTransactionResponse buildTransactionResponse = libraryService.buildDeployTransaction();</span>
-<span class="pc bpc" id="L51" title="1 of 2 branches missed.">        if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
-<span class="fc" id="L52">            return ResponseEntity.ok(buildTransactionResponse);</span>
+<span class="fc" id="L80">        BuildTransactionResponse buildTransactionResponse = libraryService.buildDeployTransaction();</span>
+<span class="pc bpc" id="L81" title="1 of 2 branches missed.">        if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="fc" id="L82">            return ResponseEntity.ok(buildTransactionResponse);</span>
         } else {
-<span class="nc" id="L54">            return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+<span class="nc" id="L84">            return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
         }
     }
 
     @PostMapping(&quot;/upgrade/proxy&quot;)
+    @Operation(
+            summary = &quot;Upgrade proxy contract&quot;,
+            description = &quot;Builds an unsigned Cardano transaction that upgrades the existing proxy script to a new version. &quot;
+                    + &quot;The request body should contain the new script reference transaction hash.&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Unsigned upgrade transaction built successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Transaction build failed&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
     public ResponseEntity&lt;?&gt; upgradeStateContract(@RequestBody String request) {
-<span class="fc" id="L60">        BuildTransactionResponse buildTransactionResponse = libraryService.buildDeployTransaction(request);</span>
-<span class="pc bpc" id="L61" title="1 of 2 branches missed.">        if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
-<span class="fc" id="L62">            return ResponseEntity.ok(buildTransactionResponse);</span>
+<span class="fc" id="L102">        BuildTransactionResponse buildTransactionResponse = libraryService.buildDeployTransaction(request);</span>
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">        if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="fc" id="L104">            return ResponseEntity.ok(buildTransactionResponse);</span>
         } else {
-<span class="nc" id="L64">            return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
+<span class="nc" id="L106">            return ResponseEntity.badRequest().body(buildTransactionResponse);</span>
         }
     }
 
     @GetMapping(&quot;/undeploy/unused&quot;)
+    @Operation(
+            summary = &quot;Undeploy unused contracts&quot;,
+            description = &quot;Builds an unsigned Cardano transaction that reclaims all on-chain script UTxOs that are no longer referenced by active certificates.&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Unsigned undeployment transaction built successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Transaction build failed&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
     public ResponseEntity&lt;?&gt; undeployUnusedContracts() {
-<span class="fc" id="L70">        BuildTransactionResponse undeployUnusedContractsResponse = libraryService.undeployUnusedContracts();</span>
+<span class="fc" id="L123">        BuildTransactionResponse undeployUnusedContractsResponse = libraryService.undeployUnusedContracts();</span>
 
-<span class="pc bpc" id="L72" title="1 of 2 branches missed.">        if (undeployUnusedContractsResponse.getStatus().getCode().equals(BuildStatusCode.ERROR)) {</span>
-<span class="nc" id="L73">            return ResponseEntity.badRequest().body(undeployUnusedContractsResponse);</span>
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">        if (undeployUnusedContractsResponse.getStatus().getCode().equals(BuildStatusCode.ERROR)) {</span>
+<span class="nc" id="L126">            return ResponseEntity.badRequest().body(undeployUnusedContractsResponse);</span>
         }
 
-<span class="fc" id="L76">        return ResponseEntity.ok(undeployUnusedContractsResponse);</span>
+<span class="fc" id="L129">        return ResponseEntity.ok(undeployUnusedContractsResponse);</span>
     }
 
     @GetMapping(&quot;/undeploy/{transactionHash}/{outputIndex}&quot;)
-    public ResponseEntity&lt;?&gt; undeployContract(@PathVariable String transactionHash, @PathVariable Integer outputIndex) {
-<span class="fc" id="L81">        BuildTransactionResponse undeployContractResponse = libraryService.undeployContract(transactionHash, outputIndex);</span>
+    @Operation(
+            summary = &quot;Undeploy a specific contract&quot;,
+            description = &quot;Builds an unsigned Cardano transaction that removes the script UTxO identified by the given transaction hash and output index.&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Unsigned undeployment transaction built successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Transaction build failed&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;, schema = @Schema(implementation = BuildTransactionResponse.class))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;?&gt; undeployContract(
+            @Parameter(description = &quot;Cardano transaction hash of the UTxO containing the deployed script&quot;, required = true)
+            @PathVariable String transactionHash,
+            @Parameter(description = &quot;Output index of the UTxO within the transaction&quot;, required = true)
+            @PathVariable Integer outputIndex) {
+<span class="fc" id="L149">        BuildTransactionResponse undeployContractResponse = libraryService.undeployContract(transactionHash, outputIndex);</span>
 
-<span class="pc bpc" id="L83" title="1 of 2 branches missed.">        if (undeployContractResponse.getStatus().getCode().equals(BuildStatusCode.ERROR)) {</span>
-<span class="fc" id="L84">            return ResponseEntity.badRequest().body(undeployContractResponse);</span>
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">        if (undeployContractResponse.getStatus().getCode().equals(BuildStatusCode.ERROR)) {</span>
+<span class="fc" id="L152">            return ResponseEntity.badRequest().body(undeployContractResponse);</span>
         }
 
-<span class="nc" id="L87">        return ResponseEntity.ok(undeployContractResponse);</span>
+<span class="nc" id="L155">        return ResponseEntity.ok(undeployContractResponse);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

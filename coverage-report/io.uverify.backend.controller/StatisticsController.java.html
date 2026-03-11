@@ -18,6 +18,12 @@
 
 package io.uverify.backend.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.uverify.backend.service.StatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -30,20 +36,43 @@ import java.util.Map;
 @RestController
 @SuppressWarnings(&quot;unused&quot;)
 @RequestMapping(&quot;/api/v1/statistic&quot;)
-<span class="fc" id="L33">public class StatisticsController {</span>
+@Tag(name = &quot;Statistics&quot;, description = &quot;Endpoints for retrieving certificate and transaction fee statistics.&quot;)
+<span class="fc" id="L40">public class StatisticsController {</span>
     @Autowired
     private StatisticsService statisticsService;
 
     @GetMapping(&quot;/certificate/by-category&quot;)
+    @Operation(
+            summary = &quot;Certificate counts by category&quot;,
+            description = &quot;Returns the total number of UVerify certificates grouped by template/category.&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Statistics retrieved successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;,
+                            schema = @Schema(type = &quot;object&quot;,
+                                    description = &quot;Map of category name to certificate count&quot;))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
     public ResponseEntity&lt;?&gt; getTransactionStatistics() {
-<span class="nc" id="L39">        Map&lt;String, Integer&gt; totalUVerifyCertificates = statisticsService.getTotalUVerifyCertificates();</span>
-<span class="nc" id="L40">        return ResponseEntity.ok(totalUVerifyCertificates);</span>
+<span class="nc" id="L57">        Map&lt;String, Integer&gt; totalUVerifyCertificates = statisticsService.getTotalUVerifyCertificates();</span>
+<span class="nc" id="L58">        return ResponseEntity.ok(totalUVerifyCertificates);</span>
     }
 
     @GetMapping(&quot;/tx-fees&quot;)
+    @Operation(
+            summary = &quot;Total transaction fees&quot;,
+            description = &quot;Returns the accumulated UVerify transaction fees in lovelace (1 ADA = 1 000 000 lovelace).&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Fee amount retrieved successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;,
+                            schema = @Schema(type = &quot;integer&quot;, format = &quot;int64&quot;,
+                                    description = &quot;Total fees in lovelace&quot;))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
     public ResponseEntity&lt;?&gt; getTransactionFees() {
-<span class="nc" id="L45">        Long transactionFees = statisticsService.getTransactionFees();</span>
-<span class="nc" id="L46">        return ResponseEntity.ok(transactionFees);</span>
+<span class="nc" id="L74">        Long transactionFees = statisticsService.getTransactionFees();</span>
+<span class="nc" id="L75">        return ResponseEntity.ok(transactionFees);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
