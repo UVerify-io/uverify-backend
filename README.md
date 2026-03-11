@@ -84,7 +84,7 @@ An example `docker-compose.yml` is available [here](https://github.com/UVerify-i
 3. Build and run the application:
    ```zsh
    mvn clean package
-   java -jar target/uverify-backend-1.11.3.jar
+   java -jar target/uverify-backend-1.12.0.jar
    ```
 
 ## 🔧 Environment Variables
