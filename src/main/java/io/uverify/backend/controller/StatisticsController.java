@@ -49,7 +49,7 @@ public class StatisticsController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Statistics retrieved successfully",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(type = "object", additionalPropertiesSchema = @Schema(type = "integer"),
+                            schema = @Schema(type = "object",
                                     description = "Map of category name to certificate count"))),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
