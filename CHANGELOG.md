@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/UVerify-io/uverify-backend/compare/v1.12.0...v1.12.1) (2026-03-13)
+
+
+### Bug Fixes
+
+* add logging to endpoints to avoid 500er without internal messages ([80f0004](https://github.com/UVerify-io/uverify-backend/commit/80f00049f9a9b0c9e0e8dc6f3b15cd4b906e2a60))
+
 ## [1.12.0](https://github.com/UVerify-io/uverify-backend/compare/v1.11.3...v1.12.0) (2026-03-11)
 
 
