@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.0](https://github.com/UVerify-io/uverify-backend/compare/v1.11.3...v1.12.0) (2026-03-11)
+
+
+### Features
+
+* enhance api docs and apply best practices ([0909451](https://github.com/UVerify-io/uverify-backend/commit/090945111788e9ebf26fef7d0c3adc4bf97e9d3e))
+* return boostrap information as part of the certificate data ([f039953](https://github.com/UVerify-io/uverify-backend/commit/f0399531487ae792cfdba9eba5a3b60106c5c16f))
+
 ## [1.11.3](https://github.com/UVerify-io/uverify-backend/compare/v1.11.2...v1.11.3) (2026-03-05)
 
 
