@@ -36,7 +36,7 @@ Uverify Backend,io.uverify.backend.dto,LibraryEntry.LibraryEntryBuilder,8,28,0,0
 Uverify Backend,io.uverify.backend.dto,UserActionResponse.UserActionResponseBuilder,23,51,0,0,0,1,2,8,2,8
 Uverify Backend,io.uverify.backend.controller,CertificateController,38,10,4,0,8,4,5,1,3,1
 Uverify Backend,io.uverify.backend.controller,StatisticsController,14,3,0,0,4,1,2,1,2,1
-Uverify Backend,io.uverify.backend.controller,UVerifyTransactionController,88,68,11,9,20,14,10,4,2,2
+Uverify Backend,io.uverify.backend.controller,UVerifyTransactionController,106,72,11,9,23,15,10,5,2,3
 Uverify Backend,io.uverify.backend.controller,FaucetController,9,38,2,4,2,9,2,5,0,3
 Uverify Backend,io.uverify.backend.controller,UserStateController,83,30,12,2,17,6,8,3,1,3
 Uverify Backend,io.uverify.backend.controller,LibraryController,19,68,5,5,5,16,5,6,0,6
