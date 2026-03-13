@@ -32,6 +32,7 @@ import io.uverify.backend.dto.SubmitTransactionRequest;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.service.UVerifyTransactionService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @SuppressWarnings("unused")
 @RequestMapping("/api/v1/transaction")
+@Slf4j
 @Tag(name = "Transaction Management", description = "Endpoints for building and submitting UVerify certificate transactions to the Cardano blockchain.")
 public class UVerifyTransactionController {
     @Autowired
@@ -59,6 +61,7 @@ public class UVerifyTransactionController {
             boolean confirmed = transactionService.isTransactionConfirmed(hash);
             return confirmed ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
         } catch (Exception e) {
+            log.error("Error confirming transaction: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -113,6 +116,7 @@ public class UVerifyTransactionController {
                 return ResponseEntity.badRequest().body("Unknown transaction type. Allowed types are: DEFAULT, BOOTSTRAP, CUSTOM.");
             }
         } catch (Exception e) {
+            log.error("Error building transaction: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -136,6 +140,7 @@ public class UVerifyTransactionController {
             }
             return ResponseEntity.badRequest().body(result.getResponse());
         } catch (Exception e) {
+            log.error("Error submitting transaction: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
