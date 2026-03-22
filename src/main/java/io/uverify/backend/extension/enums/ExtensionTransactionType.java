@@ -16,24 +16,18 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.extension;
+package io.uverify.backend.extension.enums;
 
-import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
-import io.uverify.backend.dto.UsageStatistics;
-
-import java.math.BigInteger;
-import java.util.List;
-
-public interface UVerifyServiceExtension {
-
-    /** Human-readable identifier used by the extension registry endpoint. */
-    default String getName() { return "unknown"; }
-
-    public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos);
-
-    public void handleRollbackToSlot(long slot);
-
-    void addUsageStatistics(UsageStatistics usageStatistics);
-
-    BigInteger addTransactionFees(BigInteger totalFees);
+/**
+ * Discriminates the two high-level operations exposed by extension {@code /build} endpoints.
+ *
+ * <ul>
+ *   <li>{@link #CREATE} — creates or extends the on-chain linked list (Init or Insert,
+ *       resolved automatically based on chain state).</li>
+ *   <li>{@link #REDEEM} — redeems/claims tokens or NFTs from an existing node.</li>
+ * </ul>
+ */
+public enum ExtensionTransactionType {
+    CREATE,
+    REDEEM
 }

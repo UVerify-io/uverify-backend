@@ -16,24 +16,24 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.extension;
+package io.uverify.backend.extension.dto.tokenizable;
 
-import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
-import io.uverify.backend.dto.UsageStatistics;
+import lombok.Data;
 
-import java.math.BigInteger;
-import java.util.List;
-
-public interface UVerifyServiceExtension {
-
-    /** Human-readable identifier used by the extension registry endpoint. */
-    default String getName() { return "unknown"; }
-
-    public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos);
-
-    public void handleRollbackToSlot(long slot);
-
-    void addUsageStatistics(UsageStatistics usageStatistics);
-
-    BigInteger addTransactionFees(BigInteger totalFees);
+/**
+ * Request body for the Redeem (claim) transaction endpoint.
+ * <p>
+ * The owner wallet must sign the returned unsigned transaction.
+ * Claiming mints the NFT and sends it to the owner's address.
+ */
+@Data
+public class BuildRedeemRequest {
+    /** Bech32 address of the node owner (pays fees and must sign). */
+    private String ownerAddress;
+    /** Hex-encoded node key to redeem. */
+    private String key;
+    /** Tx-hash used to derive the tokenizable-certificate policy ID. */
+    private String initUtxoTxHash;
+    /** Output index used to derive the tokenizable-certificate policy ID. */
+    private int initUtxoOutputIndex;
 }

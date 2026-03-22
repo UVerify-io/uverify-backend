@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ExtensionManager {
@@ -33,6 +34,12 @@ public class ExtensionManager {
 
     public void registerExtension(UVerifyServiceExtension extension) {
         extensions.add(extension);
+    }
+
+    public List<String> getRegisteredExtensionNames() {
+        return extensions.stream()
+                .map(UVerifyServiceExtension::getName)
+                .collect(Collectors.toList());
     }
 
     public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos) {

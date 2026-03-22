@@ -108,6 +108,10 @@ extensions:
     service-wallet:
       mnemonic: ${CONNECTED_GOODS_SERVICE_WALLET_MNEMONIC:}
       address: ${CONNECTED_GOODS_SERVICE_WALLET_ADDRESS}
+  tokenizable-certificate:
+    enabled: ${TOKENIZABLE_CERTIFICATE_EXTENSION_ENABLED:false}
+  fractionized-certificate:
+    enabled: ${FRACTIONIZED_CERTIFICATE_EXTENSION_ENABLED:false}
   tadamon:
     enabled: ${TADAMON_EXTENSION_ENABLED:false}
     allowed-addresses: ${TADAMON_ALLOWED_ADDRESSES:}

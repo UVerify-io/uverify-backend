@@ -16,24 +16,22 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.extension;
+package io.uverify.backend.extension.dto.fractionized;
 
-import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
-import io.uverify.backend.dto.UsageStatistics;
+import io.uverify.backend.extension.validators.fractionized.FractionizedConfig;
+import lombok.Data;
 
-import java.math.BigInteger;
-import java.util.List;
-
-public interface UVerifyServiceExtension {
-
-    /** Human-readable identifier used by the extension registry endpoint. */
-    default String getName() { return "unknown"; }
-
-    public List<AddressUtxo> processAddressUtxos(List<AddressUtxo> addressUtxos);
-
-    public void handleRollbackToSlot(long slot);
-
-    void addUsageStatistics(UsageStatistics usageStatistics);
-
-    BigInteger addTransactionFees(BigInteger totalFees);
+/**
+ * Request body for the fractionized-certificate Init transaction endpoint.
+ */
+@Data
+public class BuildInitRequest {
+    /** Bech32 address of the deployer (pays fees and must sign). */
+    private String deployerAddress;
+    /** Tx-hash of the one-shot init UTxO (must exist in deployerAddress). */
+    private String initUtxoTxHash;
+    /** Output index of the one-shot init UTxO. */
+    private int initUtxoOutputIndex;
+    /** Configuration embedded in the HEAD datum. */
+    private FractionizedConfig config;
 }
