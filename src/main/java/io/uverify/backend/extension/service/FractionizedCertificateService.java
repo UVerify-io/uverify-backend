@@ -23,7 +23,6 @@ import com.bloxbean.cardano.client.address.AddressProvider;
 import com.bloxbean.cardano.client.address.Credential;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Amount;
-import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.api.model.Utxo;
 import com.bloxbean.cardano.client.backend.api.BackendService;
@@ -34,6 +33,7 @@ import com.bloxbean.cardano.client.backend.koios.KoiosBackendService;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
 import com.bloxbean.cardano.client.common.model.Network;
+import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.plutus.spec.*;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
@@ -41,25 +41,20 @@ import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
 import io.uverify.backend.entity.BootstrapDatumEntity;
+import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.enums.UVerifyScriptPurpose;
-import io.uverify.backend.model.ProxyRedeemer;
-import io.uverify.backend.model.converter.ProxyRedeemerConverter;
-import io.uverify.backend.extension.dto.fractionized.BuildClaimRequest;
-import io.uverify.backend.extension.dto.fractionized.BuildInitRequest;
-import io.uverify.backend.extension.dto.fractionized.BuildInsertRequest;
-import io.uverify.backend.extension.dto.fractionized.FractionizedBuildRequest;
-import io.uverify.backend.extension.dto.fractionized.FractionizedStatusResponse;
+import io.uverify.backend.extension.dto.fractionized.*;
 import io.uverify.backend.extension.enums.ExtensionTransactionType;
-import io.uverify.backend.extension.validators.fractionized.FractionizedConfig;
 import io.uverify.backend.extension.validators.fractionized.FractionizedDatum;
+import io.uverify.backend.model.ProxyRedeemer;
 import io.uverify.backend.model.StateDatum;
 import io.uverify.backend.model.StateRedeemer;
 import io.uverify.backend.model.UVerifyCertificate;
+import io.uverify.backend.model.converter.ProxyRedeemerConverter;
 import io.uverify.backend.service.BootstrapDatumService;
 import io.uverify.backend.service.LibraryService;
 import io.uverify.backend.service.StateDatumService;
-import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.util.CardanoUtils;
 import io.uverify.backend.util.ValidatorHelper;
 import io.uverify.backend.util.ValidatorUtils;
@@ -73,14 +68,11 @@ import org.springframework.stereotype.Service;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
-import static io.uverify.backend.util.ValidatorUtils.*;
+import static io.uverify.backend.util.ValidatorUtils.getCurrentUtxoByUnit;
+import static io.uverify.backend.util.ValidatorUtils.validatorToScriptHash;
 
 /**
  * Builds unsigned Cardano transactions for the fractionized-certificate contract.
@@ -168,6 +160,11 @@ public class FractionizedCertificateService {
             init.setInitUtxoTxHash(req.getInitUtxoTxHash());
             init.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());
             init.setConfig(req.getConfig());
+            init.setKey(req.getKey());
+            init.setTotalAmount(req.getTotalAmount());
+            init.setClaimants(req.getClaimants());
+            init.setAssetName(req.getAssetName());
+            init.setBootstrapTokenName(req.getBootstrapTokenName());
             return buildInitTransaction(init);
         } else {
             BuildInsertRequest insert = new BuildInsertRequest();
@@ -183,10 +180,22 @@ public class FractionizedCertificateService {
         }
     }
 
+    /**
+     * Builds an unsigned Init transaction that simultaneously:
+     * <ol>
+     *   <li>Consumes the one-shot init UTxO (parameterises the policy).</li>
+     *   <li>Creates a new UVerify state (MINT_STATE) tied to the deployer.</li>
+     *   <li>Mints the HEAD node token and the first certificate node token.</li>
+     *   <li>Mints a proxy certificate token (enforces UVerify cert presence).</li>
+     * </ol>
+     * Empty linked lists are not permitted by the on-chain validator, so Init
+     * always includes the first node.
+     */
     public String buildInitTransaction(BuildInitRequest req) throws ApiException, CborSerializationException {
-        PlutusScript script = getFractionizedCertificateContract(req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());
-        String scriptAddress = scriptAddress(script);
+        PlutusScript fractionizedScript = getFractionizedCertificateContract(req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());
+        String fractionizedAddress = scriptAddress(fractionizedScript);
 
+        // ── 1. Find the init UTxO in the deployer's wallet ───────────────────
         Result<List<Utxo>> utxoResult = backendService.getUtxoService().getUtxos(req.getDeployerAddress(), 100, 1);
         if (!utxoResult.isSuccessful() || utxoResult.getValue() == null) {
             throw new IllegalStateException("Could not retrieve UTxOs for deployer address");
@@ -201,9 +210,64 @@ public class FractionizedCertificateService {
         }
         Utxo initUtxo = optInitUtxo.get();
 
-        FractionizedDatum.FHead headDatum = FractionizedDatum.FHead.builder()
-                .next(null)
-                .config(req.getConfig())
+        Address deployerAddress = new Address(req.getDeployerAddress());
+        byte[] deployerCredential = deployerAddress.getPaymentCredentialHash()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid deployer address"));
+
+        // ── 2. Bootstrap datum for UVerify state creation (MINT_STATE) ───────
+        String bootstrapToken = req.getBootstrapTokenName() != null ? req.getBootstrapTokenName() : "";
+        Optional<BootstrapDatumEntity> optEntity = bootstrapDatumService.getBootstrapDatum(bootstrapToken, 2);
+        if (optEntity.isEmpty()) {
+            throw new IllegalArgumentException("Bootstrap datum '" + bootstrapToken + "' not found");
+        }
+        BootstrapDatumEntity bootstrapDatumEntity = optEntity.get();
+
+        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
+        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
+        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, network).toBech32();
+        String stateRewardAddress = AddressProvider.getRewardAddress(stateContract, network).toBech32();
+
+        // Derive state ID from the init UTxO (same formula as fork-and-orphan)
+        String indexHex = HexUtil.encodeHexString(ByteBuffer.allocate(2)
+                .order(ByteOrder.LITTLE_ENDIAN)
+                .putShort((short) initUtxo.getOutputIndex())
+                .array());
+        String stateId = DigestUtils.sha256Hex(HexUtil.decodeHexString(initUtxo.getTxHash() + indexHex));
+
+        // Resolve bootstrap UTxO (read-only reference input)
+        String bootstrapTokenUnit = proxyContract.getPolicyId()
+                + HexUtil.encodeHexString(bootstrapToken.getBytes());
+        Result<TxContentUtxo> txResult = backendService.getTransactionService()
+                .getTransactionUtxos(bootstrapDatumEntity.getTransactionId());
+        TxContentUtxoOutputs bootstrapOutput = txResult.getValue().getOutputs().stream()
+                .filter(o -> o.getAmount().stream().anyMatch(a -> a.getUnit().equals(bootstrapTokenUnit)))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Bootstrap UTxO not found for token: " + bootstrapToken));
+        Utxo bootstrapUtxo = bootstrapOutput.toUtxos(bootstrapDatumEntity.getTransactionId());
+
+        // ── 3. Certificate and state datum ───────────────────────────────────
+        UVerifyCertificate cert = UVerifyCertificate.builder()
+                .hash(req.getKey())
+                .algorithm("sha3_256")
+                .issuer(HexUtil.encodeHexString(deployerCredential))
+                .extra("{\"uverify_template_id\":\"fractionizedCertificate\"}")
+                .build();
+
+        StateDatum stateDatum = StateDatum.fromBootstrapDatum(bootstrapUtxo.getInlineDatum(), deployerCredential);
+        stateDatum.setCertificateDataHash(List.of(cert));
+        stateDatum.setCountdown(stateDatum.getCountdown() - 1);
+        stateDatum.setId(stateId);
+
+        StateRedeemer mintStateRedeemer = StateRedeemer.builder()
+                .purpose(UVerifyScriptPurpose.MINT_STATE)
+                .certificates(List.of(cert))
+                .build();
+        PlutusData mintProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);
+
+        // ── 4. Tokens ────────────────────────────────────────────────────────
+        Asset stateToken = Asset.builder()
+                .name("0x" + stateId)
+                .value(BigInteger.ONE)
                 .build();
 
         Asset headToken = Asset.builder()
@@ -211,17 +275,65 @@ public class FractionizedCertificateService {
                 .value(BigInteger.ONE)
                 .build();
 
+        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();
+        Asset nodeToken = Asset.builder()
+                .name("0x" + nodeTokenName)
+                .value(BigInteger.ONE)
+                .build();
+
+        // CertificateInit { key } redeemer: constr 0 with key bytes
+        PlutusData initMintRedeemer = ConstrPlutusData.of(0,
+                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));
+
+        // ── 5. Datums ────────────────────────────────────────────────────────
+        FractionizedDatum.FHead headDatum = FractionizedDatum.FHead.builder()
+                .next(req.getKey())        // HEAD points to first node
+                .config(req.getConfig())
+                .build();
+
+        FractionizedDatum.FNode nodeDatum = FractionizedDatum.FNode.builder()
+                .key(req.getKey())
+                .next(null)
+                .totalAmount(req.getTotalAmount())
+                .remainingAmount(req.getTotalAmount())
+                .claimants(req.getClaimants() != null ? req.getClaimants() : List.of())
+                .assetName(req.getAssetName())
+                .exhausted(false)
+                .build();
+
+        // ── 6. Build transaction ──────────────────────────────────────────────
+        Utxo proxyStateRef = validatorHelper.resolveProxyStateUtxo(backendService);
+        Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();
+        Utxo proxyLibraryUtxo = libraryService.getProxyLibraryUtxo();
+
         ScriptTx tx = new ScriptTx()
+                .readFrom(bootstrapUtxo, proxyStateRef, stateLibraryUtxo, proxyLibraryUtxo)
                 .collectFrom(List.of(initUtxo))
-                .mintAsset(script, List.of(headToken), ConstrPlutusData.of(0),
-                        scriptAddress, headDatum.toPlutusData());
+                .withdraw(stateRewardAddress, BigInteger.ZERO, mintStateRedeemer.toPlutusData())
+                .mintAsset(proxyContract, List.of(stateToken), mintProxyRedeemer,
+                        proxyScriptAddress, stateDatum.toPlutusData())
+                .mintAsset(fractionizedScript, List.of(headToken), initMintRedeemer,
+                        fractionizedAddress, headDatum.toPlutusData())
+                .mintAsset(fractionizedScript, List.of(nodeToken), initMintRedeemer,
+                        fractionizedAddress, nodeDatum.toPlutusData());
+
+        if (bootstrapDatumEntity.getFee() > 0) {
+            long feePerReceiver = bootstrapDatumEntity.getFee() / stateDatum.getFeeReceivers().size();
+            for (byte[] paymentCredential : stateDatum.getFeeReceivers()) {
+                Credential cred = Credential.fromKey(paymentCredential);
+                String receiverAddress = AddressProvider.getEntAddress(cred, network).toBech32();
+                tx.payToAddress(receiverAddress, Amount.lovelace(BigInteger.valueOf(feePerReceiver)));
+            }
+        }
 
         long currentSlot = CardanoUtils.getLatestSlot(backendService);
         Transaction unsignedTx = new QuickTxBuilder(backendService)
                 .compose(tx)
                 .feePayer(req.getDeployerAddress())
                 .collateralPayer(req.getDeployerAddress())
-                .withRequiredSigners(new Address(req.getDeployerAddress()))
+                .mergeOutputs(false)
+                .withRequiredSigners(deployerAddress)
+                .withReferenceScripts(stateContract, proxyContract)
                 .validFrom(currentSlot - 10)
                 .validTo(currentSlot + 600)
                 .build();
@@ -245,7 +357,7 @@ public class FractionizedCertificateService {
             if (existingState.isPresent()) {
                 throw new IllegalStateException(
                         "Cannot insert key '" + req.getKey() + "': the HEAD node would be the predecessor. "
-                        + "This is impossible due to the Cardano EUTXO constraint.");
+                                + "This is impossible due to the Cardano EUTXO constraint.");
             }
             return buildForkAndOrphanInsertTransaction(req, fractionizedScript, fractionizedAddress, headUtxo);
         }
@@ -265,10 +377,13 @@ public class FractionizedCertificateService {
         }
         Utxo proxyUtxo = optProxyUtxo.get();
 
+        byte[] inserterCredential = new Address(req.getInserterAddress()).getPaymentCredentialHash()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid inserter address"));
+
         UVerifyCertificate cert = UVerifyCertificate.builder()
                 .hash(req.getKey())
                 .algorithm("sha3_256")
-                .issuer("")
+                .issuer(HexUtil.encodeHexString(inserterCredential))
                 .extra("{\"uverify_template_id\":\"fractionizedCertificate\"}")
                 .build();
 
@@ -309,6 +424,13 @@ public class FractionizedCertificateService {
 
         PlutusData updatedPredecessorDatum = pred.buildUpdatedPredecessorDatum(req.getKey());
 
+        // Proxy cert token: proves a UVerify cert is present in this tx
+        Asset certToken = Asset.builder()
+                .name("0x" + req.getKey())
+                .value(BigInteger.ONE)
+                .build();
+        PlutusData mintProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);
+
         ScriptTx tx = new ScriptTx()
                 .readFrom(proxyStateRef, stateLibraryUtxo, proxyLibraryUtxo, headUtxo)
                 .collectFrom(proxyUtxo, proxySpendRedeemer)
@@ -317,7 +439,8 @@ public class FractionizedCertificateService {
                 .collectFrom(pred.getUtxo(), insertSpendRedeemer)
                 .payToContract(fractionizedAddress, pred.getUtxo().getAmount(), updatedPredecessorDatum)
                 .mintAsset(fractionizedScript, List.of(nodeToken), insertMintRedeemer,
-                        fractionizedAddress, newNodeDatum.toPlutusData());
+                        fractionizedAddress, newNodeDatum.toPlutusData())
+                .mintAsset(fractionizedScript, List.of(certToken), insertMintRedeemer);
 
         applyFeePaymentsIfNeeded(tx, stateDatumEntity, proxyUtxo);
 
@@ -327,6 +450,7 @@ public class FractionizedCertificateService {
                 .compose(tx)
                 .feePayer(req.getInserterAddress())
                 .collateralPayer(req.getInserterAddress())
+                .mergeOutputs(false)
                 .withRequiredSigners(inserterAddress)
                 .withReferenceScripts(stateContract, proxyContract)
                 .validFrom(currentSlot - 10)
@@ -479,7 +603,8 @@ public class FractionizedCertificateService {
                     utxoByKey.put(node.getKey(), u);
                     datumByKey.put(node.getKey(), node);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
         String currentKey = headDatum.getNext();
@@ -515,8 +640,8 @@ public class FractionizedCertificateService {
     }
 
     private String buildForkAndOrphanInsertTransaction(BuildInsertRequest req,
-            PlutusScript fractionizedScript, String fractionizedAddress,
-            Utxo headUtxo) throws ApiException, CborSerializationException {
+                                                       PlutusScript fractionizedScript, String fractionizedAddress,
+                                                       Utxo headUtxo) throws ApiException, CborSerializationException {
         String bootstrapToken = req.getBootstrapTokenName() != null ? req.getBootstrapTokenName() : "";
         Optional<BootstrapDatumEntity> optEntity = bootstrapDatumService.getBootstrapDatum(bootstrapToken, 2);
         if (optEntity.isEmpty()) {
@@ -561,7 +686,7 @@ public class FractionizedCertificateService {
         UVerifyCertificate cert = UVerifyCertificate.builder()
                 .hash(req.getKey())
                 .algorithm("sha3_256")
-                .issuer("")
+                .issuer(HexUtil.encodeHexString(userCredential))
                 .extra("{\"uverify_template_id\":\"fractionizedCertificate\"}")
                 .build();
 
@@ -605,6 +730,12 @@ public class FractionizedCertificateService {
         PlutusData insertMintRedeemer = ConstrPlutusData.of(1,
                 BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));
 
+        // Proxy cert token: proves a UVerify cert is present in this tx
+        Asset certToken = Asset.builder()
+                .name("0x" + req.getKey())
+                .value(BigInteger.ONE)
+                .build();
+
         ScriptTx tx = new ScriptTx()
                 .readFrom(bootstrapUtxo, proxyStateRef, stateLibraryUtxo, proxyLibraryUtxo, headUtxo)
                 .collectFrom(userUtxo)
@@ -612,7 +743,8 @@ public class FractionizedCertificateService {
                 .mintAsset(proxyContract, List.of(stateToken), mintProxyRedeemer,
                         proxyScriptAddress, stateDatum.toPlutusData())
                 .mintAsset(fractionizedScript, List.of(nodeToken), insertMintRedeemer,
-                        fractionizedAddress, newNodeDatum.toPlutusData());
+                        fractionizedAddress, newNodeDatum.toPlutusData())
+                .mintAsset(fractionizedScript, List.of(certToken), insertMintRedeemer);
 
         if (bootstrapDatumEntity.getFee() > 0) {
             long feePerReceiver = bootstrapDatumEntity.getFee() / stateDatum.getFeeReceivers().size();
@@ -628,6 +760,7 @@ public class FractionizedCertificateService {
                 .compose(tx)
                 .feePayer(req.getInserterAddress())
                 .collateralPayer(req.getInserterAddress())
+                .mergeOutputs(false)
                 .withRequiredSigners(userAddress)
                 .withReferenceScripts(stateContract, proxyContract)
                 .validFrom(currentSlot - 10)
@@ -698,9 +831,17 @@ public class FractionizedCertificateService {
             return new PredecessorResult(false, utxo, node, successorKey);
         }
 
-        boolean isHeadPredecessor() { return headPredecessor; }
-        Utxo getUtxo() { return utxo; }
-        String getSuccessorKey() { return successorKey; }
+        boolean isHeadPredecessor() {
+            return headPredecessor;
+        }
+
+        Utxo getUtxo() {
+            return utxo;
+        }
+
+        String getSuccessorKey() {
+            return successorKey;
+        }
 
         PlutusData buildUpdatedPredecessorDatum(String newKey) {
             return node.withNext(newKey).toPlutusData();

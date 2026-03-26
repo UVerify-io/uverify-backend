@@ -21,8 +21,13 @@ package io.uverify.backend.extension.dto.fractionized;
 import io.uverify.backend.extension.validators.fractionized.FractionizedConfig;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * Request body for the fractionized-certificate Init transaction endpoint.
+ * <p>
+ * Init always creates both the HEAD node and the first certificate node in one
+ * atomic transaction (empty lists are not permitted by the on-chain validator).
  */
 @Data
 public class BuildInitRequest {
@@ -34,4 +39,20 @@ public class BuildInitRequest {
     private int initUtxoOutputIndex;
     /** Configuration embedded in the HEAD datum. */
     private FractionizedConfig config;
+    /** Hex-encoded certificate hash that becomes the first node's key. Required. */
+    private String key;
+    /** Total number of fungible tokens available for claiming. Required. */
+    private long totalAmount;
+    /**
+     * Hex-encoded payment key hashes allowed to claim tokens.
+     * Empty list means the certificate is open — any wallet may claim.
+     */
+    private List<String> claimants;
+    /** Hex-encoded asset name for the fungible token minted on each claim. Required. */
+    private String assetName;
+    /**
+     * Optional bootstrap token name for UVerify state creation.
+     * Leave null to let the service pick the cheapest available bootstrap datum.
+     */
+    private String bootstrapTokenName;
 }
