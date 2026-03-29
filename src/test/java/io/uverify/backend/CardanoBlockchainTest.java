@@ -47,6 +47,7 @@ import com.bloxbean.cardano.yaci.store.events.TransactionEvent;
 import com.bloxbean.cardano.yaci.test.Funding;
 import com.bloxbean.cardano.yaci.test.YaciCardanoContainer;
 import io.uverify.backend.extension.ExtensionManager;
+import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.LibraryRepository;
@@ -107,6 +108,9 @@ public class CardanoBlockchainTest {
     protected final LibraryService libraryService;
 
     @Autowired
+    protected final FractionizedCertificateService fractionizedCertificateService;
+
+    @Autowired
     public CardanoBlockchainTest(@Value("${cardano.service.user.mnemonic}") String testServiceUserMnemonic,
                                  @Value("${cardano.test.user.mnemonic}") String testUserMnemonic,
                                  @Value("${cardano.service.fee.receiver.mnemonic}") String feeReceiverMnemonic,
@@ -115,6 +119,7 @@ public class CardanoBlockchainTest {
                                  StateDatumService stateDatumService,
                                  BootstrapDatumService bootstrapDatumService,
                                  UVerifyCertificateService uVerifyCertificateService,
+                                 FractionizedCertificateService fractionizedCertificateService,
                                  StateDatumRepository stateDatumRepository,
                                  BootstrapDatumRepository bootstrapDatumRepository,
                                  CertificateRepository certificateRepository,
@@ -128,6 +133,7 @@ public class CardanoBlockchainTest {
         this.stateDatumService = stateDatumService;
         this.bootstrapDatumService = bootstrapDatumService;
         this.uVerifyCertificateService = uVerifyCertificateService;
+        this.fractionizedCertificateService = fractionizedCertificateService;
         this.stateDatumRepository = stateDatumRepository;
         this.bootstrapDatumRepository = bootstrapDatumRepository;
         this.certificateRepository = certificateRepository;
@@ -168,6 +174,7 @@ public class CardanoBlockchainTest {
 
             this.cardanoBlockchainService.setBackendService(yaciCardanoContainer.getBackendService());
             this.libraryService.setBackendService(yaciCardanoContainer.getBackendService());
+            this.fractionizedCertificateService.setBackendService(yaciCardanoContainer.getBackendService());
         }
     }
 

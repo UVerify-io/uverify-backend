@@ -40,6 +40,7 @@ import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.extension.dto.tokenizable.CertificateStatusResponse;
 import io.uverify.backend.extension.dto.tokenizable.TokenizableBuildRequest;
 import io.uverify.backend.extension.enums.ExtensionTransactionType;
+import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.extension.service.TokenizableCertificateService;
 import io.uverify.backend.extension.validators.tokenizable.TokenizableConfig;
 import io.uverify.backend.model.BootstrapDatum;
@@ -70,17 +71,19 @@ import static io.restassured.RestAssured.given;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TokenizableCertificateControllerTest extends CardanoBlockchainTest {
 
+    /**
+     * First node inserted during Init (deployer's cert — must sort before CERT_KEY).
+     */
+    private static final String INIT_CERT_KEY = "aabb000011223344aabb000011223344";
+    private static final String INIT_ASSET_NAME = "494e4954"; // "INIT"
+    /**
+     * Second node inserted by the allowed inserter (userAccount).
+     */
+    private static final String CERT_KEY = "ddccddcc11223344ddccddcc11223344";
+    private static final String TC_ASSET_NAME_HEX = "544f4b454e"; // "TOKEN"
     // Shared state between tests
     private static String initTxHash;
     private static int initOutputIndex;
-
-    /** First node inserted during Init (deployer's cert — must sort before CERT_KEY). */
-    private static final String INIT_CERT_KEY   = "aabb000011223344aabb000011223344";
-    private static final String INIT_ASSET_NAME = "494e4954"; // "INIT"
-
-    /** Second node inserted by the allowed inserter (userAccount). */
-    private static final String CERT_KEY = "ddccddcc11223344ddccddcc11223344";
-    private static final String TC_ASSET_NAME_HEX = "544f4b454e"; // "TOKEN"
     private final TokenizableCertificateService tokenizableCertificateService;
 
     @Autowired
@@ -94,6 +97,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
             UVerifyCertificateService uVerifyCertificateService,
+            FractionizedCertificateService fractionizedCertificateService,
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
@@ -104,6 +108,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
             LibraryService libraryService) {
         super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic,
                 cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService,
+                fractionizedCertificateService,
                 stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository,
                 extensionManager, validatorHelper, libraryService, List.of());
         RestAssured.port = port;
@@ -214,12 +219,9 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
 
         String uverifyValidatorHash = ValidatorUtils.validatorToScriptHash(
                 validatorHelper.getParameterizedUVerifyStateContract());
-        String extensionPolicyId = ValidatorUtils.validatorToScriptHash(
-                ValidatorUtils.getTokenizableCertificateContract(initTxHash, initOutputIndex));
 
         TokenizableConfig config = TokenizableConfig.builder()
                 .uverifyValidatorHash(uverifyValidatorHash)
-                .proxyPolicyId(extensionPolicyId)
                 .allowedInserters(List.of(inserterCredential))
                 .deployer(deployerCredential)
                 .cip68ScriptAddress(null)

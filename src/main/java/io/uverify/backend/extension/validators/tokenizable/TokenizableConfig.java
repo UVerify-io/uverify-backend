@@ -18,7 +18,10 @@
 
 package io.uverify.backend.extension.validators.tokenizable;
 
-import com.bloxbean.cardano.client.plutus.spec.*;
+import com.bloxbean.cardano.client.plutus.spec.BytesPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.util.HexUtil;
 import lombok.*;
 
@@ -44,11 +47,36 @@ import java.util.List;
 @NoArgsConstructor
 public class TokenizableConfig {
     private String uverifyValidatorHash;
-    private String proxyPolicyId;
     private List<String> allowedInserters;
     private String deployer;
-    /** Hex-encoded script hash; null means None (no CIP-68 support). */
+    /**
+     * Hex-encoded script hash; null means None (no CIP-68 support).
+     */
     private String cip68ScriptAddress;
+
+    public static TokenizableConfig fromPlutusData(ConstrPlutusData constr) {
+        List<PlutusData> fields = constr.getData().getPlutusDataList();
+        String uvHash = HexUtil.encodeHexString(((BytesPlutusData) fields.get(0)).getValue());
+
+        List<String> inserters = ((ListPlutusData) fields.get(1)).getPlutusDataList().stream()
+                .map(d -> HexUtil.encodeHexString(((BytesPlutusData) d).getValue()))
+                .toList();
+
+        String dep = HexUtil.encodeHexString(((BytesPlutusData) fields.get(2)).getValue());
+
+        ConstrPlutusData cip68Constr = (ConstrPlutusData) fields.get(3);
+        String cip68 = null;
+        if (cip68Constr.getAlternative() == 0) {
+            cip68 = HexUtil.encodeHexString(((BytesPlutusData) cip68Constr.getData().getPlutusDataList().get(0)).getValue());
+        }
+
+        return TokenizableConfig.builder()
+                .uverifyValidatorHash(uvHash)
+                .allowedInserters(inserters)
+                .deployer(dep)
+                .cip68ScriptAddress(cip68)
+                .build();
+    }
 
     public ConstrPlutusData toPlutusData() {
         PlutusData[] inserterItems = allowedInserters.stream()
@@ -62,36 +90,9 @@ public class TokenizableConfig {
 
         return ConstrPlutusData.of(0,
                 BytesPlutusData.of(HexUtil.decodeHexString(uverifyValidatorHash)),
-                BytesPlutusData.of(HexUtil.decodeHexString(proxyPolicyId)),
                 inserterList,
                 BytesPlutusData.of(HexUtil.decodeHexString(deployer)),
                 cip68Option
         );
-    }
-
-    public static TokenizableConfig fromPlutusData(ConstrPlutusData constr) {
-        List<PlutusData> fields = constr.getData().getPlutusDataList();
-        String uvHash = HexUtil.encodeHexString(((BytesPlutusData) fields.get(0)).getValue());
-        String proxyId = HexUtil.encodeHexString(((BytesPlutusData) fields.get(1)).getValue());
-
-        List<String> inserters = ((ListPlutusData) fields.get(2)).getPlutusDataList().stream()
-                .map(d -> HexUtil.encodeHexString(((BytesPlutusData) d).getValue()))
-                .toList();
-
-        String dep = HexUtil.encodeHexString(((BytesPlutusData) fields.get(3)).getValue());
-
-        ConstrPlutusData cip68Constr = (ConstrPlutusData) fields.get(4);
-        String cip68 = null;
-        if (cip68Constr.getAlternative() == 0) {
-            cip68 = HexUtil.encodeHexString(((BytesPlutusData) cip68Constr.getData().getPlutusDataList().get(0)).getValue());
-        }
-
-        return TokenizableConfig.builder()
-                .uverifyValidatorHash(uvHash)
-                .proxyPolicyId(proxyId)
-                .allowedInserters(inserters)
-                .deployer(dep)
-                .cip68ScriptAddress(cip68)
-                .build();
     }
 }

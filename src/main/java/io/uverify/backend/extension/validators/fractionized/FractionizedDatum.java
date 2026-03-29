@@ -24,19 +24,76 @@ import lombok.*;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Java representation of the {@code FractionizedDatum} Aiken sum type:
  * <pre>
- * FHead { next: Option&lt;ByteArray&gt;, config: FractionizedConfig }  → alternative 0
- * FNode { key, next, total_amount, remaining_amount, claimants, asset_name, status } → alternative 1
+ * CertificateHead { next: Option&lt;ByteArray&gt;, config: FractionizedConfig }  → alternative 0
+ * CertificateNode { key, next, total_amount, remaining_amount, claimants,
+ *                   asset_name, status }                                     → alternative 1
  * </pre>
  */
 public abstract class FractionizedDatum {
 
+    public static FractionizedDatum fromInlineDatum(String inlineDatumHex) {
+        try {
+            ConstrPlutusData pd = (ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatumHex));
+            int alt = (int) pd.getAlternative();
+            if (alt == 0) {
+                return parseFHead(pd);
+            } else if (alt == 1) {
+                return parseFNode(pd);
+            }
+            throw new IllegalArgumentException("Unknown FractionizedDatum alternative: " + alt);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot deserialize FractionizedDatum from: " + inlineDatumHex, e);
+        }
+    }
+
+    private static FHead parseFHead(ConstrPlutusData constr) {
+        List<PlutusData> fields = constr.getData().getPlutusDataList();
+        ConstrPlutusData nextConstr = (ConstrPlutusData) fields.get(0);
+        Optional<byte[]> next = nextConstr.getAlternative() == 0
+                ? Optional.of(((BytesPlutusData) nextConstr.getData().getPlutusDataList().get(0)).getValue())
+                : Optional.empty();
+        FractionizedConfig config = FractionizedConfig.fromPlutusData((ConstrPlutusData) fields.get(1));
+        return FHead.builder().next(next).config(config).build();
+    }
+
+    private static FNode parseFNode(ConstrPlutusData constr) {
+        List<PlutusData> fields = constr.getData().getPlutusDataList();
+
+        byte[] key = ((BytesPlutusData) fields.get(0)).getValue();
+
+        ConstrPlutusData nextConstr = (ConstrPlutusData) fields.get(1);
+        Optional<byte[]> next = nextConstr.getAlternative() == 0
+                ? Optional.of(((BytesPlutusData) nextConstr.getData().getPlutusDataList().get(0)).getValue())
+                : Optional.empty();
+
+        long totalAmount = ((BigIntPlutusData) fields.get(2)).getValue().longValue();
+        long remainingAmount = ((BigIntPlutusData) fields.get(3)).getValue().longValue();
+
+        List<byte[]> claimants = ((ListPlutusData) fields.get(4)).getPlutusDataList().stream()
+                .map(d -> ((BytesPlutusData) d).getValue())
+                .toList();
+
+        byte[] assetName = ((BytesPlutusData) fields.get(5)).getValue();
+
+        ConstrPlutusData statusConstr = (ConstrPlutusData) fields.get(6);
+        boolean exhausted = statusConstr.getAlternative() == 1;
+
+        return FNode.builder()
+                .key(key).next(next).totalAmount(totalAmount).remainingAmount(remainingAmount)
+                .claimants(claimants).assetName(assetName).exhausted(exhausted)
+                .build();
+    }
+
     public abstract ConstrPlutusData toPlutusData();
 
-    // ── FHEAD ────────────────────────────────────────────────────────────────
+    // ── FHEAD (CertificateHead, alternative 0) ────────────────────────────────
 
     @Getter
     @Setter
@@ -44,24 +101,26 @@ public abstract class FractionizedDatum {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class FHead extends FractionizedDatum {
-        /** Hex-encoded key of the first node, or {@code null} for an empty list. */
-        private String next;
+        /**
+         * Raw bytes of the first node's key, or {@link Optional#empty()} for an empty list.
+         */
+        private Optional<byte[]> next;
         private FractionizedConfig config;
 
         @Override
         public ConstrPlutusData toPlutusData() {
-            PlutusData nextOption = next != null
-                    ? ConstrPlutusData.of(0, BytesPlutusData.of(HexUtil.decodeHexString(next)))
+            PlutusData nextOption = next.isPresent()
+                    ? ConstrPlutusData.of(0, BytesPlutusData.of(next.get()))
                     : ConstrPlutusData.of(1);
             return ConstrPlutusData.of(0, nextOption, config.toPlutusData());
         }
 
-        public FHead withNext(String newNext) {
+        public FHead withNext(Optional<byte[]> newNext) {
             return FHead.builder().next(newNext).config(this.config).build();
         }
     }
 
-    // ── FNODE ────────────────────────────────────────────────────────────────
+    // ── FNODE (CertificateNode, alternative 1) ────────────────────────────────
 
     @Getter
     @Setter
@@ -69,46 +128,49 @@ public abstract class FractionizedDatum {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class FNode extends FractionizedDatum {
-        private String key;
-        /** Hex-encoded key of the successor, or {@code null} for the last node. */
-        private String next;
+        /** Raw bytes of this node's certificate hash key. */
+        private byte[] key;
+        /** Raw bytes of the successor key, or {@link Optional#empty()} for the last node. */
+        private Optional<byte[]> next;
         private long totalAmount;
         private long remainingAmount;
-        /** Hex-encoded payment key hashes; empty list means open access. */
-        private List<String> claimants;
-        /** Hex-encoded asset name for the fungible token to be minted per claim. */
-        private String assetName;
-        /** {@code true} when remainingAmount has reached zero (Exhausted). */
+        /** Raw payment key hashes; empty list means open access. */
+        private List<byte[]> claimants;
+        /** Raw bytes of the fungible token asset name. */
+        private byte[] assetName;
+        /**
+         * Maps to {@code FractionizedNodeStatus}: {@code TokensAvailable} (alt 0) = false,
+         * {@code TokensExhausted} (alt 1) = true.
+         */
         private boolean exhausted;
 
         @Override
         public ConstrPlutusData toPlutusData() {
-            PlutusData nextOption = next != null
-                    ? ConstrPlutusData.of(0, BytesPlutusData.of(HexUtil.decodeHexString(next)))
+            PlutusData nextOption = next.isPresent()
+                    ? ConstrPlutusData.of(0, BytesPlutusData.of(next.get()))
                     : ConstrPlutusData.of(1);
 
-            PlutusData[] claimantItems = (claimants == null ? List.<String>of() : claimants).stream()
-                    .map(h -> (PlutusData) BytesPlutusData.of(HexUtil.decodeHexString(h)))
+            PlutusData[] claimantItems = claimants.stream()
+                    .map(c -> (PlutusData) BytesPlutusData.of(c))
                     .toArray(PlutusData[]::new);
             ListPlutusData claimantList = ListPlutusData.of(claimantItems);
 
-            // FractionAvailable = alternative 0, FractionExhausted = alternative 1
             PlutusData status = exhausted ? ConstrPlutusData.of(1) : ConstrPlutusData.of(0);
 
             return ConstrPlutusData.of(1,
-                    BytesPlutusData.of(HexUtil.decodeHexString(key)),
+                    BytesPlutusData.of(key),
                     nextOption,
                     BigIntPlutusData.of(BigInteger.valueOf(totalAmount)),
                     BigIntPlutusData.of(BigInteger.valueOf(remainingAmount)),
                     claimantList,
-                    BytesPlutusData.of(HexUtil.decodeHexString(assetName)),
+                    BytesPlutusData.of(assetName),
                     status
             );
         }
 
-        public FNode withNext(String newNext) {
+        public FNode withNext(byte[] newNext) {
             return FNode.builder()
-                    .key(this.key).next(newNext).totalAmount(this.totalAmount)
+                    .key(this.key).next(Optional.ofNullable(newNext)).totalAmount(this.totalAmount)
                     .remainingAmount(this.remainingAmount).claimants(this.claimants)
                     .assetName(this.assetName).exhausted(this.exhausted)
                     .build();
@@ -120,54 +182,6 @@ public abstract class FractionizedDatum {
                     .remainingAmount(newRemaining).claimants(this.claimants)
                     .assetName(this.assetName).exhausted(newRemaining == 0)
                     .build();
-        }
-    }
-
-    // ── PARSING ──────────────────────────────────────────────────────────────
-
-    public static FractionizedDatum fromInlineDatum(String inlineDatumHex) {
-        try {
-            PlutusData pd = PlutusData.deserialize(HexUtil.decodeHexString(inlineDatumHex));
-            return fromPlutusData((ConstrPlutusData) pd);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Cannot deserialize FractionizedDatum from: " + inlineDatumHex, e);
-        }
-    }
-
-    public static FractionizedDatum fromPlutusData(ConstrPlutusData constr) {
-        List<PlutusData> fields = constr.getData().getPlutusDataList();
-        int alt = (int) constr.getAlternative();
-
-        if (alt == 0) {
-            ConstrPlutusData nextConstr = (ConstrPlutusData) fields.get(0);
-            String next = nextConstr.getAlternative() == 0
-                    ? HexUtil.encodeHexString(((BytesPlutusData) nextConstr.getData().getPlutusDataList().get(0)).getValue())
-                    : null;
-            FractionizedConfig config = FractionizedConfig.fromPlutusData((ConstrPlutusData) fields.get(1));
-            return FHead.builder().next(next).config(config).build();
-
-        } else if (alt == 1) {
-            String key = HexUtil.encodeHexString(((BytesPlutusData) fields.get(0)).getValue());
-            ConstrPlutusData nextConstr = (ConstrPlutusData) fields.get(1);
-            String next = nextConstr.getAlternative() == 0
-                    ? HexUtil.encodeHexString(((BytesPlutusData) nextConstr.getData().getPlutusDataList().get(0)).getValue())
-                    : null;
-            long totalAmount = ((BigIntPlutusData) fields.get(2)).getValue().longValue();
-            long remainingAmount = ((BigIntPlutusData) fields.get(3)).getValue().longValue();
-
-            List<String> claimants = ((ListPlutusData) fields.get(4)).getPlutusDataList().stream()
-                    .map(d -> HexUtil.encodeHexString(((BytesPlutusData) d).getValue()))
-                    .toList();
-
-            String assetName = HexUtil.encodeHexString(((BytesPlutusData) fields.get(5)).getValue());
-            boolean exhausted = ((ConstrPlutusData) fields.get(6)).getAlternative() == 1;
-
-            return FNode.builder()
-                    .key(key).next(next).totalAmount(totalAmount).remainingAmount(remainingAmount)
-                    .claimants(claimants).assetName(assetName).exhausted(exhausted)
-                    .build();
-        } else {
-            throw new IllegalArgumentException("Unknown FractionizedDatum alternative: " + alt);
         }
     }
 }

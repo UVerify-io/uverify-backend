@@ -69,21 +69,22 @@ import static io.restassured.RestAssured.given;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FractionizedCertificateControllerTest extends CardanoBlockchainTest {
 
-    // Shared state between tests
-    private static String initTxHash;
-    private static int initOutputIndex;
-
-    /** First node inserted during Init (deployer's cert — must sort before CERT_KEY). */
-    private static final String INIT_CERT_KEY    = "aabb000011223344aabb000011223344";
-    private static final String INIT_ASSET_NAME  = "494e4954"; // "INIT"
-    private static final long   INIT_TOTAL       = 3L;
-
-    /** Second node inserted by the allowed inserter (userAccount). */
+    /**
+     * First node inserted during Init (deployer's cert — must sort before CERT_KEY).
+     */
+    private static final String INIT_CERT_KEY = "aabb000011223344aabb000011223344";
+    private static final String INIT_ASSET_NAME = "494e4954"; // "INIT"
+    private static final long INIT_TOTAL = 3L;
+    /**
+     * Second node inserted by the allowed inserter (userAccount).
+     */
     private static final String CERT_KEY = "ccddccdd11223344ccddccdd11223344";
     private static final String FRN_ASSET_NAME_HEX = "4652414354494f4e"; // "FRACTION"
     private static final long TOTAL_AMOUNT = 5L;
     private static final long PARTIAL_CLAIM = 2L;
-    private final FractionizedCertificateService fractionizedCertificateService;
+    // Shared state between tests
+    private static String initTxHash;
+    private static int initOutputIndex;
 
     @Autowired
     public FractionizedCertificateControllerTest(
@@ -96,21 +97,19 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
             UVerifyCertificateService uVerifyCertificateService,
+            FractionizedCertificateService fractionizedCertificateService,
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
             LibraryRepository libraryRepository,
             ExtensionManager extensionManager,
             ValidatorHelper validatorHelper,
-            FractionizedCertificateService fractionizedCertificateService,
             LibraryService libraryService) {
         super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic,
-                cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService,
+                cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, fractionizedCertificateService,
                 stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository,
                 extensionManager, validatorHelper, libraryService, List.of());
         RestAssured.port = port;
-        this.fractionizedCertificateService = fractionizedCertificateService;
-        this.fractionizedCertificateService.setBackendService(yaciCardanoContainer.getBackendService());
     }
 
     @Test
@@ -216,12 +215,9 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
 
         String uverifyValidatorHash = ValidatorUtils.validatorToScriptHash(
                 validatorHelper.getParameterizedUVerifyStateContract());
-        String extensionPolicyId = ValidatorUtils.validatorToScriptHash(
-                ValidatorUtils.getFractionizedCertificateContract(initTxHash, initOutputIndex));
 
         FractionizedConfig config = FractionizedConfig.builder()
                 .uverifyValidatorHash(uverifyValidatorHash)
-                .proxyPolicyId(extensionPolicyId)
                 .allowedInserters(List.of(inserterCredential))
                 .deployer(deployerCredential)
                 .build();

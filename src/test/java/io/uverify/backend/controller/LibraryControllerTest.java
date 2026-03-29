@@ -38,6 +38,7 @@ import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.extension.ExtensionManager;
+import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.LibraryRepository;
@@ -69,6 +70,7 @@ public class LibraryControllerTest extends CardanoBlockchainTest {
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
             UVerifyCertificateService uVerifyCertificateService,
+            FractionizedCertificateService fractionizedCertificateService,
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
@@ -76,7 +78,7 @@ public class LibraryControllerTest extends CardanoBlockchainTest {
             ValidatorHelper validatorHelper,
             ExtensionManager extensionManager,
             LibraryService libraryService) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper, libraryService, List.of());
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, fractionizedCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper, libraryService, List.of());
         RestAssured.port = port;
     }
 
