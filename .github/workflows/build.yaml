@@ -38,7 +38,7 @@ jobs:
 
       - name: 🔍 Extract POM Version
         run: |
-          VERSION=$(./mvnw --batch-mode -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)
+          VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "POM_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: 🔨 Build Docker Image
