@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FractionizedBuildRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.dto.fractionized</a> &gt; <span class="el_source">FractionizedBuildRequest.java</span></div><h1>FractionizedBuildRequest.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.dto.fractionized;
+
+import io.uverify.backend.extension.enums.ExtensionTransactionType;
+import io.uverify.backend.extension.validators.fractionized.FractionizedConfig;
+import lombok.Data;
+
+import java.util.List;
+
+/**
+ * Unified request body for the fractionized-certificate {@code /build} endpoint.
+ *
+ * &lt;p&gt;The {@code type} field selects the operation:
+ * &lt;ul&gt;
+ *   &lt;li&gt;{@code CREATE} — the service checks on-chain state and automatically decides
+ *       whether to &lt;em&gt;Init&lt;/em&gt; (no HEAD node found) or &lt;em&gt;Insert&lt;/em&gt; (HEAD exists).
+ *       All fields relevant to both Init and Insert should be populated.&lt;/li&gt;
+ *   &lt;li&gt;{@code REDEEM} — builds a Claim transaction that mints {@code amount} fungible
+ *       tokens from an available node and sends them to the sender.&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+<span class="nc bnc" id="L39" title="All 76 branches missed.">@Data</span>
+public class FractionizedBuildRequest {
+
+    /** Operation type: {@code CREATE} (init or insert) or {@code REDEEM} (claim). */
+<span class="nc" id="L43">    private ExtensionTransactionType type;</span>
+
+    /** Bech32 address of the sender — deployer for Init, inserter for Insert, claimer for Redeem. */
+<span class="nc" id="L46">    private String senderAddress;</span>
+
+    /** Tx-hash used to derive the fractionized-certificate policy ID. */
+<span class="nc" id="L49">    private String initUtxoTxHash;</span>
+
+    /** Output index used to derive the fractionized-certificate policy ID. */
+<span class="nc" id="L52">    private int initUtxoOutputIndex;</span>
+
+    // ── CREATE / Init fields ──────────────────────────────────────────────────
+
+    /**
+     * Configuration embedded in the HEAD datum.
+     * Required when {@code type == CREATE} and no HEAD node exists yet (Init path).
+     */
+<span class="nc" id="L60">    private FractionizedConfig config;</span>
+
+    // ── CREATE / Insert fields ────────────────────────────────────────────────
+
+    /** Hex-encoded certificate hash that becomes the node key. Required for Insert. */
+<span class="nc" id="L65">    private String key;</span>
+
+    /** Total number of fungible tokens available for claiming. Required for Insert. */
+<span class="nc" id="L68">    private long totalAmount;</span>
+
+    /**
+     * Hex-encoded payment key hashes allowed to claim tokens.
+     * An empty list means the certificate is open — any wallet may claim.
+     */
+<span class="nc" id="L74">    private List&lt;String&gt; claimants;</span>
+
+    /** Hex-encoded asset name for the fungible token minted on each claim. Required for Insert. */
+<span class="nc" id="L77">    private String assetName;</span>
+
+    /**
+     * Optional bootstrap token name for the UVerify state update.
+     * Leave null to let the service pick the cheapest available state.
+     */
+<span class="nc" id="L83">    private String bootstrapTokenName;</span>
+
+    // ── REDEEM / Claim fields ─────────────────────────────────────────────────
+
+    /** Number of tokens to claim. Required when {@code type == REDEEM}. */
+<span class="nc" id="L88">    private long amount;</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

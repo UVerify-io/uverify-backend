@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExtensionController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.controller</a> &gt; <span class="el_source">ExtensionController.java</span></div><h1>ExtensionController.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.core.env.Environment;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Registry endpoint that reports which UVerify extensions are currently enabled.
+ *
+ * &lt;p&gt;Returns a JSON map of {@code extensionId → enabled} for every known extension.
+ * Clients can use this to discover available functionality without querying each
+ * extension endpoint individually.
+ */
+@RestController
+@SuppressWarnings(&quot;unused&quot;)
+@RequestMapping(&quot;/api/v1/extensions&quot;)
+@Tag(name = &quot;Extensions&quot;, description = &quot;Query which UVerify extensions are enabled on this instance.&quot;)
+public class ExtensionController {
+
+    private final Environment environment;
+
+<span class="fc" id="L50">    public ExtensionController(Environment environment) {</span>
+<span class="fc" id="L51">        this.environment = environment;</span>
+<span class="fc" id="L52">    }</span>
+
+    @GetMapping
+    @Operation(
+            summary = &quot;List enabled extensions&quot;,
+            description = &quot;Returns a map of extension identifiers to their enabled status.&quot;
+    )
+    @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Extension registry retrieved&quot;,
+            content = @Content(mediaType = &quot;application/json&quot;,
+                    schema = @Schema(example = &quot;{\&quot;fractionized-certificate\&quot;:true,\&quot;tokenizable-certificate\&quot;:false}&quot;)))
+    public ResponseEntity&lt;Map&lt;String, Boolean&gt;&gt; list() {
+<span class="nc" id="L63">        Map&lt;String, Boolean&gt; result = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L64">        result.put(&quot;fractionized-certificate&quot;,</span>
+<span class="nc" id="L65">                environment.getProperty(&quot;extensions.fractionized-certificate.enabled&quot;, Boolean.class, false));</span>
+<span class="nc" id="L66">        result.put(&quot;tokenizable-certificate&quot;,</span>
+<span class="nc" id="L67">                environment.getProperty(&quot;extensions.tokenizable-certificate.enabled&quot;, Boolean.class, false));</span>
+<span class="nc" id="L68">        return ResponseEntity.ok(result);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BuildInsertRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.dto.tokenizable</a> &gt; <span class="el_source">BuildInsertRequest.java</span></div><h1>BuildInsertRequest.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.dto.tokenizable;
+
+import lombok.Data;
+
+/**
+ * Request body for the Insert transaction endpoint.
+ * &lt;p&gt;
+ * The Insert transaction is a combined UVerify certificate submission +
+ * tokenizable-certificate node minting. The {@code key} acts as both the
+ * certificate hash submitted to UVerify state and the on-chain node key in
+ * the sorted linked list.
+ * &lt;p&gt;
+ * &lt;b&gt;EUTXO constraint note:&lt;/b&gt; Due to Cardano's EUTXO rules, the HEAD UTxO
+ * must be in {@code reference_inputs} for the MINT validator while the
+ * predecessor node must be in {@code inputs} for the SPEND validator.
+ * If HEAD would be the predecessor (i.e. the list is empty, or the new key is
+ * smaller than all existing keys), the transaction cannot be built and an
+ * error is returned.
+ */
+<span class="nc bnc" id="L38" title="All 56 branches missed.">@Data</span>
+public class BuildInsertRequest {
+    /** Bech32 address of the allowed inserter (pays fees and must sign). */
+<span class="nc" id="L41">    private String inserterAddress;</span>
+    /**
+     * Hex-encoded certificate hash that will become the node key.
+     * This same value is submitted to UVerify state as the certificate hash.
+     */
+<span class="nc" id="L46">    private String key;</span>
+    /** Hex-encoded payment key hash of the wallet that will own the NFT. */
+<span class="nc" id="L48">    private String ownerPubKeyHash;</span>
+    /**
+     * Hex-encoded base asset name for the NFT.
+     * If CIP-68 is configured, user ({@code 000de140}) and reference ({@code 000643b0})
+     * token names are derived from this value automatically.
+     */
+<span class="nc" id="L54">    private String assetName;</span>
+    /** Tx-hash used to derive the tokenizable-certificate policy ID. */
+<span class="nc" id="L56">    private String initUtxoTxHash;</span>
+    /** Output index used to derive the tokenizable-certificate policy ID. */
+<span class="nc" id="L58">    private int initUtxoOutputIndex;</span>
+    /**
+     * Optional: name of the bootstrap datum to use for the UVerify state update.
+     * Leave empty to let the service pick the cheapest available state for the inserter.
+     */
+<span class="nc" id="L63">    private String bootstrapTokenName;</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

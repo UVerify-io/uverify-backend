@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TokenizableDatum.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.validators.tokenizable</a> &gt; <span class="el_source">TokenizableDatum.java</span></div><h1>TokenizableDatum.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.validators.tokenizable;
+
+import com.bloxbean.cardano.client.plutus.spec.*;
+import com.bloxbean.cardano.client.util.HexUtil;
+import lombok.*;
+
+import java.util.List;
+
+/**
+ * Java representation of the {@code TokenizableDatum} Aiken sum type:
+ * &lt;pre&gt;
+ * Head { next: Option&amp;lt;ByteArray&amp;gt;, config: TokenizableConfig }  → alternative 0
+ * Node { key, next, owner, asset_name, status }                 → alternative 1
+ * &lt;/pre&gt;
+ */
+<span class="nc" id="L34">public abstract class TokenizableDatum {</span>
+
+    public abstract ConstrPlutusData toPlutusData();
+
+    // ── HEAD ─────────────────────────────────────────────────────────────────
+
+    @Getter
+<span class="nc" id="L41">    @Setter</span>
+<span class="nc" id="L42">    @Builder</span>
+<span class="nc" id="L43">    @AllArgsConstructor</span>
+<span class="nc" id="L44">    @NoArgsConstructor</span>
+    public static class Head extends TokenizableDatum {
+        /** Hex-encoded key of the first node, or {@code null} for an empty list. */
+<span class="nc" id="L47">        private String next;</span>
+<span class="nc" id="L48">        private TokenizableConfig config;</span>
+
+        @Override
+        public ConstrPlutusData toPlutusData() {
+<span class="nc bnc" id="L52" title="All 2 branches missed.">            PlutusData nextOption = next != null</span>
+<span class="nc" id="L53">                    ? ConstrPlutusData.of(0, BytesPlutusData.of(HexUtil.decodeHexString(next)))</span>
+<span class="nc" id="L54">                    : ConstrPlutusData.of(1);</span>
+<span class="nc" id="L55">            return ConstrPlutusData.of(0, nextOption, config.toPlutusData());</span>
+        }
+
+        /** Returns a new Head with the {@code next} pointer updated to {@code newNext}. */
+        public Head withNext(String newNext) {
+<span class="nc" id="L60">            return Head.builder().next(newNext).config(this.config).build();</span>
+        }
+    }
+
+    // ── NODE ─────────────────────────────────────────────────────────────────
+
+    @Getter
+<span class="nc" id="L67">    @Setter</span>
+<span class="nc" id="L68">    @Builder</span>
+<span class="nc" id="L69">    @AllArgsConstructor</span>
+<span class="nc" id="L70">    @NoArgsConstructor</span>
+    public static class Node extends TokenizableDatum {
+<span class="nc" id="L72">        private String key;</span>
+        /** Hex-encoded key of the successor, or {@code null} for the last node. */
+<span class="nc" id="L74">        private String next;</span>
+        /** Hex-encoded payment key hash of the NFT owner. */
+<span class="nc" id="L76">        private String owner;</span>
+        /** Hex-encoded base asset name (without any CIP-68 prefix). */
+<span class="nc" id="L78">        private String assetName;</span>
+<span class="nc" id="L79">        private boolean redeemed;</span>
+
+        @Override
+        public ConstrPlutusData toPlutusData() {
+<span class="nc bnc" id="L83" title="All 2 branches missed.">            PlutusData nextOption = next != null</span>
+<span class="nc" id="L84">                    ? ConstrPlutusData.of(0, BytesPlutusData.of(HexUtil.decodeHexString(next)))</span>
+<span class="nc" id="L85">                    : ConstrPlutusData.of(1);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">            PlutusData status = redeemed ? ConstrPlutusData.of(1) : ConstrPlutusData.of(0);</span>
+<span class="nc" id="L87">            return ConstrPlutusData.of(1,</span>
+<span class="nc" id="L88">                    BytesPlutusData.of(HexUtil.decodeHexString(key)),</span>
+                    nextOption,
+<span class="nc" id="L90">                    BytesPlutusData.of(HexUtil.decodeHexString(owner)),</span>
+<span class="nc" id="L91">                    BytesPlutusData.of(HexUtil.decodeHexString(assetName)),</span>
+                    status
+            );
+        }
+
+        /** Returns a new Node with the {@code next} pointer updated. */
+        public Node withNext(String newNext) {
+<span class="nc" id="L98">            return Node.builder()</span>
+<span class="nc" id="L99">                    .key(this.key).next(newNext).owner(this.owner)</span>
+<span class="nc" id="L100">                    .assetName(this.assetName).redeemed(this.redeemed)</span>
+<span class="nc" id="L101">                    .build();</span>
+        }
+    }
+
+    // ── PARSING ──────────────────────────────────────────────────────────────
+
+    /**
+     * Deserializes a {@link TokenizableDatum} from a hex-encoded inline-datum CBOR string.
+     */
+    public static TokenizableDatum fromInlineDatum(String inlineDatumHex) {
+        try {
+<span class="nc" id="L112">            PlutusData pd = PlutusData.deserialize(HexUtil.decodeHexString(inlineDatumHex));</span>
+<span class="nc" id="L113">            return fromPlutusData((ConstrPlutusData) pd);</span>
+<span class="nc" id="L114">        } catch (Exception e) {</span>
+<span class="nc" id="L115">            throw new IllegalArgumentException(&quot;Cannot deserialize TokenizableDatum from: &quot; + inlineDatumHex, e);</span>
+        }
+    }
+
+    public static TokenizableDatum fromPlutusData(ConstrPlutusData constr) {
+<span class="nc" id="L120">        List&lt;PlutusData&gt; fields = constr.getData().getPlutusDataList();</span>
+<span class="nc" id="L121">        int alt = (int) constr.getAlternative();</span>
+
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        if (alt == 0) {</span>
+            // Head
+<span class="nc" id="L125">            ConstrPlutusData nextConstr = (ConstrPlutusData) fields.get(0);</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">            String next = nextConstr.getAlternative() == 0</span>
+<span class="nc" id="L127">                    ? HexUtil.encodeHexString(((BytesPlutusData) nextConstr.getData().getPlutusDataList().get(0)).getValue())</span>
+<span class="nc" id="L128">                    : null;</span>
+<span class="nc" id="L129">            TokenizableConfig config = TokenizableConfig.fromPlutusData((ConstrPlutusData) fields.get(1));</span>
+<span class="nc" id="L130">            return Head.builder().next(next).config(config).build();</span>
+
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        } else if (alt == 1) {</span>
+            // Node
+<span class="nc" id="L134">            String key = HexUtil.encodeHexString(((BytesPlutusData) fields.get(0)).getValue());</span>
+<span class="nc" id="L135">            ConstrPlutusData nextConstr = (ConstrPlutusData) fields.get(1);</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">            String next = nextConstr.getAlternative() == 0</span>
+<span class="nc" id="L137">                    ? HexUtil.encodeHexString(((BytesPlutusData) nextConstr.getData().getPlutusDataList().get(0)).getValue())</span>
+<span class="nc" id="L138">                    : null;</span>
+<span class="nc" id="L139">            String owner = HexUtil.encodeHexString(((BytesPlutusData) fields.get(2)).getValue());</span>
+<span class="nc" id="L140">            String assetName = HexUtil.encodeHexString(((BytesPlutusData) fields.get(3)).getValue());</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">            boolean redeemed = ((ConstrPlutusData) fields.get(4)).getAlternative() == 1;</span>
+<span class="nc" id="L142">            return Node.builder().key(key).next(next).owner(owner).assetName(assetName).redeemed(redeemed).build();</span>
+
+        } else {
+<span class="nc" id="L145">            throw new IllegalArgumentException(&quot;Unknown TokenizableDatum alternative: &quot; + alt);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

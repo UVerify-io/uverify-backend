@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FractionizedDatum.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.validators.fractionized</a> &gt; <span class="el_source">FractionizedDatum.java</span></div><h1>FractionizedDatum.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.validators.fractionized;
+
+import com.bloxbean.cardano.client.plutus.spec.*;
+import com.bloxbean.cardano.client.util.HexUtil;
+import lombok.*;
+
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Java representation of the {@code FractionizedDatum} Aiken sum type:
+ * &lt;pre&gt;
+ * CertificateHead { next: Option&amp;lt;ByteArray&amp;gt;, config: FractionizedConfig }  → alternative 0
+ * CertificateNode { key, next, total_amount, remaining_amount, claimants,
+ *                   asset_name, status }                                     → alternative 1
+ * &lt;/pre&gt;
+ */
+<span class="nc" id="L37">public abstract class FractionizedDatum {</span>
+
+    public static FractionizedDatum fromInlineDatum(String inlineDatumHex) {
+        try {
+<span class="nc" id="L41">            ConstrPlutusData pd = (ConstrPlutusData) PlutusData.deserialize(HexUtil.decodeHexString(inlineDatumHex));</span>
+<span class="nc" id="L42">            int alt = (int) pd.getAlternative();</span>
+<span class="nc bnc" id="L43" title="All 2 branches missed.">            if (alt == 0) {</span>
+<span class="nc" id="L44">                return parseFHead(pd);</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">            } else if (alt == 1) {</span>
+<span class="nc" id="L46">                return parseFNode(pd);</span>
+            }
+<span class="nc" id="L48">            throw new IllegalArgumentException(&quot;Unknown FractionizedDatum alternative: &quot; + alt);</span>
+<span class="nc" id="L49">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L50">            throw e;</span>
+<span class="nc" id="L51">        } catch (Exception e) {</span>
+<span class="nc" id="L52">            throw new IllegalArgumentException(&quot;Cannot deserialize FractionizedDatum from: &quot; + inlineDatumHex, e);</span>
+        }
+    }
+
+    private static FHead parseFHead(ConstrPlutusData constr) {
+<span class="nc" id="L57">        List&lt;PlutusData&gt; fields = constr.getData().getPlutusDataList();</span>
+<span class="nc" id="L58">        ConstrPlutusData nextConstr = (ConstrPlutusData) fields.get(0);</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        Optional&lt;byte[]&gt; next = nextConstr.getAlternative() == 0</span>
+<span class="nc" id="L60">                ? Optional.of(((BytesPlutusData) nextConstr.getData().getPlutusDataList().get(0)).getValue())</span>
+<span class="nc" id="L61">                : Optional.empty();</span>
+<span class="nc" id="L62">        FractionizedConfig config = FractionizedConfig.fromPlutusData((ConstrPlutusData) fields.get(1));</span>
+<span class="nc" id="L63">        return FHead.builder().next(next).config(config).build();</span>
+    }
+
+    private static FNode parseFNode(ConstrPlutusData constr) {
+<span class="nc" id="L67">        List&lt;PlutusData&gt; fields = constr.getData().getPlutusDataList();</span>
+
+<span class="nc" id="L69">        byte[] key = ((BytesPlutusData) fields.get(0)).getValue();</span>
+
+<span class="nc" id="L71">        ConstrPlutusData nextConstr = (ConstrPlutusData) fields.get(1);</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        Optional&lt;byte[]&gt; next = nextConstr.getAlternative() == 0</span>
+<span class="nc" id="L73">                ? Optional.of(((BytesPlutusData) nextConstr.getData().getPlutusDataList().get(0)).getValue())</span>
+<span class="nc" id="L74">                : Optional.empty();</span>
+
+<span class="nc" id="L76">        long totalAmount = ((BigIntPlutusData) fields.get(2)).getValue().longValue();</span>
+<span class="nc" id="L77">        long remainingAmount = ((BigIntPlutusData) fields.get(3)).getValue().longValue();</span>
+
+<span class="nc" id="L79">        List&lt;byte[]&gt; claimants = ((ListPlutusData) fields.get(4)).getPlutusDataList().stream()</span>
+<span class="nc" id="L80">                .map(d -&gt; ((BytesPlutusData) d).getValue())</span>
+<span class="nc" id="L81">                .toList();</span>
+
+<span class="nc" id="L83">        byte[] assetName = ((BytesPlutusData) fields.get(5)).getValue();</span>
+
+<span class="nc" id="L85">        ConstrPlutusData statusConstr = (ConstrPlutusData) fields.get(6);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        boolean exhausted = statusConstr.getAlternative() == 1;</span>
+
+<span class="nc" id="L88">        return FNode.builder()</span>
+<span class="nc" id="L89">                .key(key).next(next).totalAmount(totalAmount).remainingAmount(remainingAmount)</span>
+<span class="nc" id="L90">                .claimants(claimants).assetName(assetName).exhausted(exhausted)</span>
+<span class="nc" id="L91">                .build();</span>
+    }
+
+    public abstract ConstrPlutusData toPlutusData();
+
+    // ── FHEAD (CertificateHead, alternative 0) ────────────────────────────────
+
+    @Getter
+<span class="nc" id="L99">    @Setter</span>
+<span class="nc" id="L100">    @Builder</span>
+<span class="nc" id="L101">    @AllArgsConstructor</span>
+<span class="nc" id="L102">    @NoArgsConstructor</span>
+    public static class FHead extends FractionizedDatum {
+        /**
+         * Raw bytes of the first node's key, or {@link Optional#empty()} for an empty list.
+         */
+<span class="nc" id="L107">        private Optional&lt;byte[]&gt; next;</span>
+<span class="nc" id="L108">        private FractionizedConfig config;</span>
+
+        @Override
+        public ConstrPlutusData toPlutusData() {
+<span class="nc bnc" id="L112" title="All 2 branches missed.">            PlutusData nextOption = next.isPresent()</span>
+<span class="nc" id="L113">                    ? ConstrPlutusData.of(0, BytesPlutusData.of(next.get()))</span>
+<span class="nc" id="L114">                    : ConstrPlutusData.of(1);</span>
+<span class="nc" id="L115">            return ConstrPlutusData.of(0, nextOption, config.toPlutusData());</span>
+        }
+
+        public FHead withNext(Optional&lt;byte[]&gt; newNext) {
+<span class="nc" id="L119">            return FHead.builder().next(newNext).config(this.config).build();</span>
+        }
+    }
+
+    // ── FNODE (CertificateNode, alternative 1) ────────────────────────────────
+
+    @Getter
+<span class="nc" id="L126">    @Setter</span>
+<span class="nc" id="L127">    @Builder</span>
+<span class="nc" id="L128">    @AllArgsConstructor</span>
+<span class="nc" id="L129">    @NoArgsConstructor</span>
+    public static class FNode extends FractionizedDatum {
+        /** Raw bytes of this node's certificate hash key. */
+<span class="nc" id="L132">        private byte[] key;</span>
+        /** Raw bytes of the successor key, or {@link Optional#empty()} for the last node. */
+<span class="nc" id="L134">        private Optional&lt;byte[]&gt; next;</span>
+<span class="nc" id="L135">        private long totalAmount;</span>
+<span class="nc" id="L136">        private long remainingAmount;</span>
+        /** Raw payment key hashes; empty list means open access. */
+<span class="nc" id="L138">        private List&lt;byte[]&gt; claimants;</span>
+        /** Raw bytes of the fungible token asset name. */
+<span class="nc" id="L140">        private byte[] assetName;</span>
+        /**
+         * Maps to {@code FractionizedNodeStatus}: {@code TokensAvailable} (alt 0) = false,
+         * {@code TokensExhausted} (alt 1) = true.
+         */
+<span class="nc" id="L145">        private boolean exhausted;</span>
+
+        @Override
+        public ConstrPlutusData toPlutusData() {
+<span class="nc bnc" id="L149" title="All 2 branches missed.">            PlutusData nextOption = next.isPresent()</span>
+<span class="nc" id="L150">                    ? ConstrPlutusData.of(0, BytesPlutusData.of(next.get()))</span>
+<span class="nc" id="L151">                    : ConstrPlutusData.of(1);</span>
+
+<span class="nc" id="L153">            PlutusData[] claimantItems = claimants.stream()</span>
+<span class="nc" id="L154">                    .map(c -&gt; (PlutusData) BytesPlutusData.of(c))</span>
+<span class="nc" id="L155">                    .toArray(PlutusData[]::new);</span>
+<span class="nc" id="L156">            ListPlutusData claimantList = ListPlutusData.of(claimantItems);</span>
+
+<span class="nc bnc" id="L158" title="All 2 branches missed.">            PlutusData status = exhausted ? ConstrPlutusData.of(1) : ConstrPlutusData.of(0);</span>
+
+<span class="nc" id="L160">            return ConstrPlutusData.of(1,</span>
+<span class="nc" id="L161">                    BytesPlutusData.of(key),</span>
+                    nextOption,
+<span class="nc" id="L163">                    BigIntPlutusData.of(BigInteger.valueOf(totalAmount)),</span>
+<span class="nc" id="L164">                    BigIntPlutusData.of(BigInteger.valueOf(remainingAmount)),</span>
+                    claimantList,
+<span class="nc" id="L166">                    BytesPlutusData.of(assetName),</span>
+                    status
+            );
+        }
+
+        public FNode withNext(byte[] newNext) {
+<span class="nc" id="L172">            return FNode.builder()</span>
+<span class="nc" id="L173">                    .key(this.key).next(Optional.ofNullable(newNext)).totalAmount(this.totalAmount)</span>
+<span class="nc" id="L174">                    .remainingAmount(this.remainingAmount).claimants(this.claimants)</span>
+<span class="nc" id="L175">                    .assetName(this.assetName).exhausted(this.exhausted)</span>
+<span class="nc" id="L176">                    .build();</span>
+        }
+
+        public FNode withRemainingAmount(long newRemaining) {
+<span class="nc" id="L180">            return FNode.builder()</span>
+<span class="nc" id="L181">                    .key(this.key).next(this.next).totalAmount(this.totalAmount)</span>
+<span class="nc" id="L182">                    .remainingAmount(newRemaining).claimants(this.claimants)</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">                    .assetName(this.assetName).exhausted(newRemaining == 0)</span>
+<span class="nc" id="L184">                    .build();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

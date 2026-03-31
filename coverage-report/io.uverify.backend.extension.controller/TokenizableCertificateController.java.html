@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TokenizableCertificateController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.controller</a> &gt; <span class="el_source">TokenizableCertificateController.java</span></div><h1>TokenizableCertificateController.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.uverify.backend.extension.dto.tokenizable.CertificateStatusResponse;
+import io.uverify.backend.extension.dto.tokenizable.TokenizableBuildRequest;
+import io.uverify.backend.extension.service.TokenizableCertificateService;
+import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+<span class="nc" id="L37">@Slf4j</span>
+@ConditionalOnProperty(value = &quot;extensions.tokenizable-certificate.enabled&quot;, havingValue = &quot;true&quot;)
+@RestController
+@SuppressWarnings(&quot;unused&quot;)
+@RequestMapping(&quot;/api/v1/extension/tokenizable-certificate&quot;)
+@Tag(name = &quot;Tokenizable Certificate&quot;, description = &quot;Extension endpoints for the tokenizable-certificate contract.&quot;)
+public class TokenizableCertificateController {
+
+    private final TokenizableCertificateService service;
+
+<span class="nc" id="L47">    public TokenizableCertificateController(TokenizableCertificateService service) {</span>
+<span class="nc" id="L48">        this.service = service;</span>
+<span class="nc" id="L49">    }</span>
+
+    @PostMapping(&quot;/build&quot;)
+    @Operation(
+            summary = &quot;Build a tokenizable-certificate transaction&quot;,
+            description = &quot;&quot;&quot;
+                    Builds an unsigned transaction based on the request type:
+                    - **CREATE**: checks on-chain state automatically — if no HEAD exists, runs Init;
+                      otherwise runs Insert (sorted linked-list insertion + UVerify state update).
+                    - **REDEEM**: builds a Redeem transaction that claims the NFT for an available
+                      node and sends it to the sender's address.
+
+                    Returns HTTP 400 for constraint violations (e.g. EUTXO conflict on first insert
+                    or node already claimed).
+                    &quot;&quot;&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Unsigned transaction built successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;,
+                            schema = @Schema(type = &quot;string&quot;, description = &quot;Hex-encoded CBOR unsigned transaction&quot;))),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid request or constraint violation&quot;),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;?&gt; build(@RequestBody @NotNull TokenizableBuildRequest request) {
+        try {
+<span class="nc" id="L74">            return ResponseEntity.ok(service.buildTransaction(request));</span>
+<span class="nc" id="L75">        } catch (IllegalArgumentException | IllegalStateException e) {</span>
+<span class="nc" id="L76">            log.warn(&quot;Bad build request: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L77">            return ResponseEntity.badRequest().body(e.getMessage());</span>
+<span class="nc" id="L78">        } catch (Exception e) {</span>
+<span class="nc" id="L79">            log.error(&quot;Error building transaction: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L80">            return ResponseEntity.internalServerError().body(&quot;Transaction building failed: &quot; + e.getMessage());</span>
+        }
+    }
+
+    @GetMapping(&quot;/status/{key}&quot;)
+    @Operation(
+            summary = &quot;Query certificate node status&quot;,
+            description = &quot;&quot;&quot;
+                    Returns the on-chain status of the tokenizable-certificate node identified by its hex key.
+                    The `initUtxoTxHash` and `initUtxoOutputIndex` parameters identify which linked-list
+                    instance to query (they determine the policy ID).
+                    &quot;&quot;&quot;
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Status retrieved successfully&quot;,
+                    content = @Content(mediaType = &quot;application/json&quot;,
+                            schema = @Schema(implementation = CertificateStatusResponse.class))),
+            @ApiResponse(responseCode = &quot;500&quot;, description = &quot;Internal server error&quot;)
+    })
+    public ResponseEntity&lt;?&gt; getStatus(
+            @Parameter(description = &quot;Hex-encoded node key to look up&quot;, required = true)
+            @PathVariable String key,
+            @Parameter(description = &quot;Tx-hash of the init UTxO used to derive the policy ID&quot;, required = true)
+            @RequestParam String initUtxoTxHash,
+            @Parameter(description = &quot;Output index of the init UTxO&quot;, required = true)
+            @RequestParam int initUtxoOutputIndex) {
+        try {
+<span class="nc" id="L107">            return ResponseEntity.ok(service.getCertificateStatus(key, initUtxoTxHash, initUtxoOutputIndex));</span>
+<span class="nc" id="L108">        } catch (Exception e) {</span>
+<span class="nc" id="L109">            log.error(&quot;Error querying certificate status: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L110">            return ResponseEntity.internalServerError().body(&quot;Status query failed: &quot; + e.getMessage());</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
