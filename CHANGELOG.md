@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.13.0](https://github.com/UVerify-io/uverify-backend/compare/v1.12.1...v1.13.0) (2026-03-31)
+
+
+### Features
+
+* add fractionized and tokenizable certificates ([992f7d6](https://github.com/UVerify-io/uverify-backend/commit/992f7d6d97907e753797498ad9e6abc381c113fe))
+* certificates can now be tokenized and fractionized ([bb58f4f](https://github.com/UVerify-io/uverify-backend/commit/bb58f4f074e05809925c86418b42503f682b083c))
+
+
+### Bug Fixes
+
+* remove unused cert token ([7646e7a](https://github.com/UVerify-io/uverify-backend/commit/7646e7a0f4af7edda04d33eaf19a9632cc84e4ea))
+
 ## [1.12.1](https://github.com/UVerify-io/uverify-backend/compare/v1.12.0...v1.12.1) (2026-03-13)
 
 
