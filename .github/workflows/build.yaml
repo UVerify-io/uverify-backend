@@ -28,11 +28,6 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: 🔍 Extract POM Version
-        run: |
-          VERSION=$(./mvnw --batch-mode -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)
-          echo "POM_VERSION=$VERSION" >> $GITHUB_ENV
-
       - name: 📦 Install yaci-cardano-test SNAPSHOT
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
@@ -40,6 +35,11 @@ jobs:
           git clone --depth 1 https://github.com/bloxbean/yaci-cardano-test.git /tmp/yaci-cardano-test
           cd /tmp/yaci-cardano-test
           ./gradlew publishToMavenLocal -x test
+
+      - name: 🔍 Extract POM Version
+        run: |
+          VERSION=$(./mvnw --batch-mode -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)
+          echo "POM_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: 🔨 Build Docker Image
         run: |
