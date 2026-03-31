@@ -27,6 +27,12 @@ jobs:
           VERSION=$(./mvnw --batch-mode -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)
           echo "POM_VERSION=$VERSION" >> $GITHUB_ENV
 
+      - name: 📦 Install yaci-cardano-test SNAPSHOT
+        run: |
+          git clone --depth 1 https://github.com/bloxbean/yaci-cardano-test.git /tmp/yaci-cardano-test
+          cd /tmp/yaci-cardano-test
+          mvn install -q -DskipTests
+
       - name: 🔨 Build Docker Image
         run: |
           ./mvnw --batch-mode clean package -DskipTests

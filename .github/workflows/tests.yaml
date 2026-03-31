@@ -20,6 +20,12 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: 📦 Install yaci-cardano-test SNAPSHOT
+        run: |
+          git clone --depth 1 https://github.com/bloxbean/yaci-cardano-test.git /tmp/yaci-cardano-test
+          cd /tmp/yaci-cardano-test
+          mvn install -q -DskipTests
+
       - name: 🔨 Build
         run: |
           ./mvnw --batch-mode --update-snapshots clean package -DskipTests
