@@ -65,6 +65,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @SpringBootTest
@@ -107,8 +108,7 @@ public class CardanoBlockchainTest {
     @Autowired
     protected final LibraryService libraryService;
 
-    @Autowired
-    protected final FractionizedCertificateService fractionizedCertificateService;
+    protected final Optional<FractionizedCertificateService> fractionizedCertificateService;
 
     @Autowired
     public CardanoBlockchainTest(@Value("${cardano.service.user.mnemonic}") String testServiceUserMnemonic,
@@ -119,7 +119,7 @@ public class CardanoBlockchainTest {
                                  StateDatumService stateDatumService,
                                  BootstrapDatumService bootstrapDatumService,
                                  UVerifyCertificateService uVerifyCertificateService,
-                                 FractionizedCertificateService fractionizedCertificateService,
+                                 Optional<FractionizedCertificateService> fractionizedCertificateService,
                                  StateDatumRepository stateDatumRepository,
                                  BootstrapDatumRepository bootstrapDatumRepository,
                                  CertificateRepository certificateRepository,
@@ -174,7 +174,7 @@ public class CardanoBlockchainTest {
 
             this.cardanoBlockchainService.setBackendService(yaciCardanoContainer.getBackendService());
             this.libraryService.setBackendService(yaciCardanoContainer.getBackendService());
-            this.fractionizedCertificateService.setBackendService(yaciCardanoContainer.getBackendService());
+            this.fractionizedCertificateService.ifPresent(s -> s.setBackendService(yaciCardanoContainer.getBackendService()));
         }
     }
 
