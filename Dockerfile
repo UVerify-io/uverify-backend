@@ -15,9 +15,9 @@ COPY pom.xml /app/pom.xml
 COPY mvnw /app/mvnw
 COPY .mvn /app/.mvn
 
-RUN ./mvnw verify clean --fail-never
+RUN ./mvnw verify clean --fail-never -nsu
 COPY . /app
-RUN ./mvnw clean package -DskipTests
+RUN ./mvnw clean package -DskipTests -nsu
 
 FROM eclipse-temurin:21-jdk-jammy AS runtime
 WORKDIR /app
