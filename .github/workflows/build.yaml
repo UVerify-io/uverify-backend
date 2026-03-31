@@ -31,7 +31,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/bloxbean/yaci-cardano-test.git /tmp/yaci-cardano-test
           cd /tmp/yaci-cardano-test
-          mvn install -q -DskipTests
+          ./gradlew publishToMavenLocal -x test
 
       - name: 🔨 Build Docker Image
         run: |
