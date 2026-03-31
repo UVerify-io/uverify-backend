@@ -23,9 +23,9 @@ import com.bloxbean.cardano.client.address.AddressProvider;
 import com.bloxbean.cardano.client.address.Credential;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Amount;
-import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.api.model.Utxo;
+import com.bloxbean.cardano.client.api.util.AssetUtil;
 import com.bloxbean.cardano.client.backend.api.BackendService;
 import com.bloxbean.cardano.client.backend.api.DefaultUtxoSupplier;
 import com.bloxbean.cardano.client.backend.blockfrost.service.BFBackendService;
@@ -34,6 +34,7 @@ import com.bloxbean.cardano.client.backend.koios.KoiosBackendService;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
 import com.bloxbean.cardano.client.common.model.Network;
+import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.plutus.spec.*;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
@@ -41,28 +42,24 @@ import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
 import io.uverify.backend.entity.BootstrapDatumEntity;
+import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.enums.UVerifyScriptPurpose;
-import io.uverify.backend.model.ProxyRedeemer;
-import io.uverify.backend.model.converter.ProxyRedeemerConverter;
-import io.uverify.backend.extension.dto.tokenizable.BuildInitRequest;
-import io.uverify.backend.extension.dto.tokenizable.BuildInsertRequest;
-import io.uverify.backend.extension.dto.tokenizable.BuildRedeemRequest;
-import io.uverify.backend.extension.dto.tokenizable.CertificateStatusResponse;
-import io.uverify.backend.extension.dto.tokenizable.TokenizableBuildRequest;
+import io.uverify.backend.extension.dto.tokenizable.*;
 import io.uverify.backend.extension.enums.ExtensionTransactionType;
 import io.uverify.backend.extension.validators.tokenizable.TokenizableConfig;
 import io.uverify.backend.extension.validators.tokenizable.TokenizableDatum;
+import io.uverify.backend.model.ProxyRedeemer;
 import io.uverify.backend.model.StateDatum;
 import io.uverify.backend.model.StateRedeemer;
 import io.uverify.backend.model.UVerifyCertificate;
+import io.uverify.backend.model.converter.ProxyRedeemerConverter;
 import io.uverify.backend.service.BootstrapDatumService;
+import io.uverify.backend.service.CardanoBlockchainService;
 import io.uverify.backend.service.LibraryService;
 import io.uverify.backend.service.StateDatumService;
-import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.util.CardanoUtils;
 import io.uverify.backend.util.ValidatorHelper;
-import io.uverify.backend.util.ValidatorUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -105,13 +102,19 @@ import static io.uverify.backend.util.ValidatorUtils.*;
 @ConditionalOnProperty(value = "extensions.tokenizable-certificate.enabled", havingValue = "true")
 public class TokenizableCertificateService {
 
-    /** Hex-encoded token-name prefix for all nodes in a list ("TCN"). */
+    /**
+     * Hex-encoded token-name prefix for all nodes in a list ("TCN").
+     */
     private static final String NODE_PREFIX_HEX = "54434e";
 
-    /** CIP-68 label-222 prefix (user token). */
+    /**
+     * CIP-68 label-222 prefix (user token).
+     */
     private static final String CIP68_USER_PREFIX_HEX = "000de140";
 
-    /** CIP-68 label-100 prefix (reference token). */
+    /**
+     * CIP-68 label-100 prefix (reference token).
+     */
     private static final String CIP68_REF_PREFIX_HEX = "000643b0";
 
     private final Network network;
@@ -126,6 +129,8 @@ public class TokenizableCertificateService {
     private StateDatumService stateDatumService;
     @Autowired
     private BootstrapDatumService bootstrapDatumService;
+    @Autowired
+    private CardanoBlockchainService cardanoBlockchainService;
 
     @Autowired
     public TokenizableCertificateService(
@@ -144,18 +149,6 @@ public class TokenizableCertificateService {
         }
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
-
-    /**
-     * Unified entry point — routes to Init, Insert, or Redeem based on {@code req.getType()}
-     * and current on-chain state.
-     *
-     * <ul>
-     *   <li>{@code CREATE} — checks whether the HEAD node exists. If not, runs Init using
-     *       {@code req.getConfig()}; otherwise runs Insert.</li>
-     *   <li>{@code REDEEM} — runs Redeem (claim NFT) for the given key.</li>
-     * </ul>
-     */
     public String buildTransaction(TokenizableBuildRequest req) throws ApiException, CborSerializationException {
         if (req.getType() == ExtensionTransactionType.REDEEM) {
             BuildRedeemRequest redeem = new BuildRedeemRequest();
@@ -166,7 +159,6 @@ public class TokenizableCertificateService {
             return buildRedeemTransaction(redeem);
         }
 
-        // CREATE — decide Init vs Insert by checking whether HEAD already exists
         PlutusScript script = getTokenizableCertificateContract(req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());
         String policyId = validatorToScriptHash(script);
         String scriptAddress = scriptAddress(script);
@@ -179,6 +171,10 @@ public class TokenizableCertificateService {
             init.setInitUtxoTxHash(req.getInitUtxoTxHash());
             init.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());
             init.setConfig(req.getConfig());
+            init.setKey(req.getKey());
+            init.setOwnerPubKeyHash(req.getOwnerPubKeyHash());
+            init.setAssetName(req.getAssetName());
+            init.setBootstrapTokenName(req.getBootstrapTokenName());
             return buildInitTransaction(init);
         } else {
             BuildInsertRequest insert = new BuildInsertRequest();
@@ -193,17 +189,10 @@ public class TokenizableCertificateService {
         }
     }
 
-    /**
-     * Builds an unsigned Init transaction.
-     * <p>
-     * The deployer address must own the {@code initUtxo} and must sign the
-     * returned transaction.
-     */
     public String buildInitTransaction(BuildInitRequest req) throws ApiException, CborSerializationException {
-        PlutusScript script = getTokenizableCertificateContract(req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());
-        String scriptAddress = scriptAddress(script);
+        PlutusScript tokenizableScript = getTokenizableCertificateContract(req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());
+        String tokenizableAddress = scriptAddress(tokenizableScript);
 
-        // Find init UTxO in the user's wallet
         Result<List<Utxo>> utxoResult = backendService.getUtxoService().getUtxos(req.getDeployerAddress(), 100, 1);
         if (!utxoResult.isSuccessful() || utxoResult.getValue() == null) {
             throw new IllegalStateException("Could not retrieve UTxOs for deployer address");
@@ -218,28 +207,84 @@ public class TokenizableCertificateService {
         }
         Utxo initUtxo = optInitUtxo.get();
 
-        TokenizableDatum.Head headDatum = TokenizableDatum.Head.builder()
-                .next(null)
-                .config(req.getConfig())
+        Address deployerAddress = new Address(req.getDeployerAddress());
+        byte[] deployerCredential = deployerAddress.getPaymentCredentialHash()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid deployer address"));
+
+        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
+        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
+
+        UVerifyCertificate cert = UVerifyCertificate.builder()
+                .hash(req.getKey())
+                .algorithm("sha3_256")
+                .issuer(HexUtil.encodeHexString(deployerCredential))
+                .extra("{\"uverify_template_id\":\"tokenizableCertificate\"}")
                 .build();
 
-        // HEAD token name: "TCN" (hex: 54434e)
         Asset headToken = Asset.builder()
                 .name("0x" + NODE_PREFIX_HEX)
                 .value(BigInteger.ONE)
                 .build();
 
-        ScriptTx tx = new ScriptTx()
-                .collectFrom(List.of(initUtxo))
-                .mintAsset(script, List.of(headToken), ConstrPlutusData.of(0), // Init redeemer
-                        scriptAddress, headDatum.toPlutusData());
+        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();
+        Asset nodeToken = Asset.builder()
+                .name("0x" + nodeTokenName)
+                .value(BigInteger.ONE)
+                .build();
+
+        PlutusData initMintRedeemer = ConstrPlutusData.of(0,
+                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));
+
+        TokenizableDatum.Head headDatum = TokenizableDatum.Head.builder()
+                .next(req.getKey())
+                .config(req.getConfig())
+                .build();
+
+        TokenizableDatum.Node nodeDatum = TokenizableDatum.Node.builder()
+                .key(req.getKey())
+                .next(null)
+                .owner(req.getOwnerPubKeyHash())
+                .assetName(req.getAssetName())
+                .redeemed(false)
+                .build();
+
+        ScriptTx tokenizableMintTx = cardanoBlockchainService.buildUVerifyCertificateScriptTx(
+                req.getDeployerAddress(), List.of(cert));
+
+        tokenizableMintTx = tokenizableMintTx
+                .mintAsset(tokenizableScript, List.of(headToken, nodeToken), initMintRedeemer)
+                .payToContract(tokenizableAddress, Amount.asset(AssetUtil.getUnit(tokenizableScript.getPolicyId(), headToken), 1L), headDatum.toPlutusData())
+                .payToContract(tokenizableAddress, Amount.asset(AssetUtil.getUnit(tokenizableScript.getPolicyId(), nodeToken), 1L), nodeDatum.toPlutusData());
 
         long currentSlot = CardanoUtils.getLatestSlot(backendService);
         Transaction unsignedTx = new QuickTxBuilder(backendService)
-                .compose(tx)
+                .compose(tokenizableMintTx)
                 .feePayer(req.getDeployerAddress())
                 .collateralPayer(req.getDeployerAddress())
-                .withRequiredSigners(new Address(req.getDeployerAddress()))
+                .mergeOutputs(false)
+                .withRequiredSigners(deployerAddress)
+                .withReferenceScripts(stateContract, proxyContract)
+                .validFrom(currentSlot - 10)
+                .validTo(currentSlot + 600)
+                .build();
+
+        // Check if the init utxo is already part of the transaction
+        // because of the UVerify certificate
+        if (unsignedTx.getBody().getInputs().stream().anyMatch(utxo ->
+                utxo.getTransactionId().equals(initUtxo.getTxHash())
+                        && utxo.getIndex() == initUtxo.getOutputIndex())) {
+            return unsignedTx.serializeToHex();
+        }
+
+        tokenizableMintTx = tokenizableMintTx.collectFrom(initUtxo);
+
+        unsignedTx = new QuickTxBuilder(backendService)
+                .compose(tokenizableMintTx)
+                .feePayer(req.getDeployerAddress())
+                .collateralPayer(req.getDeployerAddress())
+                .mergeOutputs(false)
+                .withRequiredSigners(deployerAddress)
+                .withReferenceScripts(stateContract, proxyContract)
                 .validFrom(currentSlot - 10)
                 .validTo(currentSlot + 600)
                 .build();
@@ -247,15 +292,6 @@ public class TokenizableCertificateService {
         return unsignedTx.serializeToHex();
     }
 
-    /**
-     * Builds an unsigned Insert transaction that simultaneously:
-     * <ol>
-     *   <li>Updates the caller's UVerify state with the certificate hash.</li>
-     *   <li>Mints the node NFT and inserts it at the correct sorted position.</li>
-     * </ol>
-     *
-     * @throws IllegalStateException if the HEAD would be the predecessor (EUTXO constraint).
-     */
     public String buildInsertTransaction(BuildInsertRequest req) throws ApiException, CborSerializationException {
         PlutusScript tokenizableScript = getTokenizableCertificateContract(
                 req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());
@@ -273,48 +309,23 @@ public class TokenizableCertificateService {
             if (existingState.isPresent()) {
                 throw new IllegalStateException(
                         "Cannot insert key '" + req.getKey() + "': the HEAD node would be the predecessor. "
-                        + "This is impossible due to the Cardano EUTXO constraint.");
+                                + "This is impossible due to the Cardano EUTXO constraint.");
             }
             return buildForkAndOrphanInsertTransaction(req, tokenizableScript, tokenizableAddress, headUtxo);
         }
 
-        // ── 2. UVerify state update components ───────────────────────────────
         PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
         PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
-        String proxyScriptAddress = scriptAddress(proxyContract);
-        String stateRewardAddress = AddressProvider.getRewardAddress(stateContract, network).toBech32();
-        String proxyScriptHash = validatorToScriptHash(proxyContract);
 
-        // Find the inserter's proxy UTxO
-        String bootstrapToken = req.getBootstrapTokenName() != null ? req.getBootstrapTokenName() : "";
-        StateDatumEntity stateDatumEntity = resolveStateDatum(req.getInserterAddress(), bootstrapToken);
-        String unit = proxyScriptHash + stateDatumEntity.getId();
-        Optional<Utxo> optProxyUtxo = getCurrentUtxoByUnit(proxyScriptAddress, unit, backendService);
-        if (optProxyUtxo.isEmpty()) {
-            throw new IllegalStateException("Proxy state UTxO not found for inserter address");
-        }
-        Utxo proxyUtxo = optProxyUtxo.get();
+        byte[] inserterCredential = new Address(req.getInserterAddress()).getPaymentCredentialHash()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid inserter address"));
 
         UVerifyCertificate cert = UVerifyCertificate.builder()
                 .hash(req.getKey())
                 .algorithm("sha3_256")
-                .issuer("")
+                .issuer(HexUtil.encodeHexString(inserterCredential))
                 .extra("{\"uverify_template_id\":\"tokenizableCertificate\"}")
                 .build();
-
-        StateDatum nextStateDatum = StateDatum.fromPreviousStateDatum(proxyUtxo.getInlineDatum());
-        nextStateDatum.setCertificates(List.of(cert));
-
-        StateRedeemer stateRedeemer = StateRedeemer.builder()
-                .purpose(UVerifyScriptPurpose.UPDATE_STATE)
-                .certificates(List.of(cert))
-                .build();
-
-        PlutusData proxySpendRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);
-
-        Utxo proxyStateRef = validatorHelper.resolveProxyStateUtxo(backendService);
-        Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();
-        Utxo proxyLibraryUtxo = libraryService.getProxyLibraryUtxo();
 
         // ── 3. Tokenizable insert components ─────────────────────────────────
         String nodeTokenName = NODE_PREFIX_HEX + req.getKey();
@@ -339,28 +350,22 @@ public class TokenizableCertificateService {
         // Compute updated predecessor datum (update its `next` to point to the new key)
         PlutusData updatedPredecessorDatum = pred.buildUpdatedPredecessorDatum(req.getKey());
 
-        // ── 4. Build ScriptTx ─────────────────────────────────────────────────
-        ScriptTx tx = new ScriptTx()
-                // UVerify part
-                .readFrom(proxyStateRef, stateLibraryUtxo, proxyLibraryUtxo, headUtxo)
-                .collectFrom(proxyUtxo, proxySpendRedeemer)
-                .payToContract(proxyScriptAddress, proxyUtxo.getAmount(), nextStateDatum.toPlutusData())
-                .withdraw(stateRewardAddress, BigInteger.ZERO, stateRedeemer.toPlutusData())
-                // Tokenizable insert part
+
+        ScriptTx tokenizableInsertTx = cardanoBlockchainService.buildUVerifyCertificateScriptTx(
+                        req.getInserterAddress(), List.of(cert))
+                .readFrom(headUtxo)
                 .collectFrom(pred.getUtxo(), insertSpendRedeemer)
                 .payToContract(tokenizableAddress, pred.getUtxo().getAmount(), updatedPredecessorDatum)
                 .mintAsset(tokenizableScript, List.of(nodeToken), insertMintRedeemer,
                         tokenizableAddress, newNodeDatum.toPlutusData());
 
-        // Optional: fee payments from bootstrap datum
-        applyFeePaymentsIfNeeded(tx, stateDatumEntity, proxyUtxo);
-
         long currentSlot = CardanoUtils.getLatestSlot(backendService);
         Address inserterAddress = new Address(req.getInserterAddress());
         Transaction unsignedTx = new QuickTxBuilder(backendService)
-                .compose(tx)
+                .compose(tokenizableInsertTx)
                 .feePayer(req.getInserterAddress())
                 .collateralPayer(req.getInserterAddress())
+                .mergeOutputs(false)
                 .withRequiredSigners(inserterAddress)
                 .withReferenceScripts(stateContract, proxyContract)
                 .validFrom(currentSlot - 10)
@@ -426,9 +431,9 @@ public class TokenizableCertificateService {
         } else {
             // CIP-68: mint user token + reference token
             String userTn = CIP68_USER_PREFIX_HEX + nodeDatum.getAssetName();
-            String refTn  = CIP68_REF_PREFIX_HEX  + nodeDatum.getAssetName();
+            String refTn = CIP68_REF_PREFIX_HEX + nodeDatum.getAssetName();
             Asset userToken = Asset.builder().name("0x" + userTn).value(BigInteger.ONE).build();
-            Asset refToken  = Asset.builder().name("0x" + refTn).value(BigInteger.ONE).build();
+            Asset refToken = Asset.builder().name("0x" + refTn).value(BigInteger.ONE).build();
 
             String cip68ScriptAddress = AddressProvider.getEntAddress(
                     PlutusV3Script.builder().cborHex("").build(), // placeholder — actual address resolved by hash
@@ -437,10 +442,10 @@ public class TokenizableCertificateService {
             cip68ScriptAddress = resolveScriptAddress(config.getCip68ScriptAddress());
 
             tx.mintAsset(script, List.of(userToken, refToken), redeemMintRedeemer,
-                    req.getOwnerAddress(), PlutusData.unit())
-              .payToContract(cip68ScriptAddress,
-                      List.of(Amount.asset(policyId + refTn, 1)),
-                      PlutusData.unit());
+                            req.getOwnerAddress(), PlutusData.unit())
+                    .payToContract(cip68ScriptAddress,
+                            List.of(Amount.asset(policyId + refTn, 1)),
+                            PlutusData.unit());
         }
 
         long currentSlot = CardanoUtils.getLatestSlot(backendService);
@@ -599,8 +604,8 @@ public class TokenizableCertificateService {
     }
 
     private String buildForkAndOrphanInsertTransaction(BuildInsertRequest req,
-            PlutusScript tokenizableScript, String tokenizableAddress,
-            Utxo headUtxo) throws ApiException, CborSerializationException {
+                                                       PlutusScript tokenizableScript, String tokenizableAddress,
+                                                       Utxo headUtxo) throws ApiException, CborSerializationException {
         String bootstrapToken = req.getBootstrapTokenName() != null ? req.getBootstrapTokenName() : "";
         Optional<BootstrapDatumEntity> optEntity = bootstrapDatumService.getBootstrapDatum(bootstrapToken, 2);
         if (optEntity.isEmpty()) {
@@ -645,7 +650,7 @@ public class TokenizableCertificateService {
         UVerifyCertificate cert = UVerifyCertificate.builder()
                 .hash(req.getKey())
                 .algorithm("sha3_256")
-                .issuer("")
+                .issuer(HexUtil.encodeHexString(userCredential))
                 .extra("{\"uverify_template_id\":\"tokenizableCertificate\"}")
                 .build();
 
@@ -687,6 +692,12 @@ public class TokenizableCertificateService {
         PlutusData insertMintRedeemer = ConstrPlutusData.of(1,
                 BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));
 
+        // Proxy cert token: proves a UVerify cert is present in this tx
+        Asset certToken = Asset.builder()
+                .name("0x" + req.getKey())
+                .value(BigInteger.ONE)
+                .build();
+
         ScriptTx tx = new ScriptTx()
                 .readFrom(bootstrapUtxo, proxyStateRef, stateLibraryUtxo, proxyLibraryUtxo, headUtxo)
                 .collectFrom(userUtxo)
@@ -694,7 +705,8 @@ public class TokenizableCertificateService {
                 .mintAsset(proxyContract, List.of(stateToken), mintProxyRedeemer,
                         proxyScriptAddress, stateDatum.toPlutusData())
                 .mintAsset(tokenizableScript, List.of(nodeToken), insertMintRedeemer,
-                        tokenizableAddress, newNodeDatum.toPlutusData());
+                        tokenizableAddress, newNodeDatum.toPlutusData())
+                .mintAsset(tokenizableScript, List.of(certToken), insertMintRedeemer);
 
         if (bootstrapDatumEntity.getFee() > 0) {
             long feePerReceiver = bootstrapDatumEntity.getFee() / stateDatum.getFeeReceivers().size();
@@ -710,6 +722,7 @@ public class TokenizableCertificateService {
                 .compose(tx)
                 .feePayer(req.getInserterAddress())
                 .collateralPayer(req.getInserterAddress())
+                .mergeOutputs(false)
                 .withRequiredSigners(userAddress)
                 .withReferenceScripts(stateContract, proxyContract)
                 .validFrom(currentSlot - 10)
@@ -742,23 +755,6 @@ public class TokenizableCertificateService {
         return opt.get();
     }
 
-    private void applyFeePaymentsIfNeeded(ScriptTx tx, StateDatumEntity stateDatum, Utxo proxyUtxo) {
-        StateDatum datum = StateDatum.fromPreviousStateDatum(proxyUtxo.getInlineDatum());
-        var bootstrapDatum = stateDatum.getBootstrapDatum();
-        if (datum.getCountdown() % bootstrapDatum.getFeeInterval() == 0 && bootstrapDatum.getFee() > 0) {
-            long feePerReceiver = bootstrapDatum.getFee() / bootstrapDatum.getFeeReceivers().size();
-            for (var receiver : bootstrapDatum.getFeeReceivers()) {
-                com.bloxbean.cardano.client.address.Credential cred =
-                        com.bloxbean.cardano.client.address.Credential.fromKey(HexUtil.decodeHexString(receiver.getCredential()));
-                String receiverAddress = AddressProvider.getEntAddress(cred, network).toBech32();
-                tx.payToAddress(receiverAddress, Amount.lovelace(BigInteger.valueOf(feePerReceiver)));
-            }
-        }
-    }
-
-    // ── PredecessorResult ─────────────────────────────────────────────────────
-
-    /** Encapsulates the result of the predecessor-search algorithm. */
     private static class PredecessorResult {
         private final boolean headPredecessor;
         private final Utxo utxo;
@@ -781,11 +777,18 @@ public class TokenizableCertificateService {
             return new PredecessorResult(false, utxo, node, successorKey);
         }
 
-        boolean isHeadPredecessor() { return headPredecessor; }
-        Utxo getUtxo() { return utxo; }
-        String getSuccessorKey() { return successorKey; }
+        boolean isHeadPredecessor() {
+            return headPredecessor;
+        }
 
-        /** Returns the updated predecessor datum (with {@code next} pointing at {@code newKey}). */
+        Utxo getUtxo() {
+            return utxo;
+        }
+
+        String getSuccessorKey() {
+            return successorKey;
+        }
+
         PlutusData buildUpdatedPredecessorDatum(String newKey) {
             return node.withNext(newKey).toPlutusData();
         }

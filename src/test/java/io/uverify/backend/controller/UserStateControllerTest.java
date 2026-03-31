@@ -39,6 +39,7 @@ import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.enums.UserAction;
 import io.uverify.backend.extension.ExtensionManager;
+import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.LibraryRepository;
@@ -53,6 +54,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
+import java.util.Optional;
 
 import static io.restassured.RestAssured.given;
 
@@ -75,6 +77,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
             UVerifyCertificateService uVerifyCertificateService,
+            Optional<FractionizedCertificateService> fractionizedCertificateService,
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
@@ -82,7 +85,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
             ValidatorHelper validatorHelper,
             ExtensionManager extensionManager,
             LibraryService libraryService) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper, libraryService, List.of());
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, fractionizedCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper, libraryService, List.of());
         RestAssured.port = port;
         this.feeReceiverPartnerAddress = feeReceiverPartnerAddress;
     }

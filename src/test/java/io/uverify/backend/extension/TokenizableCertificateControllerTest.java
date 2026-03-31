@@ -40,6 +40,7 @@ import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.extension.dto.tokenizable.CertificateStatusResponse;
 import io.uverify.backend.extension.dto.tokenizable.TokenizableBuildRequest;
 import io.uverify.backend.extension.enums.ExtensionTransactionType;
+import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.extension.service.TokenizableCertificateService;
 import io.uverify.backend.extension.validators.tokenizable.TokenizableConfig;
 import io.uverify.backend.model.BootstrapDatum;
@@ -58,6 +59,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.junit.jupiter.EnabledIf;
 
 import java.util.List;
+import java.util.Optional;
 
 import static io.restassured.RestAssured.given;
 
@@ -70,12 +72,19 @@ import static io.restassured.RestAssured.given;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TokenizableCertificateControllerTest extends CardanoBlockchainTest {
 
+    /**
+     * First node inserted during Init (deployer's cert — must sort before CERT_KEY).
+     */
+    private static final String INIT_CERT_KEY = "aabb000011223344aabb000011223344";
+    private static final String INIT_ASSET_NAME = "494e4954"; // "INIT"
+    /**
+     * Second node inserted by the allowed inserter (userAccount).
+     */
+    private static final String CERT_KEY = "ddccddcc11223344ddccddcc11223344";
+    private static final String TC_ASSET_NAME_HEX = "544f4b454e"; // "TOKEN"
     // Shared state between tests
     private static String initTxHash;
     private static int initOutputIndex;
-
-    private static final String CERT_KEY = "ddccddcc11223344ddccddcc11223344";
-    private static final String TC_ASSET_NAME_HEX = "544f4b454e"; // "TOKEN"
     private final TokenizableCertificateService tokenizableCertificateService;
 
     @Autowired
@@ -89,6 +98,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
             UVerifyCertificateService uVerifyCertificateService,
+            Optional<FractionizedCertificateService> fractionizedCertificateService,
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
@@ -99,6 +109,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
             LibraryService libraryService) {
         super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic,
                 cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService,
+                fractionizedCertificateService,
                 stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository,
                 extensionManager, validatorHelper, libraryService, List.of());
         RestAssured.port = port;
@@ -209,23 +220,28 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
 
         String uverifyValidatorHash = ValidatorUtils.validatorToScriptHash(
                 validatorHelper.getParameterizedUVerifyStateContract());
-        String proxyPolicyId = ValidatorUtils.validatorToScriptHash(
-                validatorHelper.getParameterizedProxyContract());
 
         TokenizableConfig config = TokenizableConfig.builder()
                 .uverifyValidatorHash(uverifyValidatorHash)
-                .proxyPolicyId(proxyPolicyId)
                 .allowedInserters(List.of(inserterCredential))
                 .deployer(deployerCredential)
                 .cip68ScriptAddress(null)
                 .build();
 
+        String deployerPubKeyHash = HexUtil.encodeHexString(
+                serviceAccount.getBaseAddress().getPaymentCredentialHash().orElseThrow());
+
+        // Init always creates HEAD + first node in one atomic tx
         TokenizableBuildRequest buildRequest = new TokenizableBuildRequest();
         buildRequest.setType(ExtensionTransactionType.CREATE);
         buildRequest.setSenderAddress(serviceAccount.baseAddress());
         buildRequest.setInitUtxoTxHash(initTxHash);
         buildRequest.setInitUtxoOutputIndex(initOutputIndex);
         buildRequest.setConfig(config);
+        buildRequest.setKey(INIT_CERT_KEY);
+        buildRequest.setOwnerPubKeyHash(deployerPubKeyHash);
+        buildRequest.setAssetName(INIT_ASSET_NAME);
+        buildRequest.setBootstrapTokenName("tc_test_bootstrap_token");
 
         String unsignedTxCbor = given()
                 .contentType(ContentType.JSON)

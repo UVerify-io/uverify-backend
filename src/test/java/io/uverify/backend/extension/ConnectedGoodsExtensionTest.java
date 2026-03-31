@@ -43,6 +43,7 @@ import io.uverify.backend.extension.dto.MintConnectedGoodsResponse;
 import io.uverify.backend.extension.dto.SocialHub;
 import io.uverify.backend.extension.entity.SocialHubEntity;
 import io.uverify.backend.extension.service.ConnectedGoodsService;
+import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.extension.validators.SocialHubDatum;
 import io.uverify.backend.extension.validators.converter.SocialHubDatumConverter;
 import io.uverify.backend.repository.BootstrapDatumRepository;
@@ -104,6 +105,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
             UVerifyCertificateService uVerifyCertificateService,
+            Optional<FractionizedCertificateService> fractionizedCertificateService,
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
@@ -112,7 +114,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             ValidatorHelper validatorHelper,
             ConnectedGoodsService connectedGoodsService,
             LibraryService libraryService) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper,
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, fractionizedCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper,
                 libraryService, List.of(serviceWalletAddress));
         RestAssured.port = port;
         this.connectedGoodsServiceWallet = Account.createFromMnemonic(Networks.testnet(), serviceWalletMnemonic);

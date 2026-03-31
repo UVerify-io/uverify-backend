@@ -126,7 +126,10 @@ public class UVerifyTransactionService {
     }
 
     public boolean isTransactionConfirmed(String txHash) {
-        return transactionRepository.existsById(txHash);
+        if (transactionRepository.existsById(txHash)) {
+            return true;
+        }
+        return cardanoBlockchainService.isTransactionOnChain(txHash);
     }
 
     public BuildTransactionResponse buildCustomTransaction(List<CertificateData> certificates, String address, String bootstrapDatumName) {

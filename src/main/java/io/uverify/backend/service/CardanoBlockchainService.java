@@ -47,7 +47,6 @@ import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
-import com.bloxbean.cardano.client.util.JsonUtil;
 import com.bloxbean.cardano.yaci.core.model.Redeemer;
 import com.bloxbean.cardano.yaci.core.model.RedeemerTag;
 import com.bloxbean.cardano.yaci.core.model.TransactionOutput;
@@ -145,6 +144,16 @@ public class CardanoBlockchainService {
         this.backendService = backendService;
     }
 
+    public boolean isTransactionOnChain(String txHash) {
+        try {
+            Result<TxContentUtxo> result = backendService.getTransactionService().getTransactionUtxos(txHash);
+            return result.isSuccessful();
+        } catch (Exception e) {
+            log.debug("isTransactionOnChain check failed for {}: {}", txHash, e.getMessage());
+            return false;
+        }
+    }
+
     public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
         Optional<StateDatumEntity> stateDatumEntity = Optional.empty();
         if (bootstrapTokenName.isEmpty()) {
@@ -170,11 +179,20 @@ public class CardanoBlockchainService {
         }
     }
 
-    public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificate) throws ApiException, CborSerializationException {
+    public ScriptTx buildUVerifyCertificateScriptTx(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException, CborSerializationException {
         List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address, 2);
         if (stateDatumEntities.isEmpty()) {
             log.debug("No state datum found for address " + address + ". Start forking a new state datum.");
-            return forkProxyStateDatum(address, uVerifyCertificate);
+            Address userAddress = new Address(address);
+            Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
+            if (optionalUserAccountCredential.isEmpty()) {
+                throw new IllegalArgumentException("Invalid Cardano payment address");
+            }
+            Optional<BootstrapDatum> optionalBootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
+            if (optionalBootstrapDatum.isEmpty()) {
+                throw new IllegalArgumentException("No applicable bootstrap datum found for user account");
+            }
+            return buildForkProxyStateDatumScriptTx(address, uVerifyCertificates, optionalBootstrapDatum.get().getTokenName());
         } else {
             StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities);
             boolean needsToPayFee = stateDatumEntity.getCountdown() % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
@@ -182,30 +200,44 @@ public class CardanoBlockchainService {
                 log.debug("Fee required for updating state datum. Checking for better conditions.");
                 Address userAddress = new Address(address);
                 Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
-
                 if (optionalUserAccountCredential.isEmpty()) {
                     throw new IllegalArgumentException("Invalid Cardano payment address");
                 }
                 Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
-
                 if (bootstrapDatum.isEmpty()) {
-                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
+                    return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
                 }
-
                 double bootstrapFeeEveryHundredTransactions = (100.0 / bootstrapDatum.get().getFeeInterval()) * bootstrapDatum.get().getFee();
                 double stateFeeEveryHundredTransactions = (100.0 / stateDatumEntity.getBootstrapDatum().getFeeInterval()) * stateDatumEntity.getBootstrapDatum().getFee();
                 if (bootstrapFeeEveryHundredTransactions < stateFeeEveryHundredTransactions) {
                     log.debug("Forking state datum with better conditions.");
-                    return forkProxyStateDatum(address, uVerifyCertificate, bootstrapDatum.get().getTokenName());
+                    return buildForkProxyStateDatumScriptTx(address, uVerifyCertificates, bootstrapDatum.get().getTokenName());
                 } else {
                     log.debug("Updating state datum with current conditions.");
-                    return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
+                    return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
                 }
             } else {
                 log.debug("No fee required for updating state datum");
-                return updateStateDatum(address, stateDatumEntity, uVerifyCertificate);
+                return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
             }
         }
+    }
+
+    public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException, CborSerializationException {
+        ScriptTx scriptTx = buildUVerifyCertificateScriptTx(address, uVerifyCertificates);
+        Address userAddress = new Address(address);
+        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
+        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
+        long currentSlot = CardanoUtils.getLatestSlot(backendService);
+        return new QuickTxBuilder(backendService)
+                .compose(scriptTx)
+                .validFrom(currentSlot - 10)
+                .validTo(currentSlot + 600)
+                .collateralPayer(address)
+                .feePayer(address)
+                .withRequiredSigners(userAddress)
+                .withReferenceScripts(stateContract, proxyContract)
+                .build();
     }
 
     public ProxyInitResponse initProxyContract() throws ApiException, CborSerializationException {
@@ -277,9 +309,7 @@ public class CardanoBlockchainService {
         return proxyInitResponse;
     }
 
-    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
-        Address userAddress = new Address(address);
-
+    public ScriptTx buildUpdateStateDatumScriptTx(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
         PlutusScript uverifyProxyContract = validatorHelper.getParameterizedProxyContract();
         String proxyScriptHash = validatorToScriptHash(uverifyProxyContract);
         PlutusScript uverifyStateContract = validatorHelper.getParameterizedUVerifyStateContract();
@@ -332,6 +362,16 @@ public class CardanoBlockchainService {
             }
         }
 
+        return updateStateTokenTx;
+    }
+
+    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
+        Address userAddress = new Address(address);
+        PlutusScript uverifyStateContract = validatorHelper.getParameterizedUVerifyStateContract();
+        PlutusScript uverifyProxyContract = validatorHelper.getParameterizedProxyContract();
+
+        ScriptTx updateStateTokenTx = buildUpdateStateDatumScriptTx(address, stateDatum, uVerifyCertificates);
+
         long currentSlot = CardanoUtils.getLatestSlot(backendService);
         long validFrom = currentSlot - 10;
         long transactionTtl = currentSlot + 600; // 10 minutes
@@ -341,13 +381,6 @@ public class CardanoBlockchainService {
                 .validFrom(validFrom)
                 .validTo(transactionTtl)
                 .collateralPayer(address)
-                .withTxInspector((txn) -> System.out.println(JsonUtil.getPrettyJson(txn)))
-                .preBalanceTx((context, txn) -> {
-                    log.info("Pre balance callback invoked for transaction " + txn + " in context " + context);
-                })
-                .postBalanceTx((context, txn) -> {
-                    log.info("Post balance callback invoked for transaction " + txn + " in context " + context);
-                })
                 .feePayer(address)
                 .withRequiredSigners(userAddress)
                 .withReferenceScripts(uverifyStateContract, uverifyProxyContract)
@@ -625,24 +658,7 @@ public class CardanoBlockchainService {
                 .build();
     }
 
-    public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException, CborSerializationException {
-        Address userAddress = new Address(address);
-        Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
-
-        if (optionalUserAccountCredential.isEmpty()) {
-            throw new IllegalArgumentException("Invalid Cardano payment address");
-        }
-
-        Optional<BootstrapDatum> optionalBootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
-
-        if (optionalBootstrapDatum.isEmpty()) {
-            throw new IllegalArgumentException("No applicable bootstrap datum found for user account");
-        }
-
-        return forkProxyStateDatum(address, uVerifyCertificates, optionalBootstrapDatum.get().getTokenName());
-    }
-
-    public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException, CborSerializationException {
+    public ScriptTx buildForkProxyStateDatumScriptTx(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException, CborSerializationException {
         Optional<BootstrapDatumEntity> optionalBootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(bootstrapTokenName, 2);
 
         if (optionalBootstrapDatumEntity.isEmpty()) {
@@ -733,13 +749,21 @@ public class CardanoBlockchainService {
             }
         }
 
-        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
+        return scriptTransaction;
+    }
+
+    public Transaction forkProxyStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException, CborSerializationException {
+        ScriptTx scriptTransaction = buildForkProxyStateDatumScriptTx(address, uVerifyCertificates, bootstrapTokenName);
+
+        Address userAddress = new Address(address);
+        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
 
         long currentSlot = CardanoUtils.getLatestSlot(backendService);
         long validFrom = currentSlot - 10;
         long transactionTtl = currentSlot + 600; // 10 minutes
 
-        return quickTxBuilder.compose(scriptTransaction)
+        return new QuickTxBuilder(backendService)
+                .compose(scriptTransaction)
                 .validFrom(validFrom)
                 .validTo(transactionTtl)
                 .withReferenceScripts(stateContract)

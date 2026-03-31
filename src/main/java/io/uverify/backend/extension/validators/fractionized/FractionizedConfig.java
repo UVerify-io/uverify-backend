@@ -18,7 +18,10 @@
 
 package io.uverify.backend.extension.validators.fractionized;
 
-import com.bloxbean.cardano.client.plutus.spec.*;
+import com.bloxbean.cardano.client.plutus.spec.BytesPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ConstrPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.ListPlutusData;
+import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.util.HexUtil;
 import lombok.*;
 
@@ -29,7 +32,6 @@ import java.util.List;
  * <pre>
  * FractionizedConfig {
  *   uverify_validator_hash: ByteArray,
- *   proxy_policy_id: ByteArray,
  *   allowed_inserters: List&lt;VerificationKeyHash&gt;,
  *   deployer: VerificationKeyHash,
  * }
@@ -43,9 +45,25 @@ import java.util.List;
 @NoArgsConstructor
 public class FractionizedConfig {
     private String uverifyValidatorHash;
-    private String proxyPolicyId;
     private List<String> allowedInserters;
     private String deployer;
+
+    public static FractionizedConfig fromPlutusData(ConstrPlutusData constr) {
+        List<PlutusData> fields = constr.getData().getPlutusDataList();
+        String uvHash = HexUtil.encodeHexString(((BytesPlutusData) fields.get(0)).getValue());
+
+        List<String> inserters = ((ListPlutusData) fields.get(1)).getPlutusDataList().stream()
+                .map(d -> HexUtil.encodeHexString(((BytesPlutusData) d).getValue()))
+                .toList();
+
+        String dep = HexUtil.encodeHexString(((BytesPlutusData) fields.get(2)).getValue());
+
+        return FractionizedConfig.builder()
+                .uverifyValidatorHash(uvHash)
+                .allowedInserters(inserters)
+                .deployer(dep)
+                .build();
+    }
 
     public ConstrPlutusData toPlutusData() {
         PlutusData[] inserterItems = allowedInserters.stream()
@@ -55,28 +73,8 @@ public class FractionizedConfig {
 
         return ConstrPlutusData.of(0,
                 BytesPlutusData.of(HexUtil.decodeHexString(uverifyValidatorHash)),
-                BytesPlutusData.of(HexUtil.decodeHexString(proxyPolicyId)),
                 inserterList,
                 BytesPlutusData.of(HexUtil.decodeHexString(deployer))
         );
-    }
-
-    public static FractionizedConfig fromPlutusData(ConstrPlutusData constr) {
-        List<PlutusData> fields = constr.getData().getPlutusDataList();
-        String uvHash = HexUtil.encodeHexString(((BytesPlutusData) fields.get(0)).getValue());
-        String proxyId = HexUtil.encodeHexString(((BytesPlutusData) fields.get(1)).getValue());
-
-        List<String> inserters = ((ListPlutusData) fields.get(2)).getPlutusDataList().stream()
-                .map(d -> HexUtil.encodeHexString(((BytesPlutusData) d).getValue()))
-                .toList();
-
-        String dep = HexUtil.encodeHexString(((BytesPlutusData) fields.get(3)).getValue());
-
-        return FractionizedConfig.builder()
-                .uverifyValidatorHash(uvHash)
-                .proxyPolicyId(proxyId)
-                .allowedInserters(inserters)
-                .deployer(dep)
-                .build();
     }
 }

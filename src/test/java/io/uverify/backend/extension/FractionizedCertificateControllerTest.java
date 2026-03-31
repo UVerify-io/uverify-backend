@@ -57,6 +57,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.junit.jupiter.EnabledIf;
 
 import java.util.List;
+import java.util.Optional;
 
 import static io.restassured.RestAssured.given;
 
@@ -69,15 +70,22 @@ import static io.restassured.RestAssured.given;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FractionizedCertificateControllerTest extends CardanoBlockchainTest {
 
-    // Shared state between tests
-    private static String initTxHash;
-    private static int initOutputIndex;
-
+    /**
+     * First node inserted during Init (deployer's cert — must sort before CERT_KEY).
+     */
+    private static final String INIT_CERT_KEY = "aabb000011223344aabb000011223344";
+    private static final String INIT_ASSET_NAME = "494e4954"; // "INIT"
+    private static final long INIT_TOTAL = 3L;
+    /**
+     * Second node inserted by the allowed inserter (userAccount).
+     */
     private static final String CERT_KEY = "ccddccdd11223344ccddccdd11223344";
     private static final String FRN_ASSET_NAME_HEX = "4652414354494f4e"; // "FRACTION"
     private static final long TOTAL_AMOUNT = 5L;
     private static final long PARTIAL_CLAIM = 2L;
-    private final FractionizedCertificateService fractionizedCertificateService;
+    // Shared state between tests
+    private static String initTxHash;
+    private static int initOutputIndex;
 
     @Autowired
     public FractionizedCertificateControllerTest(
@@ -90,21 +98,19 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
             StateDatumService stateDatumService,
             BootstrapDatumService bootstrapDatumService,
             UVerifyCertificateService uVerifyCertificateService,
+            Optional<FractionizedCertificateService> fractionizedCertificateService,
             StateDatumRepository stateDatumRepository,
             BootstrapDatumRepository bootstrapDatumRepository,
             CertificateRepository certificateRepository,
             LibraryRepository libraryRepository,
             ExtensionManager extensionManager,
             ValidatorHelper validatorHelper,
-            FractionizedCertificateService fractionizedCertificateService,
             LibraryService libraryService) {
         super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic,
-                cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService,
+                cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, fractionizedCertificateService,
                 stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository,
                 extensionManager, validatorHelper, libraryService, List.of());
         RestAssured.port = port;
-        this.fractionizedCertificateService = fractionizedCertificateService;
-        this.fractionizedCertificateService.setBackendService(yaciCardanoContainer.getBackendService());
     }
 
     @Test
@@ -210,22 +216,25 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
 
         String uverifyValidatorHash = ValidatorUtils.validatorToScriptHash(
                 validatorHelper.getParameterizedUVerifyStateContract());
-        String proxyPolicyId = ValidatorUtils.validatorToScriptHash(
-                validatorHelper.getParameterizedProxyContract());
 
         FractionizedConfig config = FractionizedConfig.builder()
                 .uverifyValidatorHash(uverifyValidatorHash)
-                .proxyPolicyId(proxyPolicyId)
                 .allowedInserters(List.of(inserterCredential))
                 .deployer(deployerCredential)
                 .build();
 
+        // Init always creates HEAD + first node in one atomic tx
         FractionizedBuildRequest buildRequest = new FractionizedBuildRequest();
         buildRequest.setType(ExtensionTransactionType.CREATE);
         buildRequest.setSenderAddress(serviceAccount.baseAddress());
         buildRequest.setInitUtxoTxHash(initTxHash);
         buildRequest.setInitUtxoOutputIndex(initOutputIndex);
         buildRequest.setConfig(config);
+        buildRequest.setKey(INIT_CERT_KEY);
+        buildRequest.setTotalAmount(INIT_TOTAL);
+        buildRequest.setClaimants(List.of());
+        buildRequest.setAssetName(INIT_ASSET_NAME);
+        buildRequest.setBootstrapTokenName("frn_test_bootstrap_token");
 
         String unsignedTxCbor = given()
                 .contentType(ContentType.JSON)
