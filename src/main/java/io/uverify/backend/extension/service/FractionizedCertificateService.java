@@ -40,6 +40,7 @@ import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.extension.dto.fractionized.*;
 import io.uverify.backend.extension.enums.ExtensionTransactionType;
+import io.uverify.backend.extension.validators.fractionized.FractionizedConfig;
 import io.uverify.backend.extension.validators.fractionized.FractionizedDatum;
 import io.uverify.backend.model.UVerifyCertificate;
 import io.uverify.backend.service.CardanoBlockchainService;
@@ -112,10 +113,18 @@ public class FractionizedCertificateService {
 
         if (!headExists) {
             BuildInitRequest init = new BuildInitRequest();
+
+            FractionizedConfig config = req.getConfig();
+            if (config == null) {
+                throw new IllegalArgumentException("config is required for the first issuance (Init path). " +
+                        "Provide deployer payment key hash and optionally allowedInserters / cip68ScriptAddress.");
+            }
+            config.setUverifyValidatorHash(validatorToScriptHash(validatorHelper.getParameterizedUVerifyStateContract()));
+
             init.setDeployerAddress(req.getSenderAddress());
             init.setInitUtxoTxHash(req.getInitUtxoTxHash());
             init.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());
-            init.setConfig(req.getConfig());
+            init.setConfig(config);
             init.setKey(req.getKey());
             init.setTotalAmount(req.getTotalAmount());
             init.setClaimants(req.getClaimants());

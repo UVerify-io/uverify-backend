@@ -166,11 +166,17 @@ public class TokenizableCertificateService {
         boolean headExists = getCurrentUtxoByUnit(scriptAddress, headUnit, backendService).isPresent();
 
         if (!headExists) {
+            TokenizableConfig config = req.getConfig();
+            if (config == null) {
+                throw new IllegalArgumentException("config is required for the first issuance (Init path). " +
+                        "Provide deployer payment key hash and optionally allowedInserters / cip68ScriptAddress.");
+            }
+            config.setUverifyValidatorHash(validatorToScriptHash(validatorHelper.getParameterizedUVerifyStateContract()));
             BuildInitRequest init = new BuildInitRequest();
             init.setDeployerAddress(req.getSenderAddress());
             init.setInitUtxoTxHash(req.getInitUtxoTxHash());
             init.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());
-            init.setConfig(req.getConfig());
+            init.setConfig(config);
             init.setKey(req.getKey());
             init.setOwnerPubKeyHash(req.getOwnerPubKeyHash());
             init.setAssetName(req.getAssetName());
