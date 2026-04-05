@@ -115,11 +115,11 @@ Uverify Backend,io.uverify.backend.model,BootstrapDatum,27,493,1,1,8,98,2,26,1,2
 Uverify Backend,io.uverify.backend.model,UVerifyCertificate.UVerifyCertificateBuilder,10,35,0,0,0,1,1,6,1,6
 Uverify Backend,io.uverify.backend.model,ProxyRedeemer,0,15,0,0,0,3,0,1,0,1
 Uverify Backend,io.uverify.backend.extension.service,FractionizedCertificateService.PredecessorResult,47,0,0,0,12,0,7,0,7,0
-Uverify Backend,io.uverify.backend.extension.service,TokenizableCertificateService,1799,0,98,0,423,0,73,0,24,0
+Uverify Backend,io.uverify.backend.extension.service,TokenizableCertificateService,1814,0,100,0,427,0,74,0,24,0
 Uverify Backend,io.uverify.backend.extension.service,TadamonGoogleSheetsService,552,0,38,0,125,0,30,0,11,0
 Uverify Backend,io.uverify.backend.extension.service,TadamonService,356,0,28,0,78,0,22,0,8,0
 Uverify Backend,io.uverify.backend.extension.service,ConnectedGoodsService,152,1091,17,27,34,232,18,31,5,22
-Uverify Backend,io.uverify.backend.extension.service,FractionizedCertificateService,1579,0,88,0,372,0,65,0,21,0
+Uverify Backend,io.uverify.backend.extension.service,FractionizedCertificateService,1594,0,90,0,376,0,66,0,21,0
 Uverify Backend,io.uverify.backend.extension.service,TokenizableCertificateService.PredecessorResult,46,0,0,0,12,0,7,0,7,0
 Uverify Backend,io.uverify.backend.extension.utils,ConnectedGoodUtils,11,248,1,17,3,42,2,26,1,18
 Uverify Backend,io.uverify.backend.extension.enums,ExtensionTransactionType,15,0,0,0,3,0,1,0,1,0
