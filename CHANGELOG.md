@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.1](https://github.com/UVerify-io/uverify-backend/compare/v1.13.0...v1.13.1) (2026-04-05)
+
+
+### Bug Fixes
+
+* set uverify validator hash in backend ([96837d1](https://github.com/UVerify-io/uverify-backend/commit/96837d1e658f3915c4b39e3cdf49a70d59b0a486))
+
 ## [1.13.0](https://github.com/UVerify-io/uverify-backend/compare/v1.12.1...v1.13.0) (2026-03-31)
 
 
