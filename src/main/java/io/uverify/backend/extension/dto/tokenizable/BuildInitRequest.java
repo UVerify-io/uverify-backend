@@ -18,6 +18,7 @@
 
 package io.uverify.backend.extension.dto.tokenizable;
 
+import io.uverify.backend.dto.CertificateData;
 import io.uverify.backend.extension.validators.tokenizable.TokenizableConfig;
 import lombok.Data;
 
@@ -37,8 +38,12 @@ public class BuildInitRequest {
     private int initUtxoOutputIndex;
     /** Configuration embedded in the HEAD datum. */
     private TokenizableConfig config;
-    /** Hex-encoded certificate hash that becomes the first node's key. Required. */
-    private String key;
+    /**
+     * Certificate to register. The {@code hash} becomes the first node's key;
+     * {@code metadata} (JSON string) is merged with backend-generated fields on-chain.
+     * Required.
+     */
+    private CertificateData certificate;
     /** Hex-encoded payment key hash of the wallet that will own the NFT. Required. */
     private String ownerPubKeyHash;
     /**

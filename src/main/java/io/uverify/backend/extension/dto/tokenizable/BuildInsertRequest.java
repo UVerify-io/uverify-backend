@@ -18,6 +18,7 @@
 
 package io.uverify.backend.extension.dto.tokenizable;
 
+import io.uverify.backend.dto.CertificateData;
 import lombok.Data;
 
 /**
@@ -40,10 +41,11 @@ public class BuildInsertRequest {
     /** Bech32 address of the allowed inserter (pays fees and must sign). */
     private String inserterAddress;
     /**
-     * Hex-encoded certificate hash that will become the node key.
-     * This same value is submitted to UVerify state as the certificate hash.
+     * Certificate to register. The {@code hash} becomes the node key and is
+     * submitted to UVerify state; {@code metadata} (JSON string) is merged with
+     * backend-generated fields and stored on-chain.
      */
-    private String key;
+    private CertificateData certificate;
     /** Hex-encoded payment key hash of the wallet that will own the NFT. */
     private String ownerPubKeyHash;
     /**

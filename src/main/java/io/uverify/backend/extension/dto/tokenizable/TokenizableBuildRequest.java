@@ -18,6 +18,7 @@
 
 package io.uverify.backend.extension.dto.tokenizable;
 
+import io.uverify.backend.dto.CertificateData;
 import io.uverify.backend.extension.enums.ExtensionTransactionType;
 import io.uverify.backend.extension.validators.tokenizable.TokenizableConfig;
 import lombok.Data;
@@ -59,11 +60,26 @@ public class TokenizableBuildRequest {
 
     // ── CREATE / Insert fields ────────────────────────────────────────────────
 
-    /** Hex-encoded certificate hash that becomes the node key. Required for Insert. */
-    private String key;
+    /**
+     * Certificate to register. The {@code hash} field becomes the node key;
+     * the {@code metadata} field (JSON string) is stored on-chain alongside
+     * the backend-generated fields (template ID, policy ID, init UTxO coords).
+     * Required for CREATE.
+     */
+    private CertificateData certificate;
 
-    /** Hex-encoded payment key hash of the wallet that will own the NFT. Required for Insert. */
+    /**
+     * Hex-encoded payment key hash of the wallet that will own the NFT.
+     * Required for Insert. If {@code ownerAddress} is provided instead, the backend
+     * will derive the key hash automatically.
+     */
     private String ownerPubKeyHash;
+
+    /**
+     * Bech32 address of the wallet that will own the NFT.
+     * Alternative to {@code ownerPubKeyHash} — the backend extracts the payment key hash.
+     */
+    private String ownerAddress;
 
     /**
      * Hex-encoded base asset name for the NFT.

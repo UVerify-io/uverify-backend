@@ -67,6 +67,12 @@ public class FractionizedCertificateService {
 
     private static final String NODE_PREFIX_HEX = "46524e";
 
+    private static final int NODE_KEY_MAX_HEX_CHARS = (32 - 3) * 2; // 58 hex chars = 29 bytes
+
+    private static String nodeTokenName(String keyHex) {
+        return NODE_PREFIX_HEX + keyHex.substring(0, Math.min(NODE_KEY_MAX_HEX_CHARS, keyHex.length()));
+    }
+
     private final CardanoNetwork cardanoNetwork;
     private BackendService backendService;
 
@@ -180,7 +186,7 @@ public class FractionizedCertificateService {
                 .value(BigInteger.ONE)
                 .build();
 
-        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();
+        String nodeTokenName = nodeTokenName(req.getKey());
         Asset nodeToken = Asset.builder()
                 .name("0x" + nodeTokenName)
                 .value(BigInteger.ONE)
@@ -285,7 +291,7 @@ public class FractionizedCertificateService {
                 .extra("{\"uverify_template_id\":\"fractionizedCertificate\"}")
                 .build();
 
-        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();
+        String nodeTokenName = nodeTokenName(req.getKey());
         Asset nodeToken = Asset.builder()
                 .name("0x" + nodeTokenName)
                 .value(BigInteger.ONE)
@@ -346,7 +352,7 @@ public class FractionizedCertificateService {
         String policyId = validatorToScriptHash(script);
         String scriptAddress = scriptAddress(script);
 
-        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();
+        String nodeTokenName = nodeTokenName(req.getKey());
         Utxo nodeUtxo = fetchUtxoByToken(scriptAddress, policyId, nodeTokenName);
         FractionizedDatum.FNode nodeDatum = (FractionizedDatum.FNode) FractionizedDatum.fromInlineDatum(nodeUtxo.getInlineDatum());
 
@@ -411,7 +417,7 @@ public class FractionizedCertificateService {
         String policyId = validatorToScriptHash(script);
         String scriptAddress = scriptAddress(script);
 
-        String nodeTokenName = NODE_PREFIX_HEX + key;
+        String nodeTokenName = nodeTokenName(key);
         Optional<Utxo> optUtxo = getCurrentUtxoByUnit(scriptAddress, policyId + nodeTokenName, backendService);
 
         if (optUtxo.isEmpty()) {
@@ -537,7 +543,7 @@ public class FractionizedCertificateService {
                 .build();
 
         // Orphan node: HEAD stays in reference_inputs only, no predecessor consumed
-        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();
+        String nodeTokenName = nodeTokenName(req.getKey());
         Asset nodeToken = Asset.builder()
                 .name("0x" + nodeTokenName)
                 .value(BigInteger.ONE)

@@ -32,6 +32,7 @@ import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.uverify.backend.CardanoBlockchainTest;
+import io.uverify.backend.dto.CertificateData;
 import io.uverify.backend.dto.BuildTransactionRequest;
 import io.uverify.backend.dto.BuildTransactionResponse;
 import io.uverify.backend.dto.ProxyInitResponse;
@@ -50,7 +51,6 @@ import io.uverify.backend.repository.LibraryRepository;
 import io.uverify.backend.repository.StateDatumRepository;
 import io.uverify.backend.service.*;
 import io.uverify.backend.util.ValidatorHelper;
-import io.uverify.backend.util.ValidatorUtils;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -74,9 +74,12 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
 
     /**
      * First node inserted during Init (deployer's cert — must sort before CERT_KEY).
+     * <p>
+     * private static final String INIT_CERT_KEY = "3898654fa33d1bed95ea1541bb77ddc6621e0a78150c55d1de8557ac163b89ea";
+     * private static final String INIT_ASSET_NAME = "314750757265476f6c64"; // "INIT"
      */
-    private static final String INIT_CERT_KEY = "aabb000011223344aabb000011223344";
-    private static final String INIT_ASSET_NAME = "494e4954"; // "INIT"
+    private static final String INIT_CERT_KEY = "3898654fa33d1bed95ea1541bb77ddc6621e0a78150c55d1de8557ac163b89ea";
+    private static final String INIT_ASSET_NAME = "314750757265476f6c64"; // "INIT"
     /**
      * Second node inserted by the allowed inserter (userAccount).
      */
@@ -218,30 +221,20 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
         String inserterCredential = HexUtil.encodeHexString(
                 userAccount.getBaseAddress().getPaymentCredentialHash().orElseThrow());
 
-        String uverifyValidatorHash = ValidatorUtils.validatorToScriptHash(
-                validatorHelper.getParameterizedUVerifyStateContract());
-
         TokenizableConfig config = TokenizableConfig.builder()
-                .uverifyValidatorHash(uverifyValidatorHash)
                 .allowedInserters(List.of(inserterCredential))
                 .deployer(deployerCredential)
-                .cip68ScriptAddress(null)
                 .build();
 
-        String deployerPubKeyHash = HexUtil.encodeHexString(
-                serviceAccount.getBaseAddress().getPaymentCredentialHash().orElseThrow());
-
-        // Init always creates HEAD + first node in one atomic tx
         TokenizableBuildRequest buildRequest = new TokenizableBuildRequest();
         buildRequest.setType(ExtensionTransactionType.CREATE);
         buildRequest.setSenderAddress(serviceAccount.baseAddress());
         buildRequest.setInitUtxoTxHash(initTxHash);
         buildRequest.setInitUtxoOutputIndex(initOutputIndex);
         buildRequest.setConfig(config);
-        buildRequest.setKey(INIT_CERT_KEY);
-        buildRequest.setOwnerPubKeyHash(deployerPubKeyHash);
+        buildRequest.setCertificate(CertificateData.builder().hash(INIT_CERT_KEY).build());
+        buildRequest.setOwnerPubKeyHash(deployerCredential);
         buildRequest.setAssetName(INIT_ASSET_NAME);
-        buildRequest.setBootstrapTokenName("tc_test_bootstrap_token");
 
         String unsignedTxCbor = given()
                 .contentType(ContentType.JSON)
@@ -294,7 +287,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
         TokenizableBuildRequest buildRequest = new TokenizableBuildRequest();
         buildRequest.setType(ExtensionTransactionType.CREATE);
         buildRequest.setSenderAddress(userAccount.baseAddress());
-        buildRequest.setKey(CERT_KEY);
+        buildRequest.setCertificate(CertificateData.builder().hash(CERT_KEY).build());
         buildRequest.setOwnerPubKeyHash(ownerPubKeyHash);
         buildRequest.setAssetName(TC_ASSET_NAME_HEX);
         buildRequest.setInitUtxoTxHash(initTxHash);
@@ -346,7 +339,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
         TokenizableBuildRequest buildRequest = new TokenizableBuildRequest();
         buildRequest.setType(ExtensionTransactionType.REDEEM);
         buildRequest.setSenderAddress(userAccount.baseAddress());
-        buildRequest.setKey(CERT_KEY);
+        buildRequest.setCertificate(CertificateData.builder().hash(CERT_KEY).build());
         buildRequest.setInitUtxoTxHash(initTxHash);
         buildRequest.setInitUtxoOutputIndex(initOutputIndex);
 
@@ -376,7 +369,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
         TokenizableBuildRequest buildRequest = new TokenizableBuildRequest();
         buildRequest.setType(ExtensionTransactionType.REDEEM);
         buildRequest.setSenderAddress(userAccount.baseAddress());
-        buildRequest.setKey(CERT_KEY);
+        buildRequest.setCertificate(CertificateData.builder().hash(CERT_KEY).build());
         buildRequest.setInitUtxoTxHash(initTxHash);
         buildRequest.setInitUtxoOutputIndex(initOutputIndex);
 
