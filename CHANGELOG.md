@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.2](https://github.com/UVerify-io/uverify-backend/compare/v1.13.1...v1.13.2) (2026-04-21)
+
+
+### Bug Fixes
+
+* make tokenizable and fractionized api work with new contract versions ([8aef9d2](https://github.com/UVerify-io/uverify-backend/commit/8aef9d222dc6db63fbe4f56e7d9bcc81a0dff85d))
+
 ## [1.13.1](https://github.com/UVerify-io/uverify-backend/compare/v1.13.0...v1.13.1) (2026-04-05)
 
 
