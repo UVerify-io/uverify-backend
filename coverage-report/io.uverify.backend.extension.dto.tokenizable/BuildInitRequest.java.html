@@ -18,6 +18,7 @@
 
 package io.uverify.backend.extension.dto.tokenizable;
 
+import io.uverify.backend.dto.CertificateData;
 import io.uverify.backend.extension.validators.tokenizable.TokenizableConfig;
 import lombok.Data;
 
@@ -27,30 +28,34 @@ import lombok.Data;
  * Init always creates both the HEAD node and the first certificate node in one
  * atomic transaction (empty lists are not permitted by the on-chain validator).
  */
-<span class="nc bnc" id="L30" title="All 64 branches missed.">@Data</span>
+<span class="nc bnc" id="L31" title="All 64 branches missed.">@Data</span>
 public class BuildInitRequest {
     /** Bech32 address of the deployer (pays fees and must sign). */
-<span class="nc" id="L33">    private String deployerAddress;</span>
+<span class="nc" id="L34">    private String deployerAddress;</span>
     /** Tx-hash of the one-shot init UTxO (must exist in deployerAddress). */
-<span class="nc" id="L35">    private String initUtxoTxHash;</span>
+<span class="nc" id="L36">    private String initUtxoTxHash;</span>
     /** Output index of the one-shot init UTxO. */
-<span class="nc" id="L37">    private int initUtxoOutputIndex;</span>
+<span class="nc" id="L38">    private int initUtxoOutputIndex;</span>
     /** Configuration embedded in the HEAD datum. */
-<span class="nc" id="L39">    private TokenizableConfig config;</span>
-    /** Hex-encoded certificate hash that becomes the first node's key. Required. */
-<span class="nc" id="L41">    private String key;</span>
+<span class="nc" id="L40">    private TokenizableConfig config;</span>
+    /**
+     * Certificate to register. The {@code hash} becomes the first node's key;
+     * {@code metadata} (JSON string) is merged with backend-generated fields on-chain.
+     * Required.
+     */
+<span class="nc" id="L46">    private CertificateData certificate;</span>
     /** Hex-encoded payment key hash of the wallet that will own the NFT. Required. */
-<span class="nc" id="L43">    private String ownerPubKeyHash;</span>
+<span class="nc" id="L48">    private String ownerPubKeyHash;</span>
     /**
      * Hex-encoded base asset name for the NFT.
      * If CIP-68 is configured, user and reference token names are derived automatically.
      * Required.
      */
-<span class="nc" id="L49">    private String assetName;</span>
+<span class="nc" id="L54">    private String assetName;</span>
     /**
      * Optional bootstrap token name for UVerify state creation.
      * Leave null to let the service pick the cheapest available bootstrap datum.
      */
-<span class="nc" id="L54">    private String bootstrapTokenName;</span>
+<span class="nc" id="L59">    private String bootstrapTokenName;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

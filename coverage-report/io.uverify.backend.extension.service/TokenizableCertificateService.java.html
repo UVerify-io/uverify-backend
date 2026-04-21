@@ -108,6 +108,44 @@ public class TokenizableCertificateService {
     private static final String NODE_PREFIX_HEX = &quot;54434e&quot;;
 
     /**
+     * Maximum bytes available for the key portion of a node token name.
+     * Cardano asset names are limited to 32 bytes; 3 bytes are used by NODE_PREFIX_HEX (&quot;TCN&quot;).
+     */
+    private static final int NODE_KEY_MAX_HEX_CHARS = (32 - 3) * 2; // 58 hex chars = 29 bytes
+
+    /**
+     * Derives the on-chain node token name for a given hex-encoded key.
+     * The key is truncated to 29 bytes so that the total (prefix + key) stays within
+     * Cardano's 32-byte asset-name limit.
+     */
+    private static String nodeTokenName(String keyHex) {
+<span class="nc" id="L122">        return NODE_PREFIX_HEX + keyHex.substring(0, Math.min(NODE_KEY_MAX_HEX_CHARS, keyHex.length()));</span>
+    }
+
+    /**
+     * Builds the on-chain {@code extra} JSON by merging caller-supplied metadata
+     * with the backend-generated fields. Caller metadata is optional; backend
+     * fields always override any conflicting keys from the caller.
+     */
+    private static String buildExtra(io.uverify.backend.dto.CertificateData certificate,
+                                     String policyId, String initUtxoTxHash, int initUtxoOutputIndex) {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        String callerMetadata = certificate != null ? certificate.getMetadata() : null;</span>
+<span class="nc" id="L133">        String backendFields = String.format(</span>
+                &quot;\&quot;uverify_template_id\&quot;:\&quot;tokenizableCertificate\&quot;,\&quot;minting_policy_id\&quot;:\&quot;%s\&quot;,\&quot;init_utxo_tx_hash\&quot;:\&quot;%s\&quot;,\&quot;init_utxo_output_index\&quot;:\&quot;%d\&quot;&quot;,
+<span class="nc" id="L135">                policyId, initUtxoTxHash, initUtxoOutputIndex);</span>
+<span class="nc bnc" id="L136" title="All 4 branches missed.">        if (callerMetadata == null || callerMetadata.isBlank()) {</span>
+<span class="nc" id="L137">            return &quot;{&quot; + backendFields + &quot;}&quot;;</span>
+        }
+<span class="nc" id="L139">        String trimmed = callerMetadata.trim();</span>
+        // Strip surrounding braces, append backend fields
+<span class="nc" id="L141">        String inner = trimmed.substring(1, trimmed.length() - 1).trim();</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (inner.isEmpty()) {</span>
+<span class="nc" id="L143">            return &quot;{&quot; + backendFields + &quot;}&quot;;</span>
+        }
+<span class="nc" id="L145">        return &quot;{&quot; + inner + &quot;,&quot; + backendFields + &quot;}&quot;;</span>
+    }
+
+    /**
      * CIP-68 label-222 prefix (user token).
      */
     private static final String CIP68_USER_PREFIX_HEX = &quot;000de140&quot;;
@@ -137,248 +175,260 @@ public class TokenizableCertificateService {
             @Value(&quot;${cardano.network}&quot;) String network,
             @Value(&quot;${cardano.backend.service.type}&quot;) String cardanoBackendServiceType,
             @Value(&quot;${cardano.backend.blockfrost.baseUrl}&quot;) String blockfrostBaseUrl,
-<span class="nc" id="L140">            @Value(&quot;${cardano.backend.blockfrost.projectId}&quot;) String blockfrostProjectId) {</span>
+<span class="nc" id="L178">            @Value(&quot;${cardano.backend.blockfrost.projectId}&quot;) String blockfrostProjectId) {</span>
 
-<span class="nc" id="L142">        this.cardanoNetwork = CardanoNetwork.valueOf(network);</span>
-<span class="nc" id="L143">        this.network = fromCardanoNetwork(this.cardanoNetwork);</span>
+<span class="nc" id="L180">        this.cardanoNetwork = CardanoNetwork.valueOf(network);</span>
+<span class="nc" id="L181">        this.network = fromCardanoNetwork(this.cardanoNetwork);</span>
 
-<span class="nc bnc" id="L145" title="All 2 branches missed.">        if (cardanoBackendServiceType.equals(&quot;blockfrost&quot;)) {</span>
-<span class="nc" id="L146">            this.backendService = new BFBackendService(blockfrostBaseUrl, blockfrostProjectId);</span>
-<span class="nc bnc" id="L147" title="All 2 branches missed.">        } else if (cardanoBackendServiceType.equals(&quot;koios&quot;)) {</span>
-<span class="nc" id="L148">            this.backendService = new KoiosBackendService(Constants.KOIOS_PREPROD_URL);</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">        if (cardanoBackendServiceType.equals(&quot;blockfrost&quot;)) {</span>
+<span class="nc" id="L184">            this.backendService = new BFBackendService(blockfrostBaseUrl, blockfrostProjectId);</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">        } else if (cardanoBackendServiceType.equals(&quot;koios&quot;)) {</span>
+<span class="nc" id="L186">            this.backendService = new KoiosBackendService(Constants.KOIOS_PREPROD_URL);</span>
         }
-<span class="nc" id="L150">    }</span>
+<span class="nc" id="L188">    }</span>
 
     public String buildTransaction(TokenizableBuildRequest req) throws ApiException, CborSerializationException {
-<span class="nc bnc" id="L153" title="All 2 branches missed.">        if (req.getType() == ExtensionTransactionType.REDEEM) {</span>
-<span class="nc" id="L154">            BuildRedeemRequest redeem = new BuildRedeemRequest();</span>
-<span class="nc" id="L155">            redeem.setOwnerAddress(req.getSenderAddress());</span>
-<span class="nc" id="L156">            redeem.setKey(req.getKey());</span>
-<span class="nc" id="L157">            redeem.setInitUtxoTxHash(req.getInitUtxoTxHash());</span>
-<span class="nc" id="L158">            redeem.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());</span>
-<span class="nc" id="L159">            return buildRedeemTransaction(redeem);</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        if (req.getType() == ExtensionTransactionType.REDEEM) {</span>
+<span class="nc" id="L192">            BuildRedeemRequest redeem = new BuildRedeemRequest();</span>
+<span class="nc" id="L193">            redeem.setOwnerAddress(req.getSenderAddress());</span>
+<span class="nc" id="L194">            redeem.setKey(req.getCertificate().getHash());</span>
+<span class="nc" id="L195">            redeem.setInitUtxoTxHash(req.getInitUtxoTxHash());</span>
+<span class="nc" id="L196">            redeem.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());</span>
+<span class="nc" id="L197">            return buildRedeemTransaction(redeem);</span>
         }
 
-<span class="nc" id="L162">        PlutusScript script = getTokenizableCertificateContract(req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());</span>
-<span class="nc" id="L163">        String policyId = validatorToScriptHash(script);</span>
-<span class="nc" id="L164">        String scriptAddress = scriptAddress(script);</span>
-<span class="nc" id="L165">        String headUnit = policyId + NODE_PREFIX_HEX;</span>
-<span class="nc" id="L166">        boolean headExists = getCurrentUtxoByUnit(scriptAddress, headUnit, backendService).isPresent();</span>
+<span class="nc" id="L200">        PlutusScript script = getTokenizableCertificateContract(req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());</span>
+<span class="nc" id="L201">        String policyId = validatorToScriptHash(script);</span>
+<span class="nc" id="L202">        String scriptAddress = scriptAddress(script);</span>
+<span class="nc" id="L203">        String headUnit = policyId + NODE_PREFIX_HEX;</span>
+<span class="nc" id="L204">        boolean headExists = getCurrentUtxoByUnit(scriptAddress, headUnit, backendService).isPresent();</span>
 
-<span class="nc bnc" id="L168" title="All 2 branches missed.">        if (!headExists) {</span>
-<span class="nc" id="L169">            TokenizableConfig config = req.getConfig();</span>
-<span class="nc bnc" id="L170" title="All 2 branches missed.">            if (config == null) {</span>
-<span class="nc" id="L171">                throw new IllegalArgumentException(&quot;config is required for the first issuance (Init path). &quot; +</span>
+        // Derive ownerPubKeyHash from ownerAddress if only the address was supplied.
+<span class="nc" id="L207">        String ownerPubKeyHash = req.getOwnerPubKeyHash();</span>
+<span class="nc bnc" id="L208" title="All 8 branches missed.">        if ((ownerPubKeyHash == null || ownerPubKeyHash.isBlank()) &amp;&amp; req.getOwnerAddress() != null &amp;&amp; !req.getOwnerAddress().isBlank()) {</span>
+<span class="nc" id="L209">            byte[] cred = new Address(req.getOwnerAddress()).getPaymentCredentialHash()</span>
+<span class="nc" id="L210">                    .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Cannot derive payment key hash from ownerAddress: &quot; + req.getOwnerAddress()));</span>
+<span class="nc" id="L211">            ownerPubKeyHash = HexUtil.encodeHexString(cred);</span>
+        }
+
+<span class="nc bnc" id="L214" title="All 2 branches missed.">        if (!headExists) {</span>
+<span class="nc" id="L215">            TokenizableConfig config = req.getConfig();</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">            if (config == null) {</span>
+<span class="nc" id="L217">                throw new IllegalArgumentException(&quot;config is required for the first issuance (Init path). &quot; +</span>
                         &quot;Provide deployer payment key hash and optionally allowedInserters / cip68ScriptAddress.&quot;);
             }
-<span class="nc" id="L174">            config.setUverifyValidatorHash(validatorToScriptHash(validatorHelper.getParameterizedUVerifyStateContract()));</span>
-<span class="nc" id="L175">            BuildInitRequest init = new BuildInitRequest();</span>
-<span class="nc" id="L176">            init.setDeployerAddress(req.getSenderAddress());</span>
-<span class="nc" id="L177">            init.setInitUtxoTxHash(req.getInitUtxoTxHash());</span>
-<span class="nc" id="L178">            init.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());</span>
-<span class="nc" id="L179">            init.setConfig(config);</span>
-<span class="nc" id="L180">            init.setKey(req.getKey());</span>
-<span class="nc" id="L181">            init.setOwnerPubKeyHash(req.getOwnerPubKeyHash());</span>
-<span class="nc" id="L182">            init.setAssetName(req.getAssetName());</span>
-<span class="nc" id="L183">            init.setBootstrapTokenName(req.getBootstrapTokenName());</span>
-<span class="nc" id="L184">            return buildInitTransaction(init);</span>
+<span class="nc" id="L220">            config.setUverifyValidatorHash(validatorToScriptHash(validatorHelper.getParameterizedUVerifyStateContract()));</span>
+<span class="nc" id="L221">            BuildInitRequest init = new BuildInitRequest();</span>
+<span class="nc" id="L222">            init.setDeployerAddress(req.getSenderAddress());</span>
+<span class="nc" id="L223">            init.setInitUtxoTxHash(req.getInitUtxoTxHash());</span>
+<span class="nc" id="L224">            init.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());</span>
+<span class="nc" id="L225">            init.setConfig(config);</span>
+<span class="nc" id="L226">            init.setCertificate(req.getCertificate());</span>
+<span class="nc" id="L227">            init.setOwnerPubKeyHash(ownerPubKeyHash);</span>
+<span class="nc" id="L228">            init.setAssetName(req.getAssetName());</span>
+<span class="nc" id="L229">            init.setBootstrapTokenName(req.getBootstrapTokenName());</span>
+<span class="nc" id="L230">            return buildInitTransaction(init);</span>
         } else {
-<span class="nc" id="L186">            BuildInsertRequest insert = new BuildInsertRequest();</span>
-<span class="nc" id="L187">            insert.setInserterAddress(req.getSenderAddress());</span>
-<span class="nc" id="L188">            insert.setKey(req.getKey());</span>
-<span class="nc" id="L189">            insert.setOwnerPubKeyHash(req.getOwnerPubKeyHash());</span>
-<span class="nc" id="L190">            insert.setAssetName(req.getAssetName());</span>
-<span class="nc" id="L191">            insert.setInitUtxoTxHash(req.getInitUtxoTxHash());</span>
-<span class="nc" id="L192">            insert.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());</span>
-<span class="nc" id="L193">            insert.setBootstrapTokenName(req.getBootstrapTokenName());</span>
-<span class="nc" id="L194">            return buildInsertTransaction(insert);</span>
+<span class="nc" id="L232">            BuildInsertRequest insert = new BuildInsertRequest();</span>
+<span class="nc" id="L233">            insert.setInserterAddress(req.getSenderAddress());</span>
+<span class="nc" id="L234">            insert.setCertificate(req.getCertificate());</span>
+<span class="nc" id="L235">            insert.setOwnerPubKeyHash(ownerPubKeyHash);</span>
+<span class="nc" id="L236">            insert.setAssetName(req.getAssetName());</span>
+<span class="nc" id="L237">            insert.setInitUtxoTxHash(req.getInitUtxoTxHash());</span>
+<span class="nc" id="L238">            insert.setInitUtxoOutputIndex(req.getInitUtxoOutputIndex());</span>
+<span class="nc" id="L239">            insert.setBootstrapTokenName(req.getBootstrapTokenName());</span>
+<span class="nc" id="L240">            return buildInsertTransaction(insert);</span>
         }
     }
 
     public String buildInitTransaction(BuildInitRequest req) throws ApiException, CborSerializationException {
-<span class="nc" id="L199">        PlutusScript tokenizableScript = getTokenizableCertificateContract(req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());</span>
-<span class="nc" id="L200">        String tokenizableAddress = scriptAddress(tokenizableScript);</span>
+<span class="nc" id="L245">        PlutusScript tokenizableScript = getTokenizableCertificateContract(req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());</span>
+<span class="nc" id="L246">        String tokenizableAddress = scriptAddress(tokenizableScript);</span>
 
-<span class="nc" id="L202">        Result&lt;List&lt;Utxo&gt;&gt; utxoResult = backendService.getUtxoService().getUtxos(req.getDeployerAddress(), 100, 1);</span>
-<span class="nc bnc" id="L203" title="All 4 branches missed.">        if (!utxoResult.isSuccessful() || utxoResult.getValue() == null) {</span>
-<span class="nc" id="L204">            throw new IllegalStateException(&quot;Could not retrieve UTxOs for deployer address&quot;);</span>
+<span class="nc" id="L248">        Result&lt;List&lt;Utxo&gt;&gt; utxoResult = backendService.getUtxoService().getUtxos(req.getDeployerAddress(), 100, 1);</span>
+<span class="nc bnc" id="L249" title="All 4 branches missed.">        if (!utxoResult.isSuccessful() || utxoResult.getValue() == null) {</span>
+<span class="nc" id="L250">            throw new IllegalStateException(&quot;Could not retrieve UTxOs for deployer address&quot;);</span>
         }
-<span class="nc" id="L206">        Optional&lt;Utxo&gt; optInitUtxo = utxoResult.getValue().stream()</span>
-<span class="nc bnc" id="L207" title="All 2 branches missed.">                .filter(u -&gt; u.getTxHash().equals(req.getInitUtxoTxHash())</span>
-<span class="nc bnc" id="L208" title="All 2 branches missed.">                        &amp;&amp; u.getOutputIndex() == req.getInitUtxoOutputIndex())</span>
-<span class="nc" id="L209">                .findFirst();</span>
-<span class="nc bnc" id="L210" title="All 2 branches missed.">        if (optInitUtxo.isEmpty()) {</span>
-<span class="nc" id="L211">            throw new IllegalArgumentException(&quot;Init UTxO &quot; + req.getInitUtxoTxHash() + &quot;#&quot;</span>
-<span class="nc" id="L212">                    + req.getInitUtxoOutputIndex() + &quot; not found in deployer address&quot;);</span>
+<span class="nc" id="L252">        Optional&lt;Utxo&gt; optInitUtxo = utxoResult.getValue().stream()</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">                .filter(u -&gt; u.getTxHash().equals(req.getInitUtxoTxHash())</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">                        &amp;&amp; u.getOutputIndex() == req.getInitUtxoOutputIndex())</span>
+<span class="nc" id="L255">                .findFirst();</span>
+<span class="nc bnc" id="L256" title="All 2 branches missed.">        if (optInitUtxo.isEmpty()) {</span>
+<span class="nc" id="L257">            throw new IllegalArgumentException(&quot;Init UTxO &quot; + req.getInitUtxoTxHash() + &quot;#&quot;</span>
+<span class="nc" id="L258">                    + req.getInitUtxoOutputIndex() + &quot; not found in deployer address&quot;);</span>
         }
-<span class="nc" id="L214">        Utxo initUtxo = optInitUtxo.get();</span>
+<span class="nc" id="L260">        Utxo initUtxo = optInitUtxo.get();</span>
 
-<span class="nc" id="L216">        Address deployerAddress = new Address(req.getDeployerAddress());</span>
-<span class="nc" id="L217">        byte[] deployerCredential = deployerAddress.getPaymentCredentialHash()</span>
-<span class="nc" id="L218">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Invalid deployer address&quot;));</span>
+<span class="nc" id="L262">        Address deployerAddress = new Address(req.getDeployerAddress());</span>
+<span class="nc" id="L263">        byte[] deployerCredential = deployerAddress.getPaymentCredentialHash()</span>
+<span class="nc" id="L264">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Invalid deployer address&quot;));</span>
 
-<span class="nc" id="L220">        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();</span>
-<span class="nc" id="L221">        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();</span>
+<span class="nc" id="L266">        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();</span>
+<span class="nc" id="L267">        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();</span>
 
-<span class="nc" id="L223">        UVerifyCertificate cert = UVerifyCertificate.builder()</span>
-<span class="nc" id="L224">                .hash(req.getKey())</span>
-<span class="nc" id="L225">                .algorithm(&quot;sha3_256&quot;)</span>
-<span class="nc" id="L226">                .issuer(HexUtil.encodeHexString(deployerCredential))</span>
-<span class="nc" id="L227">                .extra(&quot;{\&quot;uverify_template_id\&quot;:\&quot;tokenizableCertificate\&quot;}&quot;)</span>
-<span class="nc" id="L228">                .build();</span>
-
-<span class="nc" id="L230">        Asset headToken = Asset.builder()</span>
-<span class="nc" id="L231">                .name(&quot;0x&quot; + NODE_PREFIX_HEX)</span>
-<span class="nc" id="L232">                .value(BigInteger.ONE)</span>
-<span class="nc" id="L233">                .build();</span>
-
-<span class="nc" id="L235">        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();</span>
-<span class="nc" id="L236">        Asset nodeToken = Asset.builder()</span>
-<span class="nc" id="L237">                .name(&quot;0x&quot; + nodeTokenName)</span>
-<span class="nc" id="L238">                .value(BigInteger.ONE)</span>
-<span class="nc" id="L239">                .build();</span>
-
-<span class="nc" id="L241">        PlutusData initMintRedeemer = ConstrPlutusData.of(0,</span>
-<span class="nc" id="L242">                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));</span>
-
-<span class="nc" id="L244">        TokenizableDatum.Head headDatum = TokenizableDatum.Head.builder()</span>
-<span class="nc" id="L245">                .next(req.getKey())</span>
-<span class="nc" id="L246">                .config(req.getConfig())</span>
-<span class="nc" id="L247">                .build();</span>
-
-<span class="nc" id="L249">        TokenizableDatum.Node nodeDatum = TokenizableDatum.Node.builder()</span>
-<span class="nc" id="L250">                .key(req.getKey())</span>
-<span class="nc" id="L251">                .next(null)</span>
-<span class="nc" id="L252">                .owner(req.getOwnerPubKeyHash())</span>
-<span class="nc" id="L253">                .assetName(req.getAssetName())</span>
-<span class="nc" id="L254">                .redeemed(false)</span>
-<span class="nc" id="L255">                .build();</span>
-
-<span class="nc" id="L257">        ScriptTx tokenizableMintTx = cardanoBlockchainService.buildUVerifyCertificateScriptTx(</span>
-<span class="nc" id="L258">                req.getDeployerAddress(), List.of(cert));</span>
-
-<span class="nc" id="L260">        tokenizableMintTx = tokenizableMintTx</span>
-<span class="nc" id="L261">                .mintAsset(tokenizableScript, List.of(headToken, nodeToken), initMintRedeemer)</span>
-<span class="nc" id="L262">                .payToContract(tokenizableAddress, Amount.asset(AssetUtil.getUnit(tokenizableScript.getPolicyId(), headToken), 1L), headDatum.toPlutusData())</span>
-<span class="nc" id="L263">                .payToContract(tokenizableAddress, Amount.asset(AssetUtil.getUnit(tokenizableScript.getPolicyId(), nodeToken), 1L), nodeDatum.toPlutusData());</span>
-
-<span class="nc" id="L265">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
-<span class="nc" id="L266">        Transaction unsignedTx = new QuickTxBuilder(backendService)</span>
-<span class="nc" id="L267">                .compose(tokenizableMintTx)</span>
-<span class="nc" id="L268">                .feePayer(req.getDeployerAddress())</span>
-<span class="nc" id="L269">                .collateralPayer(req.getDeployerAddress())</span>
-<span class="nc" id="L270">                .mergeOutputs(false)</span>
-<span class="nc" id="L271">                .withRequiredSigners(deployerAddress)</span>
-<span class="nc" id="L272">                .withReferenceScripts(stateContract, proxyContract)</span>
-<span class="nc" id="L273">                .validFrom(currentSlot - 10)</span>
-<span class="nc" id="L274">                .validTo(currentSlot + 600)</span>
+<span class="nc" id="L269">        String policyId = validatorToScriptHash(tokenizableScript);</span>
+<span class="nc" id="L270">        UVerifyCertificate cert = UVerifyCertificate.builder()</span>
+<span class="nc" id="L271">                .hash(req.getCertificate().getHash())</span>
+<span class="nc" id="L272">                .algorithm(&quot;SHA256&quot;)</span>
+<span class="nc" id="L273">                .issuer(HexUtil.encodeHexString(deployerCredential))</span>
+<span class="nc" id="L274">                .extra(buildExtra(req.getCertificate(), policyId, req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex()))</span>
 <span class="nc" id="L275">                .build();</span>
+
+<span class="nc" id="L277">        Asset headToken = Asset.builder()</span>
+<span class="nc" id="L278">                .name(&quot;0x&quot; + NODE_PREFIX_HEX)</span>
+<span class="nc" id="L279">                .value(BigInteger.ONE)</span>
+<span class="nc" id="L280">                .build();</span>
+
+<span class="nc" id="L282">        String initCertKey = req.getCertificate().getHash();</span>
+<span class="nc" id="L283">        String nodeTokenName = nodeTokenName(initCertKey);</span>
+<span class="nc" id="L284">        Asset nodeToken = Asset.builder()</span>
+<span class="nc" id="L285">                .name(&quot;0x&quot; + nodeTokenName)</span>
+<span class="nc" id="L286">                .value(BigInteger.ONE)</span>
+<span class="nc" id="L287">                .build();</span>
+
+<span class="nc" id="L289">        PlutusData initMintRedeemer = ConstrPlutusData.of(0,</span>
+<span class="nc" id="L290">                BytesPlutusData.of(HexUtil.decodeHexString(initCertKey)));</span>
+
+<span class="nc" id="L292">        TokenizableDatum.Head headDatum = TokenizableDatum.Head.builder()</span>
+<span class="nc" id="L293">                .next(initCertKey)</span>
+<span class="nc" id="L294">                .config(req.getConfig())</span>
+<span class="nc" id="L295">                .build();</span>
+
+<span class="nc" id="L297">        TokenizableDatum.Node nodeDatum = TokenizableDatum.Node.builder()</span>
+<span class="nc" id="L298">                .key(initCertKey)</span>
+<span class="nc" id="L299">                .next(null)</span>
+<span class="nc" id="L300">                .owner(req.getOwnerPubKeyHash())</span>
+<span class="nc" id="L301">                .assetName(req.getAssetName())</span>
+<span class="nc" id="L302">                .redeemed(false)</span>
+<span class="nc" id="L303">                .build();</span>
+
+<span class="nc" id="L305">        ScriptTx tokenizableMintTx = cardanoBlockchainService.buildUVerifyCertificateScriptTx(</span>
+<span class="nc" id="L306">                req.getDeployerAddress(), List.of(cert));</span>
+
+<span class="nc" id="L308">        tokenizableMintTx = tokenizableMintTx</span>
+<span class="nc" id="L309">                .mintAsset(tokenizableScript, List.of(headToken, nodeToken), initMintRedeemer)</span>
+<span class="nc" id="L310">                .payToContract(tokenizableAddress, Amount.asset(AssetUtil.getUnit(tokenizableScript.getPolicyId(), headToken), 1L), headDatum.toPlutusData())</span>
+<span class="nc" id="L311">                .payToContract(tokenizableAddress, Amount.asset(AssetUtil.getUnit(tokenizableScript.getPolicyId(), nodeToken), 1L), nodeDatum.toPlutusData());</span>
+
+<span class="nc" id="L313">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
+<span class="nc" id="L314">        Transaction unsignedTx = new QuickTxBuilder(backendService)</span>
+<span class="nc" id="L315">                .compose(tokenizableMintTx)</span>
+<span class="nc" id="L316">                .feePayer(req.getDeployerAddress())</span>
+<span class="nc" id="L317">                .collateralPayer(req.getDeployerAddress())</span>
+<span class="nc" id="L318">                .mergeOutputs(false)</span>
+<span class="nc" id="L319">                .withRequiredSigners(deployerAddress)</span>
+<span class="nc" id="L320">                .withReferenceScripts(stateContract, proxyContract)</span>
+<span class="nc" id="L321">                .validFrom(currentSlot - 10)</span>
+<span class="nc" id="L322">                .validTo(currentSlot + 600)</span>
+<span class="nc" id="L323">                .build();</span>
 
         // Check if the init utxo is already part of the transaction
         // because of the UVerify certificate
-<span class="nc bnc" id="L279" title="All 2 branches missed.">        if (unsignedTx.getBody().getInputs().stream().anyMatch(utxo -&gt;</span>
-<span class="nc bnc" id="L280" title="All 2 branches missed.">                utxo.getTransactionId().equals(initUtxo.getTxHash())</span>
-<span class="nc bnc" id="L281" title="All 2 branches missed.">                        &amp;&amp; utxo.getIndex() == initUtxo.getOutputIndex())) {</span>
-<span class="nc" id="L282">            return unsignedTx.serializeToHex();</span>
+<span class="nc bnc" id="L327" title="All 2 branches missed.">        if (unsignedTx.getBody().getInputs().stream().anyMatch(utxo -&gt;</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">                utxo.getTransactionId().equals(initUtxo.getTxHash())</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">                        &amp;&amp; utxo.getIndex() == initUtxo.getOutputIndex())) {</span>
+<span class="nc" id="L330">            return unsignedTx.serializeToHex();</span>
         }
 
-<span class="nc" id="L285">        tokenizableMintTx = tokenizableMintTx.collectFrom(initUtxo);</span>
+<span class="nc" id="L333">        tokenizableMintTx = tokenizableMintTx.collectFrom(initUtxo);</span>
 
-<span class="nc" id="L287">        unsignedTx = new QuickTxBuilder(backendService)</span>
-<span class="nc" id="L288">                .compose(tokenizableMintTx)</span>
-<span class="nc" id="L289">                .feePayer(req.getDeployerAddress())</span>
-<span class="nc" id="L290">                .collateralPayer(req.getDeployerAddress())</span>
-<span class="nc" id="L291">                .mergeOutputs(false)</span>
-<span class="nc" id="L292">                .withRequiredSigners(deployerAddress)</span>
-<span class="nc" id="L293">                .withReferenceScripts(stateContract, proxyContract)</span>
-<span class="nc" id="L294">                .validFrom(currentSlot - 10)</span>
-<span class="nc" id="L295">                .validTo(currentSlot + 600)</span>
-<span class="nc" id="L296">                .build();</span>
+<span class="nc" id="L335">        unsignedTx = new QuickTxBuilder(backendService)</span>
+<span class="nc" id="L336">                .compose(tokenizableMintTx)</span>
+<span class="nc" id="L337">                .feePayer(req.getDeployerAddress())</span>
+<span class="nc" id="L338">                .collateralPayer(req.getDeployerAddress())</span>
+<span class="nc" id="L339">                .mergeOutputs(false)</span>
+<span class="nc" id="L340">                .withRequiredSigners(deployerAddress)</span>
+<span class="nc" id="L341">                .withReferenceScripts(stateContract, proxyContract)</span>
+<span class="nc" id="L342">                .validFrom(currentSlot - 10)</span>
+<span class="nc" id="L343">                .validTo(currentSlot + 600)</span>
+<span class="nc" id="L344">                .build();</span>
 
-<span class="nc" id="L298">        return unsignedTx.serializeToHex();</span>
+<span class="nc" id="L346">        return unsignedTx.serializeToHex();</span>
     }
 
     public String buildInsertTransaction(BuildInsertRequest req) throws ApiException, CborSerializationException {
-<span class="nc" id="L302">        PlutusScript tokenizableScript = getTokenizableCertificateContract(</span>
-<span class="nc" id="L303">                req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());</span>
-<span class="nc" id="L304">        String policyId = validatorToScriptHash(tokenizableScript);</span>
-<span class="nc" id="L305">        String tokenizableAddress = scriptAddress(tokenizableScript);</span>
+<span class="nc" id="L350">        PlutusScript tokenizableScript = getTokenizableCertificateContract(</span>
+<span class="nc" id="L351">                req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());</span>
+<span class="nc" id="L352">        String policyId = validatorToScriptHash(tokenizableScript);</span>
+<span class="nc" id="L353">        String tokenizableAddress = scriptAddress(tokenizableScript);</span>
 
         // ── 1. Locate HEAD and predecessor ───────────────────────────────────
-<span class="nc" id="L308">        Utxo headUtxo = fetchUtxoByToken(tokenizableAddress, policyId, NODE_PREFIX_HEX);</span>
-<span class="nc" id="L309">        TokenizableDatum.Head headDatum = (TokenizableDatum.Head) TokenizableDatum.fromInlineDatum(headUtxo.getInlineDatum());</span>
+<span class="nc" id="L356">        Utxo headUtxo = fetchUtxoByToken(tokenizableAddress, policyId, NODE_PREFIX_HEX);</span>
+<span class="nc" id="L357">        TokenizableDatum.Head headDatum = (TokenizableDatum.Head) TokenizableDatum.fromInlineDatum(headUtxo.getInlineDatum());</span>
 
-<span class="nc" id="L311">        PredecessorResult pred = findPredecessor(tokenizableAddress, policyId, req.getKey(), headDatum);</span>
-<span class="nc bnc" id="L312" title="All 2 branches missed.">        if (pred.isHeadPredecessor()) {</span>
-<span class="nc bnc" id="L313" title="All 2 branches missed.">            String bootstrapTokenForFork = req.getBootstrapTokenName() != null ? req.getBootstrapTokenName() : &quot;&quot;;</span>
-<span class="nc" id="L314">            Optional&lt;StateDatumEntity&gt; existingState = resolveStateDatumOptional(req.getInserterAddress(), bootstrapTokenForFork);</span>
-<span class="nc bnc" id="L315" title="All 2 branches missed.">            if (existingState.isPresent()) {</span>
-<span class="nc" id="L316">                throw new IllegalStateException(</span>
-<span class="nc" id="L317">                        &quot;Cannot insert key '&quot; + req.getKey() + &quot;': the HEAD node would be the predecessor. &quot;</span>
+<span class="nc" id="L359">        String insertCertKey = req.getCertificate().getHash();</span>
+<span class="nc" id="L360">        PredecessorResult pred = findPredecessor(tokenizableAddress, policyId, insertCertKey, headDatum);</span>
+<span class="nc bnc" id="L361" title="All 2 branches missed.">        if (pred.isHeadPredecessor()) {</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">            String bootstrapTokenForFork = req.getBootstrapTokenName() != null ? req.getBootstrapTokenName() : &quot;&quot;;</span>
+<span class="nc" id="L363">            Optional&lt;StateDatumEntity&gt; existingState = resolveStateDatumOptional(req.getInserterAddress(), bootstrapTokenForFork);</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">            if (existingState.isPresent()) {</span>
+<span class="nc" id="L365">                throw new IllegalStateException(</span>
+                        &quot;Cannot insert key '&quot; + insertCertKey + &quot;': the HEAD node would be the predecessor. &quot;
                                 + &quot;This is impossible due to the Cardano EUTXO constraint.&quot;);
             }
-<span class="nc" id="L320">            return buildForkAndOrphanInsertTransaction(req, tokenizableScript, tokenizableAddress, headUtxo);</span>
+<span class="nc" id="L369">            return buildForkAndOrphanInsertTransaction(req, tokenizableScript, tokenizableAddress, headUtxo);</span>
         }
 
-<span class="nc" id="L323">        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();</span>
-<span class="nc" id="L324">        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();</span>
+<span class="nc" id="L372">        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();</span>
+<span class="nc" id="L373">        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();</span>
 
-<span class="nc" id="L326">        byte[] inserterCredential = new Address(req.getInserterAddress()).getPaymentCredentialHash()</span>
-<span class="nc" id="L327">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Invalid inserter address&quot;));</span>
+<span class="nc" id="L375">        byte[] inserterCredential = new Address(req.getInserterAddress()).getPaymentCredentialHash()</span>
+<span class="nc" id="L376">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Invalid inserter address&quot;));</span>
 
-<span class="nc" id="L329">        UVerifyCertificate cert = UVerifyCertificate.builder()</span>
-<span class="nc" id="L330">                .hash(req.getKey())</span>
-<span class="nc" id="L331">                .algorithm(&quot;sha3_256&quot;)</span>
-<span class="nc" id="L332">                .issuer(HexUtil.encodeHexString(inserterCredential))</span>
-<span class="nc" id="L333">                .extra(&quot;{\&quot;uverify_template_id\&quot;:\&quot;tokenizableCertificate\&quot;}&quot;)</span>
-<span class="nc" id="L334">                .build();</span>
+<span class="nc" id="L378">        String certKey = req.getCertificate().getHash();</span>
+<span class="nc" id="L379">        UVerifyCertificate cert = UVerifyCertificate.builder()</span>
+<span class="nc" id="L380">                .hash(certKey)</span>
+<span class="nc" id="L381">                .algorithm(&quot;sha3_256&quot;)</span>
+<span class="nc" id="L382">                .issuer(HexUtil.encodeHexString(inserterCredential))</span>
+<span class="nc" id="L383">                .extra(buildExtra(req.getCertificate(), policyId, req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex()))</span>
+<span class="nc" id="L384">                .build();</span>
 
         // ── 3. Tokenizable insert components ─────────────────────────────────
-<span class="nc" id="L337">        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();</span>
-<span class="nc" id="L338">        Asset nodeToken = Asset.builder()</span>
-<span class="nc" id="L339">                .name(&quot;0x&quot; + nodeTokenName)</span>
-<span class="nc" id="L340">                .value(BigInteger.ONE)</span>
-<span class="nc" id="L341">                .build();</span>
+<span class="nc" id="L387">        String nodeTokenName = nodeTokenName(certKey);</span>
+<span class="nc" id="L388">        Asset nodeToken = Asset.builder()</span>
+<span class="nc" id="L389">                .name(&quot;0x&quot; + nodeTokenName)</span>
+<span class="nc" id="L390">                .value(BigInteger.ONE)</span>
+<span class="nc" id="L391">                .build();</span>
 
-<span class="nc" id="L343">        TokenizableDatum.Node newNodeDatum = TokenizableDatum.Node.builder()</span>
-<span class="nc" id="L344">                .key(req.getKey())</span>
-<span class="nc" id="L345">                .next(pred.getSuccessorKey())    // what the predecessor's current next was</span>
-<span class="nc" id="L346">                .owner(req.getOwnerPubKeyHash())</span>
-<span class="nc" id="L347">                .assetName(req.getAssetName())</span>
-<span class="nc" id="L348">                .redeemed(false)</span>
-<span class="nc" id="L349">                .build();</span>
+<span class="nc" id="L393">        TokenizableDatum.Node newNodeDatum = TokenizableDatum.Node.builder()</span>
+<span class="nc" id="L394">                .key(certKey)</span>
+<span class="nc" id="L395">                .next(pred.getSuccessorKey())    // what the predecessor's current next was</span>
+<span class="nc" id="L396">                .owner(req.getOwnerPubKeyHash())</span>
+<span class="nc" id="L397">                .assetName(req.getAssetName())</span>
+<span class="nc" id="L398">                .redeemed(false)</span>
+<span class="nc" id="L399">                .build();</span>
 
-<span class="nc" id="L351">        PlutusData insertSpendRedeemer = ConstrPlutusData.of(1,</span>
-<span class="nc" id="L352">                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));</span>
-<span class="nc" id="L353">        PlutusData insertMintRedeemer = ConstrPlutusData.of(1,</span>
-<span class="nc" id="L354">                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));</span>
+<span class="nc" id="L401">        PlutusData insertSpendRedeemer = ConstrPlutusData.of(1,</span>
+<span class="nc" id="L402">                BytesPlutusData.of(HexUtil.decodeHexString(certKey)));</span>
+<span class="nc" id="L403">        PlutusData insertMintRedeemer = ConstrPlutusData.of(1,</span>
+<span class="nc" id="L404">                BytesPlutusData.of(HexUtil.decodeHexString(certKey)));</span>
 
         // Compute updated predecessor datum (update its `next` to point to the new key)
-<span class="nc" id="L357">        PlutusData updatedPredecessorDatum = pred.buildUpdatedPredecessorDatum(req.getKey());</span>
+<span class="nc" id="L407">        PlutusData updatedPredecessorDatum = pred.buildUpdatedPredecessorDatum(certKey);</span>
 
 
-<span class="nc" id="L360">        ScriptTx tokenizableInsertTx = cardanoBlockchainService.buildUVerifyCertificateScriptTx(</span>
-<span class="nc" id="L361">                        req.getInserterAddress(), List.of(cert))</span>
-<span class="nc" id="L362">                .readFrom(headUtxo)</span>
-<span class="nc" id="L363">                .collectFrom(pred.getUtxo(), insertSpendRedeemer)</span>
-<span class="nc" id="L364">                .payToContract(tokenizableAddress, pred.getUtxo().getAmount(), updatedPredecessorDatum)</span>
-<span class="nc" id="L365">                .mintAsset(tokenizableScript, List.of(nodeToken), insertMintRedeemer,</span>
-<span class="nc" id="L366">                        tokenizableAddress, newNodeDatum.toPlutusData());</span>
+<span class="nc" id="L410">        ScriptTx tokenizableInsertTx = cardanoBlockchainService.buildUVerifyCertificateScriptTx(</span>
+<span class="nc" id="L411">                        req.getInserterAddress(), List.of(cert))</span>
+<span class="nc" id="L412">                .readFrom(headUtxo)</span>
+<span class="nc" id="L413">                .collectFrom(pred.getUtxo(), insertSpendRedeemer)</span>
+<span class="nc" id="L414">                .payToContract(tokenizableAddress, pred.getUtxo().getAmount(), updatedPredecessorDatum)</span>
+<span class="nc" id="L415">                .mintAsset(tokenizableScript, List.of(nodeToken), insertMintRedeemer,</span>
+<span class="nc" id="L416">                        tokenizableAddress, newNodeDatum.toPlutusData());</span>
 
-<span class="nc" id="L368">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
-<span class="nc" id="L369">        Address inserterAddress = new Address(req.getInserterAddress());</span>
-<span class="nc" id="L370">        Transaction unsignedTx = new QuickTxBuilder(backendService)</span>
-<span class="nc" id="L371">                .compose(tokenizableInsertTx)</span>
-<span class="nc" id="L372">                .feePayer(req.getInserterAddress())</span>
-<span class="nc" id="L373">                .collateralPayer(req.getInserterAddress())</span>
-<span class="nc" id="L374">                .mergeOutputs(false)</span>
-<span class="nc" id="L375">                .withRequiredSigners(inserterAddress)</span>
-<span class="nc" id="L376">                .withReferenceScripts(stateContract, proxyContract)</span>
-<span class="nc" id="L377">                .validFrom(currentSlot - 10)</span>
-<span class="nc" id="L378">                .validTo(currentSlot + 600)</span>
-<span class="nc" id="L379">                .build();</span>
+<span class="nc" id="L418">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
+<span class="nc" id="L419">        Address inserterAddress = new Address(req.getInserterAddress());</span>
+<span class="nc" id="L420">        Transaction unsignedTx = new QuickTxBuilder(backendService)</span>
+<span class="nc" id="L421">                .compose(tokenizableInsertTx)</span>
+<span class="nc" id="L422">                .feePayer(req.getInserterAddress())</span>
+<span class="nc" id="L423">                .collateralPayer(req.getInserterAddress())</span>
+<span class="nc" id="L424">                .mergeOutputs(false)</span>
+<span class="nc" id="L425">                .withRequiredSigners(inserterAddress)</span>
+<span class="nc" id="L426">                .withReferenceScripts(stateContract, proxyContract)</span>
+<span class="nc" id="L427">                .validFrom(currentSlot - 10)</span>
+<span class="nc" id="L428">                .validTo(currentSlot + 600)</span>
+<span class="nc" id="L429">                .build();</span>
 
-<span class="nc" id="L381">        return unsignedTx.serializeToHex();</span>
+<span class="nc" id="L431">        return unsignedTx.serializeToHex();</span>
     }
 
     /**
@@ -386,85 +436,85 @@ public class TokenizableCertificateService {
      * The owner must sign the returned transaction.
      */
     public String buildRedeemTransaction(BuildRedeemRequest req) throws ApiException, CborSerializationException {
-<span class="nc" id="L389">        PlutusScript script = getTokenizableCertificateContract(</span>
-<span class="nc" id="L390">                req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());</span>
-<span class="nc" id="L391">        String policyId = validatorToScriptHash(script);</span>
-<span class="nc" id="L392">        String scriptAddress = scriptAddress(script);</span>
+<span class="nc" id="L439">        PlutusScript script = getTokenizableCertificateContract(</span>
+<span class="nc" id="L440">                req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex());</span>
+<span class="nc" id="L441">        String policyId = validatorToScriptHash(script);</span>
+<span class="nc" id="L442">        String scriptAddress = scriptAddress(script);</span>
 
         // Find the node UTxO
-<span class="nc" id="L395">        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();</span>
-<span class="nc" id="L396">        Utxo nodeUtxo = fetchUtxoByToken(scriptAddress, policyId, nodeTokenName);</span>
-<span class="nc" id="L397">        TokenizableDatum.Node nodeDatum = (TokenizableDatum.Node) TokenizableDatum.fromInlineDatum(nodeUtxo.getInlineDatum());</span>
+<span class="nc" id="L445">        String nodeTokenName = nodeTokenName(req.getKey());</span>
+<span class="nc" id="L446">        Utxo nodeUtxo = fetchUtxoByToken(scriptAddress, policyId, nodeTokenName);</span>
+<span class="nc" id="L447">        TokenizableDatum.Node nodeDatum = (TokenizableDatum.Node) TokenizableDatum.fromInlineDatum(nodeUtxo.getInlineDatum());</span>
 
-<span class="nc bnc" id="L399" title="All 2 branches missed.">        if (nodeDatum.isRedeemed()) {</span>
-<span class="nc" id="L400">            throw new IllegalStateException(&quot;Node '&quot; + req.getKey() + &quot;' has already been claimed.&quot;);</span>
+<span class="nc bnc" id="L449" title="All 2 branches missed.">        if (nodeDatum.isRedeemed()) {</span>
+<span class="nc" id="L450">            throw new IllegalStateException(&quot;Node '&quot; + req.getKey() + &quot;' has already been claimed.&quot;);</span>
         }
 
         // HEAD for reference (MINT validator needs it)
-<span class="nc" id="L404">        Utxo headUtxo = fetchUtxoByToken(scriptAddress, policyId, NODE_PREFIX_HEX);</span>
-<span class="nc" id="L405">        TokenizableDatum.Head headDatum = (TokenizableDatum.Head) TokenizableDatum.fromInlineDatum(headUtxo.getInlineDatum());</span>
-<span class="nc" id="L406">        TokenizableConfig config = headDatum.getConfig();</span>
+<span class="nc" id="L454">        Utxo headUtxo = fetchUtxoByToken(scriptAddress, policyId, NODE_PREFIX_HEX);</span>
+<span class="nc" id="L455">        TokenizableDatum.Head headDatum = (TokenizableDatum.Head) TokenizableDatum.fromInlineDatum(headUtxo.getInlineDatum());</span>
+<span class="nc" id="L456">        TokenizableConfig config = headDatum.getConfig();</span>
 
         // Redeemed node output datum (status → Redeemed)
-<span class="nc" id="L409">        TokenizableDatum.Node redeemedNodeDatum = TokenizableDatum.Node.builder()</span>
-<span class="nc" id="L410">                .key(nodeDatum.getKey())</span>
-<span class="nc" id="L411">                .next(nodeDatum.getNext())</span>
-<span class="nc" id="L412">                .owner(nodeDatum.getOwner())</span>
-<span class="nc" id="L413">                .assetName(nodeDatum.getAssetName())</span>
-<span class="nc" id="L414">                .redeemed(true)</span>
-<span class="nc" id="L415">                .build();</span>
-
-<span class="nc" id="L417">        Address ownerAddress = new Address(req.getOwnerAddress());</span>
-
-<span class="nc" id="L419">        PlutusData redeemSpendRedeemer = ConstrPlutusData.of(2,</span>
-<span class="nc" id="L420">                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));</span>
-<span class="nc" id="L421">        PlutusData redeemMintRedeemer = ConstrPlutusData.of(2,</span>
-<span class="nc" id="L422">                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));</span>
-
-<span class="nc" id="L424">        ScriptTx tx = new ScriptTx()</span>
-<span class="nc" id="L425">                .readFrom(headUtxo)</span>
-<span class="nc" id="L426">                .collectFrom(nodeUtxo, redeemSpendRedeemer)</span>
-<span class="nc" id="L427">                .payToContract(scriptAddress, nodeUtxo.getAmount(), redeemedNodeDatum.toPlutusData());</span>
-
-<span class="nc bnc" id="L429" title="All 2 branches missed.">        if (config.getCip68ScriptAddress() == null) {</span>
-            // Plain (non-CIP-68) token — mint 1 and send to owner
-<span class="nc" id="L431">            Asset userToken = Asset.builder()</span>
-<span class="nc" id="L432">                    .name(&quot;0x&quot; + nodeDatum.getAssetName())</span>
-<span class="nc" id="L433">                    .value(BigInteger.ONE)</span>
-<span class="nc" id="L434">                    .build();</span>
-<span class="nc" id="L435">            tx.mintAsset(script, List.of(userToken), redeemMintRedeemer,</span>
-<span class="nc" id="L436">                    req.getOwnerAddress(), PlutusData.unit());</span>
-<span class="nc" id="L437">        } else {</span>
-            // CIP-68: mint user token + reference token
-<span class="nc" id="L439">            String userTn = CIP68_USER_PREFIX_HEX + nodeDatum.getAssetName();</span>
-<span class="nc" id="L440">            String refTn = CIP68_REF_PREFIX_HEX + nodeDatum.getAssetName();</span>
-<span class="nc" id="L441">            Asset userToken = Asset.builder().name(&quot;0x&quot; + userTn).value(BigInteger.ONE).build();</span>
-<span class="nc" id="L442">            Asset refToken = Asset.builder().name(&quot;0x&quot; + refTn).value(BigInteger.ONE).build();</span>
-
-<span class="nc" id="L444">            String cip68ScriptAddress = AddressProvider.getEntAddress(</span>
-<span class="nc" id="L445">                    PlutusV3Script.builder().cborHex(&quot;&quot;).build(), // placeholder — actual address resolved by hash</span>
-<span class="nc" id="L446">                    network).toBech32();</span>
-            // Resolve CIP-68 reference script address from the stored script hash
-<span class="nc" id="L448">            cip68ScriptAddress = resolveScriptAddress(config.getCip68ScriptAddress());</span>
-
-<span class="nc" id="L450">            tx.mintAsset(script, List.of(userToken, refToken), redeemMintRedeemer,</span>
-<span class="nc" id="L451">                            req.getOwnerAddress(), PlutusData.unit())</span>
-<span class="nc" id="L452">                    .payToContract(cip68ScriptAddress,</span>
-<span class="nc" id="L453">                            List.of(Amount.asset(policyId + refTn, 1)),</span>
-<span class="nc" id="L454">                            PlutusData.unit());</span>
-        }
-
-<span class="nc" id="L457">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
-<span class="nc" id="L458">        Transaction unsignedTx = new QuickTxBuilder(backendService)</span>
-<span class="nc" id="L459">                .compose(tx)</span>
-<span class="nc" id="L460">                .feePayer(req.getOwnerAddress())</span>
-<span class="nc" id="L461">                .collateralPayer(req.getOwnerAddress())</span>
-<span class="nc" id="L462">                .withRequiredSigners(ownerAddress)</span>
-<span class="nc" id="L463">                .validFrom(currentSlot - 10)</span>
-<span class="nc" id="L464">                .validTo(currentSlot + 600)</span>
+<span class="nc" id="L459">        TokenizableDatum.Node redeemedNodeDatum = TokenizableDatum.Node.builder()</span>
+<span class="nc" id="L460">                .key(nodeDatum.getKey())</span>
+<span class="nc" id="L461">                .next(nodeDatum.getNext())</span>
+<span class="nc" id="L462">                .owner(nodeDatum.getOwner())</span>
+<span class="nc" id="L463">                .assetName(nodeDatum.getAssetName())</span>
+<span class="nc" id="L464">                .redeemed(true)</span>
 <span class="nc" id="L465">                .build();</span>
 
-<span class="nc" id="L467">        return unsignedTx.serializeToHex();</span>
+<span class="nc" id="L467">        Address ownerAddress = new Address(req.getOwnerAddress());</span>
+
+<span class="nc" id="L469">        PlutusData redeemSpendRedeemer = ConstrPlutusData.of(2,</span>
+<span class="nc" id="L470">                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));</span>
+<span class="nc" id="L471">        PlutusData redeemMintRedeemer = ConstrPlutusData.of(2,</span>
+<span class="nc" id="L472">                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));</span>
+
+<span class="nc" id="L474">        ScriptTx tx = new ScriptTx()</span>
+<span class="nc" id="L475">                .readFrom(headUtxo)</span>
+<span class="nc" id="L476">                .collectFrom(nodeUtxo, redeemSpendRedeemer)</span>
+<span class="nc" id="L477">                .payToContract(scriptAddress, nodeUtxo.getAmount(), redeemedNodeDatum.toPlutusData());</span>
+
+<span class="nc bnc" id="L479" title="All 2 branches missed.">        if (config.getCip68ScriptAddress() == null) {</span>
+            // Plain (non-CIP-68) token — mint 1 and send to owner
+<span class="nc" id="L481">            Asset userToken = Asset.builder()</span>
+<span class="nc" id="L482">                    .name(&quot;0x&quot; + nodeDatum.getAssetName())</span>
+<span class="nc" id="L483">                    .value(BigInteger.ONE)</span>
+<span class="nc" id="L484">                    .build();</span>
+<span class="nc" id="L485">            tx.mintAsset(script, List.of(userToken), redeemMintRedeemer,</span>
+<span class="nc" id="L486">                    req.getOwnerAddress(), PlutusData.unit());</span>
+<span class="nc" id="L487">        } else {</span>
+            // CIP-68: mint user token + reference token
+<span class="nc" id="L489">            String userTn = CIP68_USER_PREFIX_HEX + nodeDatum.getAssetName();</span>
+<span class="nc" id="L490">            String refTn = CIP68_REF_PREFIX_HEX + nodeDatum.getAssetName();</span>
+<span class="nc" id="L491">            Asset userToken = Asset.builder().name(&quot;0x&quot; + userTn).value(BigInteger.ONE).build();</span>
+<span class="nc" id="L492">            Asset refToken = Asset.builder().name(&quot;0x&quot; + refTn).value(BigInteger.ONE).build();</span>
+
+<span class="nc" id="L494">            String cip68ScriptAddress = AddressProvider.getEntAddress(</span>
+<span class="nc" id="L495">                    PlutusV3Script.builder().cborHex(&quot;&quot;).build(), // placeholder — actual address resolved by hash</span>
+<span class="nc" id="L496">                    network).toBech32();</span>
+            // Resolve CIP-68 reference script address from the stored script hash
+<span class="nc" id="L498">            cip68ScriptAddress = resolveScriptAddress(config.getCip68ScriptAddress());</span>
+
+<span class="nc" id="L500">            tx.mintAsset(script, List.of(userToken, refToken), redeemMintRedeemer,</span>
+<span class="nc" id="L501">                            req.getOwnerAddress(), PlutusData.unit())</span>
+<span class="nc" id="L502">                    .payToContract(cip68ScriptAddress,</span>
+<span class="nc" id="L503">                            List.of(Amount.asset(policyId + refTn, 1)),</span>
+<span class="nc" id="L504">                            PlutusData.unit());</span>
+        }
+
+<span class="nc" id="L507">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
+<span class="nc" id="L508">        Transaction unsignedTx = new QuickTxBuilder(backendService)</span>
+<span class="nc" id="L509">                .compose(tx)</span>
+<span class="nc" id="L510">                .feePayer(req.getOwnerAddress())</span>
+<span class="nc" id="L511">                .collateralPayer(req.getOwnerAddress())</span>
+<span class="nc" id="L512">                .withRequiredSigners(ownerAddress)</span>
+<span class="nc" id="L513">                .validFrom(currentSlot - 10)</span>
+<span class="nc" id="L514">                .validTo(currentSlot + 600)</span>
+<span class="nc" id="L515">                .build();</span>
+
+<span class="nc" id="L517">        return unsignedTx.serializeToHex();</span>
     }
 
     /**
@@ -473,53 +523,53 @@ public class TokenizableCertificateService {
     public CertificateStatusResponse getCertificateStatus(
             String key, String initUtxoTxHash, int initUtxoOutputIndex) throws ApiException {
 
-<span class="nc" id="L476">        PlutusScript script = getTokenizableCertificateContract(initUtxoTxHash, initUtxoOutputIndex);</span>
-<span class="nc" id="L477">        String policyId = validatorToScriptHash(script);</span>
-<span class="nc" id="L478">        String scriptAddress = scriptAddress(script);</span>
+<span class="nc" id="L526">        PlutusScript script = getTokenizableCertificateContract(initUtxoTxHash, initUtxoOutputIndex);</span>
+<span class="nc" id="L527">        String policyId = validatorToScriptHash(script);</span>
+<span class="nc" id="L528">        String scriptAddress = scriptAddress(script);</span>
 
-<span class="nc" id="L480">        String nodeTokenName = NODE_PREFIX_HEX + key;</span>
-<span class="nc" id="L481">        Optional&lt;Utxo&gt; optUtxo = getCurrentUtxoByUnit(scriptAddress, policyId + nodeTokenName, backendService);</span>
+<span class="nc" id="L530">        String nodeTokenName = nodeTokenName(key);</span>
+<span class="nc" id="L531">        Optional&lt;Utxo&gt; optUtxo = getCurrentUtxoByUnit(scriptAddress, policyId + nodeTokenName, backendService);</span>
 
-<span class="nc bnc" id="L483" title="All 2 branches missed.">        if (optUtxo.isEmpty()) {</span>
-<span class="nc" id="L484">            return CertificateStatusResponse.builder().key(key).exists(false).claimed(false).build();</span>
+<span class="nc bnc" id="L533" title="All 2 branches missed.">        if (optUtxo.isEmpty()) {</span>
+<span class="nc" id="L534">            return CertificateStatusResponse.builder().key(key).exists(false).claimed(false).build();</span>
         }
 
-<span class="nc" id="L487">        TokenizableDatum datum = TokenizableDatum.fromInlineDatum(optUtxo.get().getInlineDatum());</span>
-<span class="nc bnc" id="L488" title="All 2 branches missed.">        if (datum instanceof TokenizableDatum.Node node) {</span>
-<span class="nc" id="L489">            return CertificateStatusResponse.builder()</span>
-<span class="nc" id="L490">                    .key(key)</span>
-<span class="nc" id="L491">                    .exists(true)</span>
-<span class="nc" id="L492">                    .claimed(node.isRedeemed())</span>
-<span class="nc" id="L493">                    .ownerPubKeyHash(node.getOwner())</span>
-<span class="nc" id="L494">                    .assetName(node.getAssetName())</span>
-<span class="nc" id="L495">                    .next(node.getNext())</span>
-<span class="nc" id="L496">                    .build();</span>
+<span class="nc" id="L537">        TokenizableDatum datum = TokenizableDatum.fromInlineDatum(optUtxo.get().getInlineDatum());</span>
+<span class="nc bnc" id="L538" title="All 2 branches missed.">        if (datum instanceof TokenizableDatum.Node node) {</span>
+<span class="nc" id="L539">            return CertificateStatusResponse.builder()</span>
+<span class="nc" id="L540">                    .key(key)</span>
+<span class="nc" id="L541">                    .exists(true)</span>
+<span class="nc" id="L542">                    .claimed(node.isRedeemed())</span>
+<span class="nc" id="L543">                    .ownerPubKeyHash(node.getOwner())</span>
+<span class="nc" id="L544">                    .assetName(node.getAssetName())</span>
+<span class="nc" id="L545">                    .next(node.getNext())</span>
+<span class="nc" id="L546">                    .build();</span>
         }
-<span class="nc" id="L498">        return CertificateStatusResponse.builder().key(key).exists(false).claimed(false).build();</span>
+<span class="nc" id="L548">        return CertificateStatusResponse.builder().key(key).exists(false).claimed(false).build();</span>
     }
 
     public void setBackendService(BackendService backendService) {
-<span class="nc" id="L502">        this.backendService = backendService;</span>
-<span class="nc" id="L503">    }</span>
+<span class="nc" id="L552">        this.backendService = backendService;</span>
+<span class="nc" id="L553">    }</span>
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private String scriptAddress(PlutusScript script) {
-<span class="nc bnc" id="L508" title="All 2 branches missed.">        if (cardanoNetwork == CardanoNetwork.MAINNET) {</span>
-<span class="nc" id="L509">            return AddressProvider.getEntAddress(script, com.bloxbean.cardano.client.common.model.Networks.mainnet()).toBech32();</span>
+<span class="nc bnc" id="L558" title="All 2 branches missed.">        if (cardanoNetwork == CardanoNetwork.MAINNET) {</span>
+<span class="nc" id="L559">            return AddressProvider.getEntAddress(script, com.bloxbean.cardano.client.common.model.Networks.mainnet()).toBech32();</span>
         }
-<span class="nc" id="L511">        return AddressProvider.getEntAddress(script, com.bloxbean.cardano.client.common.model.Networks.preprod()).toBech32();</span>
+<span class="nc" id="L561">        return AddressProvider.getEntAddress(script, com.bloxbean.cardano.client.common.model.Networks.preprod()).toBech32();</span>
     }
 
     private String resolveScriptAddress(String scriptHash) {
         // Build a minimal enterprise address from the script hash
-<span class="nc" id="L516">        byte[] hashBytes = HexUtil.decodeHexString(scriptHash);</span>
-<span class="nc" id="L517">        com.bloxbean.cardano.client.address.Credential cred =</span>
-<span class="nc" id="L518">                com.bloxbean.cardano.client.address.Credential.fromScript(hashBytes);</span>
-<span class="nc bnc" id="L519" title="All 2 branches missed.">        if (cardanoNetwork == CardanoNetwork.MAINNET) {</span>
-<span class="nc" id="L520">            return AddressProvider.getEntAddress(cred, com.bloxbean.cardano.client.common.model.Networks.mainnet()).toBech32();</span>
+<span class="nc" id="L566">        byte[] hashBytes = HexUtil.decodeHexString(scriptHash);</span>
+<span class="nc" id="L567">        com.bloxbean.cardano.client.address.Credential cred =</span>
+<span class="nc" id="L568">                com.bloxbean.cardano.client.address.Credential.fromScript(hashBytes);</span>
+<span class="nc bnc" id="L569" title="All 2 branches missed.">        if (cardanoNetwork == CardanoNetwork.MAINNET) {</span>
+<span class="nc" id="L570">            return AddressProvider.getEntAddress(cred, com.bloxbean.cardano.client.common.model.Networks.mainnet()).toBech32();</span>
         }
-<span class="nc" id="L522">        return AddressProvider.getEntAddress(cred, com.bloxbean.cardano.client.common.model.Networks.preprod()).toBech32();</span>
+<span class="nc" id="L572">        return AddressProvider.getEntAddress(cred, com.bloxbean.cardano.client.common.model.Networks.preprod()).toBech32();</span>
     }
 
     /**
@@ -527,12 +577,12 @@ public class TokenizableCertificateService {
      * token with unit {@code policyId + tokenName}.
      */
     private Utxo fetchUtxoByToken(String scriptAddress, String policyId, String tokenNameHex) throws ApiException {
-<span class="nc" id="L530">        String unit = policyId + tokenNameHex;</span>
-<span class="nc" id="L531">        Optional&lt;Utxo&gt; opt = getCurrentUtxoByUnit(scriptAddress, unit, backendService);</span>
-<span class="nc bnc" id="L532" title="All 2 branches missed.">        if (opt.isEmpty()) {</span>
-<span class="nc" id="L533">            throw new IllegalStateException(&quot;UTxO with unit &quot; + unit + &quot; not found at &quot; + scriptAddress);</span>
+<span class="nc" id="L580">        String unit = policyId + tokenNameHex;</span>
+<span class="nc" id="L581">        Optional&lt;Utxo&gt; opt = getCurrentUtxoByUnit(scriptAddress, unit, backendService);</span>
+<span class="nc bnc" id="L582" title="All 2 branches missed.">        if (opt.isEmpty()) {</span>
+<span class="nc" id="L583">            throw new IllegalStateException(&quot;UTxO with unit &quot; + unit + &quot; not found at &quot; + scriptAddress);</span>
         }
-<span class="nc" id="L535">        return opt.get();</span>
+<span class="nc" id="L585">        return opt.get();</span>
     }
 
     /**
@@ -547,218 +597,220 @@ public class TokenizableCertificateService {
             TokenizableDatum.Head headDatum) throws ApiException {
 
         // If the list is empty, HEAD is the predecessor (EUTXO conflict).
-<span class="nc bnc" id="L550" title="All 2 branches missed.">        if (headDatum.getNext() == null) {</span>
-<span class="nc" id="L551">            return PredecessorResult.headPredecessor();</span>
+<span class="nc bnc" id="L600" title="All 2 branches missed.">        if (headDatum.getNext() == null) {</span>
+<span class="nc" id="L601">            return PredecessorResult.headPredecessor();</span>
         }
 
         // If key &lt; first node's key, HEAD is the predecessor (EUTXO conflict).
-<span class="nc bnc" id="L555" title="All 2 branches missed.">        if (key.compareTo(headDatum.getNext()) &lt; 0) {</span>
-<span class="nc" id="L556">            return PredecessorResult.headPredecessor();</span>
+<span class="nc bnc" id="L605" title="All 2 branches missed.">        if (key.compareTo(headDatum.getNext()) &lt; 0) {</span>
+<span class="nc" id="L606">            return PredecessorResult.headPredecessor();</span>
         }
 
         // Load all node UTxOs and build an in-memory map key → (Utxo, NodeDatum).
-<span class="nc" id="L560">        List&lt;Utxo&gt; allUtxos = getAllUtxosAtAddress(scriptAddress);</span>
+<span class="nc" id="L610">        List&lt;Utxo&gt; allUtxos = getAllUtxosAtAddress(scriptAddress);</span>
 
-<span class="nc" id="L562">        java.util.Map&lt;String, Utxo&gt; utxoByKey = new java.util.HashMap&lt;&gt;();</span>
-<span class="nc" id="L563">        java.util.Map&lt;String, TokenizableDatum.Node&gt; datumByKey = new java.util.HashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L564" title="All 2 branches missed.">        for (Utxo u : allUtxos) {</span>
-<span class="nc bnc" id="L565" title="All 2 branches missed.">            if (u.getInlineDatum() == null) continue;</span>
+<span class="nc" id="L612">        java.util.Map&lt;String, Utxo&gt; utxoByKey = new java.util.HashMap&lt;&gt;();</span>
+<span class="nc" id="L613">        java.util.Map&lt;String, TokenizableDatum.Node&gt; datumByKey = new java.util.HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L614" title="All 2 branches missed.">        for (Utxo u : allUtxos) {</span>
+<span class="nc bnc" id="L615" title="All 2 branches missed.">            if (u.getInlineDatum() == null) continue;</span>
             try {
-<span class="nc" id="L567">                TokenizableDatum d = TokenizableDatum.fromInlineDatum(u.getInlineDatum());</span>
-<span class="nc bnc" id="L568" title="All 2 branches missed.">                if (d instanceof TokenizableDatum.Node node) {</span>
-<span class="nc" id="L569">                    utxoByKey.put(node.getKey(), u);</span>
-<span class="nc" id="L570">                    datumByKey.put(node.getKey(), node);</span>
+<span class="nc" id="L617">                TokenizableDatum d = TokenizableDatum.fromInlineDatum(u.getInlineDatum());</span>
+<span class="nc bnc" id="L618" title="All 2 branches missed.">                if (d instanceof TokenizableDatum.Node node) {</span>
+<span class="nc" id="L619">                    utxoByKey.put(node.getKey(), u);</span>
+<span class="nc" id="L620">                    datumByKey.put(node.getKey(), node);</span>
                 }
-<span class="nc" id="L572">            } catch (Exception ignored) {</span>
+<span class="nc" id="L622">            } catch (Exception ignored) {</span>
                 // Skip UTxOs with unrecognized datums
-<span class="nc" id="L574">            }</span>
-<span class="nc" id="L575">        }</span>
+<span class="nc" id="L624">            }</span>
+<span class="nc" id="L625">        }</span>
 
         // Walk the linked list from the first node to find the insertion point.
-<span class="nc" id="L578">        String currentKey = headDatum.getNext();</span>
-<span class="nc bnc" id="L579" title="All 2 branches missed.">        while (currentKey != null) {</span>
-<span class="nc" id="L580">            TokenizableDatum.Node currentNode = datumByKey.get(currentKey);</span>
-<span class="nc bnc" id="L581" title="All 2 branches missed.">            if (currentNode == null) {</span>
-<span class="nc" id="L582">                throw new IllegalStateException(&quot;Linked list is inconsistent: node '&quot; + currentKey + &quot;' missing from UTxO set.&quot;);</span>
+<span class="nc" id="L628">        String currentKey = headDatum.getNext();</span>
+<span class="nc bnc" id="L629" title="All 2 branches missed.">        while (currentKey != null) {</span>
+<span class="nc" id="L630">            TokenizableDatum.Node currentNode = datumByKey.get(currentKey);</span>
+<span class="nc bnc" id="L631" title="All 2 branches missed.">            if (currentNode == null) {</span>
+<span class="nc" id="L632">                throw new IllegalStateException(&quot;Linked list is inconsistent: node '&quot; + currentKey + &quot;' missing from UTxO set.&quot;);</span>
             }
-<span class="nc" id="L584">            String nextKey = currentNode.getNext();</span>
+<span class="nc" id="L634">            String nextKey = currentNode.getNext();</span>
             // Insert between currentNode and nextKey if key &gt; currentKey AND (nextKey==null OR key &lt; nextKey)
-<span class="nc bnc" id="L586" title="All 6 branches missed.">            if (key.compareTo(currentKey) &gt; 0 &amp;&amp; (nextKey == null || key.compareTo(nextKey) &lt; 0)) {</span>
-<span class="nc" id="L587">                return PredecessorResult.nodePredecessor(utxoByKey.get(currentKey), currentNode, nextKey);</span>
+<span class="nc bnc" id="L636" title="All 6 branches missed.">            if (key.compareTo(currentKey) &gt; 0 &amp;&amp; (nextKey == null || key.compareTo(nextKey) &lt; 0)) {</span>
+<span class="nc" id="L637">                return PredecessorResult.nodePredecessor(utxoByKey.get(currentKey), currentNode, nextKey);</span>
             }
-<span class="nc bnc" id="L589" title="All 2 branches missed.">            if (key.equals(currentKey)) {</span>
-<span class="nc" id="L590">                throw new IllegalArgumentException(&quot;Key '&quot; + key + &quot;' already exists in the list.&quot;);</span>
+<span class="nc bnc" id="L639" title="All 2 branches missed.">            if (key.equals(currentKey)) {</span>
+<span class="nc" id="L640">                throw new IllegalArgumentException(&quot;Key '&quot; + key + &quot;' already exists in the list.&quot;);</span>
             }
-<span class="nc" id="L592">            currentKey = nextKey;</span>
-<span class="nc" id="L593">        }</span>
+<span class="nc" id="L642">            currentKey = nextKey;</span>
+<span class="nc" id="L643">        }</span>
 
         // Should not happen if comparisons above are correct, but be safe.
-<span class="nc" id="L596">        return PredecessorResult.headPredecessor();</span>
+<span class="nc" id="L646">        return PredecessorResult.headPredecessor();</span>
     }
 
     private List&lt;Utxo&gt; getAllUtxosAtAddress(String address) throws ApiException {
-<span class="nc" id="L600">        List&lt;Utxo&gt; result = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L601">        int page = 1;</span>
+<span class="nc" id="L650">        List&lt;Utxo&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L651">        int page = 1;</span>
         while (true) {
-<span class="nc" id="L603">            Result&lt;List&lt;Utxo&gt;&gt; r = backendService.getUtxoService().getUtxos(address, 100, page);</span>
-<span class="nc bnc" id="L604" title="All 6 branches missed.">            if (!r.isSuccessful() || r.getValue() == null || r.getValue().isEmpty()) break;</span>
-<span class="nc" id="L605">            result.addAll(r.getValue());</span>
-<span class="nc bnc" id="L606" title="All 2 branches missed.">            if (r.getValue().size() &lt; 100) break;</span>
-<span class="nc" id="L607">            page++;</span>
-<span class="nc" id="L608">        }</span>
-<span class="nc" id="L609">        return result;</span>
+<span class="nc" id="L653">            Result&lt;List&lt;Utxo&gt;&gt; r = backendService.getUtxoService().getUtxos(address, 100, page);</span>
+<span class="nc bnc" id="L654" title="All 6 branches missed.">            if (!r.isSuccessful() || r.getValue() == null || r.getValue().isEmpty()) break;</span>
+<span class="nc" id="L655">            result.addAll(r.getValue());</span>
+<span class="nc bnc" id="L656" title="All 2 branches missed.">            if (r.getValue().size() &lt; 100) break;</span>
+<span class="nc" id="L657">            page++;</span>
+<span class="nc" id="L658">        }</span>
+<span class="nc" id="L659">        return result;</span>
     }
 
     private String buildForkAndOrphanInsertTransaction(BuildInsertRequest req,
                                                        PlutusScript tokenizableScript, String tokenizableAddress,
                                                        Utxo headUtxo) throws ApiException, CborSerializationException {
-<span class="nc bnc" id="L615" title="All 2 branches missed.">        String bootstrapToken = req.getBootstrapTokenName() != null ? req.getBootstrapTokenName() : &quot;&quot;;</span>
-<span class="nc" id="L616">        Optional&lt;BootstrapDatumEntity&gt; optEntity = bootstrapDatumService.getBootstrapDatum(bootstrapToken, 2);</span>
-<span class="nc bnc" id="L617" title="All 2 branches missed.">        if (optEntity.isEmpty()) {</span>
-<span class="nc" id="L618">            throw new IllegalArgumentException(&quot;Bootstrap datum '&quot; + bootstrapToken + &quot;' not found&quot;);</span>
+<span class="nc bnc" id="L665" title="All 2 branches missed.">        String bootstrapToken = req.getBootstrapTokenName() != null ? req.getBootstrapTokenName() : &quot;&quot;;</span>
+<span class="nc" id="L666">        Optional&lt;BootstrapDatumEntity&gt; optEntity = bootstrapDatumService.getBootstrapDatum(bootstrapToken, 2);</span>
+<span class="nc bnc" id="L667" title="All 2 branches missed.">        if (optEntity.isEmpty()) {</span>
+<span class="nc" id="L668">            throw new IllegalArgumentException(&quot;Bootstrap datum '&quot; + bootstrapToken + &quot;' not found&quot;);</span>
         }
-<span class="nc" id="L620">        BootstrapDatumEntity bootstrapDatumEntity = optEntity.get();</span>
+<span class="nc" id="L670">        BootstrapDatumEntity bootstrapDatumEntity = optEntity.get();</span>
 
-<span class="nc" id="L622">        Address userAddress = new Address(req.getInserterAddress());</span>
-<span class="nc" id="L623">        byte[] userCredential = userAddress.getPaymentCredentialHash()</span>
-<span class="nc" id="L624">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Invalid Cardano payment address&quot;));</span>
+<span class="nc" id="L672">        Address userAddress = new Address(req.getInserterAddress());</span>
+<span class="nc" id="L673">        byte[] userCredential = userAddress.getPaymentCredentialHash()</span>
+<span class="nc" id="L674">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Invalid Cardano payment address&quot;));</span>
 
-<span class="nc" id="L626">        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();</span>
-<span class="nc" id="L627">        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();</span>
-<span class="nc" id="L628">        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, network).toBech32();</span>
-<span class="nc" id="L629">        String stateRewardAddress = AddressProvider.getRewardAddress(stateContract, network).toBech32();</span>
+<span class="nc" id="L676">        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();</span>
+<span class="nc" id="L677">        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();</span>
+<span class="nc" id="L678">        String proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, network).toBech32();</span>
+<span class="nc" id="L679">        String stateRewardAddress = AddressProvider.getRewardAddress(stateContract, network).toBech32();</span>
 
         // Resolve bootstrap UTxO (read-only reference input)
-<span class="nc" id="L632">        String bootstrapTokenUnit = proxyContract.getPolicyId()</span>
-<span class="nc" id="L633">                + HexUtil.encodeHexString(bootstrapToken.getBytes());</span>
-<span class="nc" id="L634">        Result&lt;TxContentUtxo&gt; txResult = backendService.getTransactionService()</span>
-<span class="nc" id="L635">                .getTransactionUtxos(bootstrapDatumEntity.getTransactionId());</span>
-<span class="nc" id="L636">        TxContentUtxoOutputs bootstrapOutput = txResult.getValue().getOutputs().stream()</span>
-<span class="nc" id="L637">                .filter(o -&gt; o.getAmount().stream().anyMatch(a -&gt; a.getUnit().equals(bootstrapTokenUnit)))</span>
-<span class="nc" id="L638">                .findFirst()</span>
-<span class="nc" id="L639">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Bootstrap UTxO not found for token: &quot; + bootstrapToken));</span>
-<span class="nc" id="L640">        Utxo bootstrapUtxo = bootstrapOutput.toUtxos(bootstrapDatumEntity.getTransactionId());</span>
+<span class="nc" id="L682">        String bootstrapTokenUnit = proxyContract.getPolicyId()</span>
+<span class="nc" id="L683">                + HexUtil.encodeHexString(bootstrapToken.getBytes());</span>
+<span class="nc" id="L684">        Result&lt;TxContentUtxo&gt; txResult = backendService.getTransactionService()</span>
+<span class="nc" id="L685">                .getTransactionUtxos(bootstrapDatumEntity.getTransactionId());</span>
+<span class="nc" id="L686">        TxContentUtxoOutputs bootstrapOutput = txResult.getValue().getOutputs().stream()</span>
+<span class="nc" id="L687">                .filter(o -&gt; o.getAmount().stream().anyMatch(a -&gt; a.getUnit().equals(bootstrapTokenUnit)))</span>
+<span class="nc" id="L688">                .findFirst()</span>
+<span class="nc" id="L689">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Bootstrap UTxO not found for token: &quot; + bootstrapToken));</span>
+<span class="nc" id="L690">        Utxo bootstrapUtxo = bootstrapOutput.toUtxos(bootstrapDatumEntity.getTransactionId());</span>
 
         // Pick a user wallet UTxO to consume (drives state ID derivation)
-<span class="nc" id="L643">        List&lt;Utxo&gt; userUtxos = new DefaultUtxoSupplier(backendService.getUtxoService()).getAll(req.getInserterAddress());</span>
-<span class="nc bnc" id="L644" title="All 2 branches missed.">        if (userUtxos.isEmpty()) {</span>
-<span class="nc" id="L645">            throw new IllegalArgumentException(&quot;No UTxOs found for inserter address&quot;);</span>
+<span class="nc" id="L693">        List&lt;Utxo&gt; userUtxos = new DefaultUtxoSupplier(backendService.getUtxoService()).getAll(req.getInserterAddress());</span>
+<span class="nc bnc" id="L694" title="All 2 branches missed.">        if (userUtxos.isEmpty()) {</span>
+<span class="nc" id="L695">            throw new IllegalArgumentException(&quot;No UTxOs found for inserter address&quot;);</span>
         }
-<span class="nc" id="L647">        Utxo userUtxo = userUtxos.get(0);</span>
+<span class="nc" id="L697">        Utxo userUtxo = userUtxos.get(0);</span>
 
         // Derive state ID: sha256(txHash || LE_uint16(outputIndex))
-<span class="nc" id="L650">        String indexHex = HexUtil.encodeHexString(ByteBuffer.allocate(2)</span>
-<span class="nc" id="L651">                .order(ByteOrder.LITTLE_ENDIAN)</span>
-<span class="nc" id="L652">                .putShort((short) userUtxo.getOutputIndex())</span>
-<span class="nc" id="L653">                .array());</span>
-<span class="nc" id="L654">        String stateId = DigestUtils.sha256Hex(HexUtil.decodeHexString(userUtxo.getTxHash() + indexHex));</span>
+<span class="nc" id="L700">        String indexHex = HexUtil.encodeHexString(ByteBuffer.allocate(2)</span>
+<span class="nc" id="L701">                .order(ByteOrder.LITTLE_ENDIAN)</span>
+<span class="nc" id="L702">                .putShort((short) userUtxo.getOutputIndex())</span>
+<span class="nc" id="L703">                .array());</span>
+<span class="nc" id="L704">        String stateId = DigestUtils.sha256Hex(HexUtil.decodeHexString(userUtxo.getTxHash() + indexHex));</span>
 
-<span class="nc" id="L656">        UVerifyCertificate cert = UVerifyCertificate.builder()</span>
-<span class="nc" id="L657">                .hash(req.getKey())</span>
-<span class="nc" id="L658">                .algorithm(&quot;sha3_256&quot;)</span>
-<span class="nc" id="L659">                .issuer(HexUtil.encodeHexString(userCredential))</span>
-<span class="nc" id="L660">                .extra(&quot;{\&quot;uverify_template_id\&quot;:\&quot;tokenizableCertificate\&quot;}&quot;)</span>
-<span class="nc" id="L661">                .build();</span>
+<span class="nc" id="L706">        String forkPolicyId = validatorToScriptHash(tokenizableScript);</span>
+<span class="nc" id="L707">        String forkCertKey = req.getCertificate().getHash();</span>
+<span class="nc" id="L708">        UVerifyCertificate cert = UVerifyCertificate.builder()</span>
+<span class="nc" id="L709">                .hash(forkCertKey)</span>
+<span class="nc" id="L710">                .algorithm(&quot;sha3_256&quot;)</span>
+<span class="nc" id="L711">                .issuer(HexUtil.encodeHexString(userCredential))</span>
+<span class="nc" id="L712">                .extra(buildExtra(req.getCertificate(), forkPolicyId, req.getInitUtxoTxHash(), req.getInitUtxoOutputIndex()))</span>
+<span class="nc" id="L713">                .build();</span>
 
-<span class="nc" id="L663">        StateDatum stateDatum = StateDatum.fromBootstrapDatum(bootstrapUtxo.getInlineDatum(), userCredential);</span>
-<span class="nc" id="L664">        stateDatum.setCertificateDataHash(List.of(cert));</span>
-<span class="nc" id="L665">        stateDatum.setCountdown(stateDatum.getCountdown() - 1);</span>
-<span class="nc" id="L666">        stateDatum.setId(stateId);</span>
+<span class="nc" id="L715">        StateDatum stateDatum = StateDatum.fromBootstrapDatum(bootstrapUtxo.getInlineDatum(), userCredential);</span>
+<span class="nc" id="L716">        stateDatum.setCertificateDataHash(List.of(cert));</span>
+<span class="nc" id="L717">        stateDatum.setCountdown(stateDatum.getCountdown() - 1);</span>
+<span class="nc" id="L718">        stateDatum.setId(stateId);</span>
 
-<span class="nc" id="L668">        Asset stateToken = Asset.builder()</span>
-<span class="nc" id="L669">                .name(&quot;0x&quot; + stateId)</span>
-<span class="nc" id="L670">                .value(BigInteger.ONE)</span>
-<span class="nc" id="L671">                .build();</span>
+<span class="nc" id="L720">        Asset stateToken = Asset.builder()</span>
+<span class="nc" id="L721">                .name(&quot;0x&quot; + stateId)</span>
+<span class="nc" id="L722">                .value(BigInteger.ONE)</span>
+<span class="nc" id="L723">                .build();</span>
 
-<span class="nc" id="L673">        StateRedeemer mintStateRedeemer = StateRedeemer.builder()</span>
-<span class="nc" id="L674">                .purpose(UVerifyScriptPurpose.MINT_STATE)</span>
-<span class="nc" id="L675">                .certificates(List.of(cert))</span>
-<span class="nc" id="L676">                .build();</span>
-<span class="nc" id="L677">        PlutusData mintProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);</span>
+<span class="nc" id="L725">        StateRedeemer mintStateRedeemer = StateRedeemer.builder()</span>
+<span class="nc" id="L726">                .purpose(UVerifyScriptPurpose.MINT_STATE)</span>
+<span class="nc" id="L727">                .certificates(List.of(cert))</span>
+<span class="nc" id="L728">                .build();</span>
+<span class="nc" id="L729">        PlutusData mintProxyRedeemer = new ProxyRedeemerConverter().toPlutusData(ProxyRedeemer.USER_ACTION);</span>
 
-<span class="nc" id="L679">        Utxo proxyStateRef = validatorHelper.resolveProxyStateUtxo(backendService);</span>
-<span class="nc" id="L680">        Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();</span>
-<span class="nc" id="L681">        Utxo proxyLibraryUtxo = libraryService.getProxyLibraryUtxo();</span>
+<span class="nc" id="L731">        Utxo proxyStateRef = validatorHelper.resolveProxyStateUtxo(backendService);</span>
+<span class="nc" id="L732">        Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();</span>
+<span class="nc" id="L733">        Utxo proxyLibraryUtxo = libraryService.getProxyLibraryUtxo();</span>
 
         // Orphan node: HEAD stays in reference_inputs only, no predecessor consumed
-<span class="nc" id="L684">        String nodeTokenName = NODE_PREFIX_HEX + req.getKey();</span>
-<span class="nc" id="L685">        Asset nodeToken = Asset.builder()</span>
-<span class="nc" id="L686">                .name(&quot;0x&quot; + nodeTokenName)</span>
-<span class="nc" id="L687">                .value(BigInteger.ONE)</span>
-<span class="nc" id="L688">                .build();</span>
+<span class="nc" id="L736">        String nodeTokenName = nodeTokenName(forkCertKey);</span>
+<span class="nc" id="L737">        Asset nodeToken = Asset.builder()</span>
+<span class="nc" id="L738">                .name(&quot;0x&quot; + nodeTokenName)</span>
+<span class="nc" id="L739">                .value(BigInteger.ONE)</span>
+<span class="nc" id="L740">                .build();</span>
 
-<span class="nc" id="L690">        TokenizableDatum.Node newNodeDatum = TokenizableDatum.Node.builder()</span>
-<span class="nc" id="L691">                .key(req.getKey())</span>
-<span class="nc" id="L692">                .next(null)</span>
-<span class="nc" id="L693">                .owner(req.getOwnerPubKeyHash())</span>
-<span class="nc" id="L694">                .assetName(req.getAssetName())</span>
-<span class="nc" id="L695">                .redeemed(false)</span>
-<span class="nc" id="L696">                .build();</span>
+<span class="nc" id="L742">        TokenizableDatum.Node newNodeDatum = TokenizableDatum.Node.builder()</span>
+<span class="nc" id="L743">                .key(forkCertKey)</span>
+<span class="nc" id="L744">                .next(null)</span>
+<span class="nc" id="L745">                .owner(req.getOwnerPubKeyHash())</span>
+<span class="nc" id="L746">                .assetName(req.getAssetName())</span>
+<span class="nc" id="L747">                .redeemed(false)</span>
+<span class="nc" id="L748">                .build();</span>
 
-<span class="nc" id="L698">        PlutusData insertMintRedeemer = ConstrPlutusData.of(1,</span>
-<span class="nc" id="L699">                BytesPlutusData.of(HexUtil.decodeHexString(req.getKey())));</span>
+<span class="nc" id="L750">        PlutusData insertMintRedeemer = ConstrPlutusData.of(1,</span>
+<span class="nc" id="L751">                BytesPlutusData.of(HexUtil.decodeHexString(forkCertKey)));</span>
 
         // Proxy cert token: proves a UVerify cert is present in this tx
-<span class="nc" id="L702">        Asset certToken = Asset.builder()</span>
-<span class="nc" id="L703">                .name(&quot;0x&quot; + req.getKey())</span>
-<span class="nc" id="L704">                .value(BigInteger.ONE)</span>
-<span class="nc" id="L705">                .build();</span>
+<span class="nc" id="L754">        Asset certToken = Asset.builder()</span>
+<span class="nc" id="L755">                .name(&quot;0x&quot; + forkCertKey)</span>
+<span class="nc" id="L756">                .value(BigInteger.ONE)</span>
+<span class="nc" id="L757">                .build();</span>
 
-<span class="nc" id="L707">        ScriptTx tx = new ScriptTx()</span>
-<span class="nc" id="L708">                .readFrom(bootstrapUtxo, proxyStateRef, stateLibraryUtxo, proxyLibraryUtxo, headUtxo)</span>
-<span class="nc" id="L709">                .collectFrom(userUtxo)</span>
-<span class="nc" id="L710">                .withdraw(stateRewardAddress, BigInteger.ZERO, mintStateRedeemer.toPlutusData())</span>
-<span class="nc" id="L711">                .mintAsset(proxyContract, List.of(stateToken), mintProxyRedeemer,</span>
-<span class="nc" id="L712">                        proxyScriptAddress, stateDatum.toPlutusData())</span>
-<span class="nc" id="L713">                .mintAsset(tokenizableScript, List.of(nodeToken), insertMintRedeemer,</span>
-<span class="nc" id="L714">                        tokenizableAddress, newNodeDatum.toPlutusData())</span>
-<span class="nc" id="L715">                .mintAsset(tokenizableScript, List.of(certToken), insertMintRedeemer);</span>
+<span class="nc" id="L759">        ScriptTx tx = new ScriptTx()</span>
+<span class="nc" id="L760">                .readFrom(bootstrapUtxo, proxyStateRef, stateLibraryUtxo, proxyLibraryUtxo, headUtxo)</span>
+<span class="nc" id="L761">                .collectFrom(userUtxo)</span>
+<span class="nc" id="L762">                .withdraw(stateRewardAddress, BigInteger.ZERO, mintStateRedeemer.toPlutusData())</span>
+<span class="nc" id="L763">                .mintAsset(proxyContract, List.of(stateToken), mintProxyRedeemer,</span>
+<span class="nc" id="L764">                        proxyScriptAddress, stateDatum.toPlutusData())</span>
+<span class="nc" id="L765">                .mintAsset(tokenizableScript, List.of(nodeToken), insertMintRedeemer,</span>
+<span class="nc" id="L766">                        tokenizableAddress, newNodeDatum.toPlutusData())</span>
+<span class="nc" id="L767">                .mintAsset(tokenizableScript, List.of(certToken), insertMintRedeemer);</span>
 
-<span class="nc bnc" id="L717" title="All 2 branches missed.">        if (bootstrapDatumEntity.getFee() &gt; 0) {</span>
-<span class="nc" id="L718">            long feePerReceiver = bootstrapDatumEntity.getFee() / stateDatum.getFeeReceivers().size();</span>
-<span class="nc bnc" id="L719" title="All 2 branches missed.">            for (byte[] paymentCredential : stateDatum.getFeeReceivers()) {</span>
-<span class="nc" id="L720">                Credential cred = Credential.fromKey(paymentCredential);</span>
-<span class="nc" id="L721">                String receiverAddress = AddressProvider.getEntAddress(cred, network).toBech32();</span>
-<span class="nc" id="L722">                tx.payToAddress(receiverAddress, Amount.lovelace(BigInteger.valueOf(feePerReceiver)));</span>
-<span class="nc" id="L723">            }</span>
+<span class="nc bnc" id="L769" title="All 2 branches missed.">        if (bootstrapDatumEntity.getFee() &gt; 0) {</span>
+<span class="nc" id="L770">            long feePerReceiver = bootstrapDatumEntity.getFee() / stateDatum.getFeeReceivers().size();</span>
+<span class="nc bnc" id="L771" title="All 2 branches missed.">            for (byte[] paymentCredential : stateDatum.getFeeReceivers()) {</span>
+<span class="nc" id="L772">                Credential cred = Credential.fromKey(paymentCredential);</span>
+<span class="nc" id="L773">                String receiverAddress = AddressProvider.getEntAddress(cred, network).toBech32();</span>
+<span class="nc" id="L774">                tx.payToAddress(receiverAddress, Amount.lovelace(BigInteger.valueOf(feePerReceiver)));</span>
+<span class="nc" id="L775">            }</span>
         }
 
-<span class="nc" id="L726">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
-<span class="nc" id="L727">        Transaction unsignedTx = new QuickTxBuilder(backendService)</span>
-<span class="nc" id="L728">                .compose(tx)</span>
-<span class="nc" id="L729">                .feePayer(req.getInserterAddress())</span>
-<span class="nc" id="L730">                .collateralPayer(req.getInserterAddress())</span>
-<span class="nc" id="L731">                .mergeOutputs(false)</span>
-<span class="nc" id="L732">                .withRequiredSigners(userAddress)</span>
-<span class="nc" id="L733">                .withReferenceScripts(stateContract, proxyContract)</span>
-<span class="nc" id="L734">                .validFrom(currentSlot - 10)</span>
-<span class="nc" id="L735">                .validTo(currentSlot + 600)</span>
-<span class="nc" id="L736">                .build();</span>
+<span class="nc" id="L778">        long currentSlot = CardanoUtils.getLatestSlot(backendService);</span>
+<span class="nc" id="L779">        Transaction unsignedTx = new QuickTxBuilder(backendService)</span>
+<span class="nc" id="L780">                .compose(tx)</span>
+<span class="nc" id="L781">                .feePayer(req.getInserterAddress())</span>
+<span class="nc" id="L782">                .collateralPayer(req.getInserterAddress())</span>
+<span class="nc" id="L783">                .mergeOutputs(false)</span>
+<span class="nc" id="L784">                .withRequiredSigners(userAddress)</span>
+<span class="nc" id="L785">                .withReferenceScripts(stateContract, proxyContract)</span>
+<span class="nc" id="L786">                .validFrom(currentSlot - 10)</span>
+<span class="nc" id="L787">                .validTo(currentSlot + 600)</span>
+<span class="nc" id="L788">                .build();</span>
 
-<span class="nc" id="L738">        return unsignedTx.serializeToHex();</span>
+<span class="nc" id="L790">        return unsignedTx.serializeToHex();</span>
     }
 
     private Optional&lt;StateDatumEntity&gt; resolveStateDatumOptional(String address, String bootstrapTokenName) {
-<span class="nc bnc" id="L742" title="All 4 branches missed.">        if (bootstrapTokenName == null || bootstrapTokenName.isEmpty()) {</span>
-<span class="nc" id="L743">            List&lt;StateDatumEntity&gt; list = stateDatumService.findByOwner(address, 2);</span>
-<span class="nc bnc" id="L744" title="All 2 branches missed.">            if (list.isEmpty()) return Optional.empty();</span>
-<span class="nc" id="L745">            return Optional.of(stateDatumService.selectCheapestStateDatum(list));</span>
+<span class="nc bnc" id="L794" title="All 4 branches missed.">        if (bootstrapTokenName == null || bootstrapTokenName.isEmpty()) {</span>
+<span class="nc" id="L795">            List&lt;StateDatumEntity&gt; list = stateDatumService.findByOwner(address, 2);</span>
+<span class="nc bnc" id="L796" title="All 2 branches missed.">            if (list.isEmpty()) return Optional.empty();</span>
+<span class="nc" id="L797">            return Optional.of(stateDatumService.selectCheapestStateDatum(list));</span>
         } else {
-<span class="nc" id="L747">            return stateDatumService.findByUserAndBootstrapToken(address, bootstrapTokenName);</span>
+<span class="nc" id="L799">            return stateDatumService.findByUserAndBootstrapToken(address, bootstrapTokenName);</span>
         }
     }
 
     private StateDatumEntity resolveStateDatum(String address, String bootstrapTokenName) {
         Optional&lt;StateDatumEntity&gt; opt;
-<span class="nc bnc" id="L753" title="All 4 branches missed.">        if (bootstrapTokenName == null || bootstrapTokenName.isEmpty()) {</span>
-<span class="nc" id="L754">            List&lt;StateDatumEntity&gt; list = stateDatumService.findByOwner(address, 2);</span>
-<span class="nc bnc" id="L755" title="All 2 branches missed.">            if (list.isEmpty()) throw new IllegalStateException(&quot;No UVerify state found for address &quot; + address);</span>
-<span class="nc" id="L756">            opt = Optional.of(stateDatumService.selectCheapestStateDatum(list));</span>
-<span class="nc" id="L757">        } else {</span>
-<span class="nc" id="L758">            opt = stateDatumService.findByUserAndBootstrapToken(address, bootstrapTokenName);</span>
-<span class="nc bnc" id="L759" title="All 2 branches missed.">            if (opt.isEmpty()) throw new IllegalStateException(&quot;No UVerify state found for given bootstrap token&quot;);</span>
+<span class="nc bnc" id="L805" title="All 4 branches missed.">        if (bootstrapTokenName == null || bootstrapTokenName.isEmpty()) {</span>
+<span class="nc" id="L806">            List&lt;StateDatumEntity&gt; list = stateDatumService.findByOwner(address, 2);</span>
+<span class="nc bnc" id="L807" title="All 2 branches missed.">            if (list.isEmpty()) throw new IllegalStateException(&quot;No UVerify state found for address &quot; + address);</span>
+<span class="nc" id="L808">            opt = Optional.of(stateDatumService.selectCheapestStateDatum(list));</span>
+<span class="nc" id="L809">        } else {</span>
+<span class="nc" id="L810">            opt = stateDatumService.findByUserAndBootstrapToken(address, bootstrapTokenName);</span>
+<span class="nc bnc" id="L811" title="All 2 branches missed.">            if (opt.isEmpty()) throw new IllegalStateException(&quot;No UVerify state found for given bootstrap token&quot;);</span>
         }
-<span class="nc" id="L761">        return opt.get();</span>
+<span class="nc" id="L813">        return opt.get();</span>
     }
 
     private static class PredecessorResult {
@@ -768,35 +820,35 @@ public class TokenizableCertificateService {
         private final String successorKey;
 
         private PredecessorResult(boolean headPredecessor, Utxo utxo,
-<span class="nc" id="L771">                                  TokenizableDatum.Node node, String successorKey) {</span>
-<span class="nc" id="L772">            this.headPredecessor = headPredecessor;</span>
-<span class="nc" id="L773">            this.utxo = utxo;</span>
-<span class="nc" id="L774">            this.node = node;</span>
-<span class="nc" id="L775">            this.successorKey = successorKey;</span>
-<span class="nc" id="L776">        }</span>
+<span class="nc" id="L823">                                  TokenizableDatum.Node node, String successorKey) {</span>
+<span class="nc" id="L824">            this.headPredecessor = headPredecessor;</span>
+<span class="nc" id="L825">            this.utxo = utxo;</span>
+<span class="nc" id="L826">            this.node = node;</span>
+<span class="nc" id="L827">            this.successorKey = successorKey;</span>
+<span class="nc" id="L828">        }</span>
 
         static PredecessorResult headPredecessor() {
-<span class="nc" id="L779">            return new PredecessorResult(true, null, null, null);</span>
+<span class="nc" id="L831">            return new PredecessorResult(true, null, null, null);</span>
         }
 
         static PredecessorResult nodePredecessor(Utxo utxo, TokenizableDatum.Node node, String successorKey) {
-<span class="nc" id="L783">            return new PredecessorResult(false, utxo, node, successorKey);</span>
+<span class="nc" id="L835">            return new PredecessorResult(false, utxo, node, successorKey);</span>
         }
 
         boolean isHeadPredecessor() {
-<span class="nc" id="L787">            return headPredecessor;</span>
+<span class="nc" id="L839">            return headPredecessor;</span>
         }
 
         Utxo getUtxo() {
-<span class="nc" id="L791">            return utxo;</span>
+<span class="nc" id="L843">            return utxo;</span>
         }
 
         String getSuccessorKey() {
-<span class="nc" id="L795">            return successorKey;</span>
+<span class="nc" id="L847">            return successorKey;</span>
         }
 
         PlutusData buildUpdatedPredecessorDatum(String newKey) {
-<span class="nc" id="L799">            return node.withNext(newKey).toPlutusData();</span>
+<span class="nc" id="L851">            return node.withNext(newKey).toPlutusData();</span>
         }
     }
 }

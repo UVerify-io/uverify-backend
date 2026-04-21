@@ -18,6 +18,7 @@
 
 package io.uverify.backend.extension.dto.tokenizable;
 
+import io.uverify.backend.dto.CertificateData;
 import io.uverify.backend.extension.enums.ExtensionTransactionType;
 import io.uverify.backend.extension.validators.tokenizable.TokenizableConfig;
 import lombok.Data;
@@ -34,20 +35,20 @@ import lombok.Data;
  *       available node and sends it to the sender's address.&lt;/li&gt;
  * &lt;/ul&gt;
  */
-<span class="nc bnc" id="L37" title="All 72 branches missed.">@Data</span>
+<span class="nc bnc" id="L38" title="All 80 branches missed.">@Data</span>
 public class TokenizableBuildRequest {
 
     /** Operation type: {@code CREATE} (init or insert) or {@code REDEEM} (claim NFT). */
-<span class="nc" id="L41">    private ExtensionTransactionType type;</span>
+<span class="nc" id="L42">    private ExtensionTransactionType type;</span>
 
     /** Bech32 address of the sender — deployer for Init, inserter for Insert, owner for Redeem. */
-<span class="nc" id="L44">    private String senderAddress;</span>
+<span class="nc" id="L45">    private String senderAddress;</span>
 
     /** Tx-hash used to derive the tokenizable-certificate policy ID. */
-<span class="nc" id="L47">    private String initUtxoTxHash;</span>
+<span class="nc" id="L48">    private String initUtxoTxHash;</span>
 
     /** Output index used to derive the tokenizable-certificate policy ID. */
-<span class="nc" id="L50">    private int initUtxoOutputIndex;</span>
+<span class="nc" id="L51">    private int initUtxoOutputIndex;</span>
 
     // ── CREATE / Init fields ──────────────────────────────────────────────────
 
@@ -55,27 +56,42 @@ public class TokenizableBuildRequest {
      * Configuration embedded in the HEAD datum.
      * Required when {@code type == CREATE} and no HEAD node exists yet (Init path).
      */
-<span class="nc" id="L58">    private TokenizableConfig config;</span>
+<span class="nc" id="L59">    private TokenizableConfig config;</span>
 
     // ── CREATE / Insert fields ────────────────────────────────────────────────
 
-    /** Hex-encoded certificate hash that becomes the node key. Required for Insert. */
-<span class="nc" id="L63">    private String key;</span>
+    /**
+     * Certificate to register. The {@code hash} field becomes the node key;
+     * the {@code metadata} field (JSON string) is stored on-chain alongside
+     * the backend-generated fields (template ID, policy ID, init UTxO coords).
+     * Required for CREATE.
+     */
+<span class="nc" id="L69">    private CertificateData certificate;</span>
 
-    /** Hex-encoded payment key hash of the wallet that will own the NFT. Required for Insert. */
-<span class="nc" id="L66">    private String ownerPubKeyHash;</span>
+    /**
+     * Hex-encoded payment key hash of the wallet that will own the NFT.
+     * Required for Insert. If {@code ownerAddress} is provided instead, the backend
+     * will derive the key hash automatically.
+     */
+<span class="nc" id="L76">    private String ownerPubKeyHash;</span>
+
+    /**
+     * Bech32 address of the wallet that will own the NFT.
+     * Alternative to {@code ownerPubKeyHash} — the backend extracts the payment key hash.
+     */
+<span class="nc" id="L82">    private String ownerAddress;</span>
 
     /**
      * Hex-encoded base asset name for the NFT.
      * If CIP-68 is configured, user and reference token names are derived automatically.
      * Required for Insert.
      */
-<span class="nc" id="L73">    private String assetName;</span>
+<span class="nc" id="L89">    private String assetName;</span>
 
     /**
      * Optional bootstrap token name for the UVerify state update.
      * Leave null to let the service pick the cheapest available state.
      */
-<span class="nc" id="L79">    private String bootstrapTokenName;</span>
+<span class="nc" id="L95">    private String bootstrapTokenName;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

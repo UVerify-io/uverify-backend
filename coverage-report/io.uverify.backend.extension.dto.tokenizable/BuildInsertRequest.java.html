@@ -18,6 +18,7 @@
 
 package io.uverify.backend.extension.dto.tokenizable;
 
+import io.uverify.backend.dto.CertificateData;
 import lombok.Data;
 
 /**
@@ -35,31 +36,32 @@ import lombok.Data;
  * smaller than all existing keys), the transaction cannot be built and an
  * error is returned.
  */
-<span class="nc bnc" id="L38" title="All 56 branches missed.">@Data</span>
+<span class="nc bnc" id="L39" title="All 56 branches missed.">@Data</span>
 public class BuildInsertRequest {
     /** Bech32 address of the allowed inserter (pays fees and must sign). */
-<span class="nc" id="L41">    private String inserterAddress;</span>
+<span class="nc" id="L42">    private String inserterAddress;</span>
     /**
-     * Hex-encoded certificate hash that will become the node key.
-     * This same value is submitted to UVerify state as the certificate hash.
+     * Certificate to register. The {@code hash} becomes the node key and is
+     * submitted to UVerify state; {@code metadata} (JSON string) is merged with
+     * backend-generated fields and stored on-chain.
      */
-<span class="nc" id="L46">    private String key;</span>
+<span class="nc" id="L48">    private CertificateData certificate;</span>
     /** Hex-encoded payment key hash of the wallet that will own the NFT. */
-<span class="nc" id="L48">    private String ownerPubKeyHash;</span>
+<span class="nc" id="L50">    private String ownerPubKeyHash;</span>
     /**
      * Hex-encoded base asset name for the NFT.
      * If CIP-68 is configured, user ({@code 000de140}) and reference ({@code 000643b0})
      * token names are derived from this value automatically.
      */
-<span class="nc" id="L54">    private String assetName;</span>
+<span class="nc" id="L56">    private String assetName;</span>
     /** Tx-hash used to derive the tokenizable-certificate policy ID. */
-<span class="nc" id="L56">    private String initUtxoTxHash;</span>
+<span class="nc" id="L58">    private String initUtxoTxHash;</span>
     /** Output index used to derive the tokenizable-certificate policy ID. */
-<span class="nc" id="L58">    private int initUtxoOutputIndex;</span>
+<span class="nc" id="L60">    private int initUtxoOutputIndex;</span>
     /**
      * Optional: name of the bootstrap datum to use for the UVerify state update.
      * Leave empty to let the service pick the cheapest available state for the inserter.
      */
-<span class="nc" id="L63">    private String bootstrapTokenName;</span>
+<span class="nc" id="L65">    private String bootstrapTokenName;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
