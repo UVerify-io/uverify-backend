@@ -179,6 +179,19 @@ public class CardanoBlockchainService {
         }
     }
 
+    public ScriptTx buildUVerifyCertificateScriptTx(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapDatumName) throws ApiException, CborSerializationException {
+        if (bootstrapDatumName != null && !bootstrapDatumName.isEmpty()) {
+            Optional<StateDatumEntity> existingState = stateDatumService.findByUserAndBootstrapToken(address, bootstrapDatumName);
+            if (existingState.isPresent()) {
+                log.debug("Found existing state datum for bootstrap token " + bootstrapDatumName + ". Updating.");
+                return buildUpdateStateDatumScriptTx(address, existingState.get(), uVerifyCertificates);
+            }
+            log.debug("No state datum found for bootstrap token " + bootstrapDatumName + ". Forking new state datum.");
+            return buildForkProxyStateDatumScriptTx(address, uVerifyCertificates, bootstrapDatumName);
+        }
+        return buildUVerifyCertificateScriptTx(address, uVerifyCertificates);
+    }
+
     public ScriptTx buildUVerifyCertificateScriptTx(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException, CborSerializationException {
         List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address, 2);
         if (stateDatumEntities.isEmpty()) {
@@ -221,6 +234,23 @@ public class CardanoBlockchainService {
                 return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
             }
         }
+    }
+
+    public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapDatumName) throws ApiException, CborSerializationException {
+        ScriptTx scriptTx = buildUVerifyCertificateScriptTx(address, uVerifyCertificates, bootstrapDatumName);
+        Address userAddress = new Address(address);
+        PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
+        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
+        long currentSlot = CardanoUtils.getLatestSlot(backendService);
+        return new QuickTxBuilder(backendService)
+                .compose(scriptTx)
+                .validFrom(currentSlot - 10)
+                .validTo(currentSlot + 600)
+                .collateralPayer(address)
+                .feePayer(address)
+                .withRequiredSigners(userAddress)
+                .withReferenceScripts(stateContract, proxyContract)
+                .build();
     }
 
     public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException, CborSerializationException {

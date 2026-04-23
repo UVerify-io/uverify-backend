@@ -65,12 +65,14 @@ public class UVerifyTransactionService {
         return cardanoBlockchainService.submitTransaction(transaction);
     }
 
-    public BuildTransactionResponse buildUVerifyTransaction(List<CertificateData> certificates, String address) {
+    public BuildTransactionResponse buildUVerifyTransaction(List<CertificateData> certificates, String address, String bootstrapDatumName) {
         List<UVerifyCertificate> uVerifyCertificates = certificates.stream()
                 .map(certificate -> UVerifyCertificate.fromCertificateData(certificate, address))
                 .toList();
         try {
-            Transaction transaction = cardanoBlockchainService.persistUVerifyCertificates(address, uVerifyCertificates);
+            Transaction transaction = bootstrapDatumName != null && !bootstrapDatumName.isEmpty()
+                    ? cardanoBlockchainService.persistUVerifyCertificates(address, uVerifyCertificates, bootstrapDatumName)
+                    : cardanoBlockchainService.persistUVerifyCertificates(address, uVerifyCertificates);
             return BuildTransactionResponse.builder()
                     .unsignedTransaction(transaction.serializeToHex())
                     .status(BuildStatus.builder()
@@ -158,7 +160,7 @@ public class UVerifyTransactionService {
         }
 
         try {
-            BuildTransactionResponse buildTransactionResponse = buildUVerifyTransaction(certificates, address);
+            BuildTransactionResponse buildTransactionResponse = buildUVerifyTransaction(certificates, address, null);
             buildTransactionResponse.setType(TransactionType.CUSTOM);
             return buildTransactionResponse;
         } catch (Exception exception) {

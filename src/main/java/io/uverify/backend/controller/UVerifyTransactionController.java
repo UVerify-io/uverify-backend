@@ -85,7 +85,8 @@ public class UVerifyTransactionController {
     public ResponseEntity<?> buildTransaction(@RequestBody BuildTransactionRequest request) {
         try {
             if (request.getType().equals(TransactionType.DEFAULT)) {
-                BuildTransactionResponse buildTransactionResponse = transactionService.buildUVerifyTransaction(request.getCertificates(), request.getAddress());
+                String bootstrapDatumName = request.getBootstrapDatum() != null ? request.getBootstrapDatum().getName() : null;
+                BuildTransactionResponse buildTransactionResponse = transactionService.buildUVerifyTransaction(request.getCertificates(), request.getAddress(), bootstrapDatumName);
                 if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
                     return ResponseEntity.ok(buildTransactionResponse);
                 } else {
