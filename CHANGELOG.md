@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/UVerify-io/uverify-backend/compare/v1.13.2...v1.14.0) (2026-04-23)
+
+
+### Features
+
+* select the bootstrap datum and auto fork if no state is available ([95a2e7b](https://github.com/UVerify-io/uverify-backend/commit/95a2e7bcf445bfeea896f2bff04e1fabe175fce9))
+
 ## [1.13.2](https://github.com/UVerify-io/uverify-backend/compare/v1.13.1...v1.13.2) (2026-04-21)
 
 
