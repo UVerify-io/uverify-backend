@@ -14,10 +14,10 @@ Uverify Backend,io.uverify.backend.extension.validators.converter,ConnectedGoods
 Uverify Backend,io.uverify.backend.extension.validators.converter,SocialHubRedeemerConverter,87,27,5,3,24,5,8,3,5,2
 Uverify Backend,io.uverify.backend.extension.validators.converter,SocialHubDatumConverter,105,1133,6,50,23,218,8,27,2,5
 Uverify Backend,io.uverify.backend.extension.validators.converter,ConnectedGoodsDatumItemConverter,56,65,0,0,17,14,4,3,4,3
-Uverify Backend,io.uverify.backend.service,UVerifyTransactionService,158,71,12,0,63,25,10,6,4,6
+Uverify Backend,io.uverify.backend.service,UVerifyTransactionService,169,73,15,1,64,26,12,6,4,6
 Uverify Backend,io.uverify.backend.service,BootstrapDatumService,9,108,3,5,3,27,4,9,1,8
 Uverify Backend,io.uverify.backend.service,FaucetService,79,280,11,19,29,72,11,12,0,8
-Uverify Backend,io.uverify.backend.service,CardanoBlockchainService,576,2113,70,104,135,441,67,61,6,35
+Uverify Backend,io.uverify.backend.service,CardanoBlockchainService,685,2113,76,104,157,441,72,61,8,35
 Uverify Backend,io.uverify.backend.service,LibraryService,322,796,35,47,102,189,29,35,0,23
 Uverify Backend,io.uverify.backend.service,UVerifyCertificateService,11,22,0,0,2,8,2,4,2,4
 Uverify Backend,io.uverify.backend.service,StateDatumService,61,106,11,5,14,32,10,10,2,10
@@ -95,7 +95,7 @@ Uverify Backend,io.uverify.backend.dto,UserActionResponse.UserActionResponseBuil
 Uverify Backend,io.uverify.backend.controller,ExtensionController,31,6,0,0,6,3,1,1,1,1
 Uverify Backend,io.uverify.backend.controller,CertificateController,38,10,4,0,8,4,5,1,3,1
 Uverify Backend,io.uverify.backend.controller,StatisticsController,14,3,0,0,4,1,2,1,2,1
-Uverify Backend,io.uverify.backend.controller,UVerifyTransactionController,106,72,11,9,23,15,10,5,2,3
+Uverify Backend,io.uverify.backend.controller,UVerifyTransactionController,110,78,12,10,23,16,11,5,2,3
 Uverify Backend,io.uverify.backend.controller,FaucetController,9,38,2,4,2,9,2,5,0,3
 Uverify Backend,io.uverify.backend.controller,UserStateController,83,30,12,2,17,6,8,3,1,3
 Uverify Backend,io.uverify.backend.controller,LibraryController,19,68,5,5,5,16,5,6,0,6
