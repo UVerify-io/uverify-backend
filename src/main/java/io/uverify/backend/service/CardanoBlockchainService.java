@@ -183,8 +183,12 @@ public class CardanoBlockchainService {
         if (bootstrapDatumName != null && !bootstrapDatumName.isEmpty()) {
             Optional<StateDatumEntity> existingState = stateDatumService.findByUserAndBootstrapToken(address, bootstrapDatumName);
             if (existingState.isPresent()) {
-                log.debug("Found existing state datum for bootstrap token " + bootstrapDatumName + ". Updating.");
-                return buildUpdateStateDatumScriptTx(address, existingState.get(), uVerifyCertificates);
+                try {
+                    log.debug("Found existing state datum for bootstrap token " + bootstrapDatumName + ". Updating.");
+                    return buildUpdateStateDatumScriptTx(address, existingState.get(), uVerifyCertificates);
+                } catch (IllegalStateException e) {
+                    log.debug("On-chain state exhausted (stale DB), forking new state for bootstrap {}", bootstrapDatumName);
+                }
             }
             log.debug("No state datum found for bootstrap token " + bootstrapDatumName + ". Forking new state datum.");
             return buildForkProxyStateDatumScriptTx(address, uVerifyCertificates, bootstrapDatumName);
@@ -207,10 +211,35 @@ public class CardanoBlockchainService {
             }
             return buildForkProxyStateDatumScriptTx(address, uVerifyCertificates, optionalBootstrapDatum.get().getTokenName());
         } else {
-            StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities);
-            boolean needsToPayFee = stateDatumEntity.getCountdown() % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
-            if (needsToPayFee) {
-                log.debug("Fee required for updating state datum. Checking for better conditions.");
+            try {
+                StateDatumEntity stateDatumEntity = stateDatumService.selectCheapestStateDatum(stateDatumEntities);
+                boolean needsToPayFee = stateDatumEntity.getCountdown() % stateDatumEntity.getBootstrapDatum().getFeeInterval() == 0;
+                if (needsToPayFee) {
+                    log.debug("Fee required for updating state datum. Checking for better conditions.");
+                    Address userAddress = new Address(address);
+                    Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
+                    if (optionalUserAccountCredential.isEmpty()) {
+                        throw new IllegalArgumentException("Invalid Cardano payment address");
+                    }
+                    Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
+                    if (bootstrapDatum.isEmpty()) {
+                        return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
+                    }
+                    double bootstrapFeeEveryHundredTransactions = (100.0 / bootstrapDatum.get().getFeeInterval()) * bootstrapDatum.get().getFee();
+                    double stateFeeEveryHundredTransactions = (100.0 / stateDatumEntity.getBootstrapDatum().getFeeInterval()) * stateDatumEntity.getBootstrapDatum().getFee();
+                    if (bootstrapFeeEveryHundredTransactions < stateFeeEveryHundredTransactions) {
+                        log.debug("Forking state datum with better conditions.");
+                        return buildForkProxyStateDatumScriptTx(address, uVerifyCertificates, bootstrapDatum.get().getTokenName());
+                    } else {
+                        log.debug("Updating state datum with current conditions.");
+                        return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
+                    }
+                } else {
+                    log.debug("No fee required for updating state datum");
+                    return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
+                }
+            } catch (IllegalStateException e) {
+                log.debug("On-chain state exhausted (stale DB), forking from cheapest bootstrap");
                 Address userAddress = new Address(address);
                 Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
                 if (optionalUserAccountCredential.isEmpty()) {
@@ -218,20 +247,9 @@ public class CardanoBlockchainService {
                 }
                 Optional<BootstrapDatum> bootstrapDatum = bootstrapDatumService.selectCheapestBootstrapDatum(optionalUserAccountCredential.get());
                 if (bootstrapDatum.isEmpty()) {
-                    return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
+                    throw new IllegalArgumentException("No applicable bootstrap datum found for user account");
                 }
-                double bootstrapFeeEveryHundredTransactions = (100.0 / bootstrapDatum.get().getFeeInterval()) * bootstrapDatum.get().getFee();
-                double stateFeeEveryHundredTransactions = (100.0 / stateDatumEntity.getBootstrapDatum().getFeeInterval()) * stateDatumEntity.getBootstrapDatum().getFee();
-                if (bootstrapFeeEveryHundredTransactions < stateFeeEveryHundredTransactions) {
-                    log.debug("Forking state datum with better conditions.");
-                    return buildForkProxyStateDatumScriptTx(address, uVerifyCertificates, bootstrapDatum.get().getTokenName());
-                } else {
-                    log.debug("Updating state datum with current conditions.");
-                    return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
-                }
-            } else {
-                log.debug("No fee required for updating state datum");
-                return buildUpdateStateDatumScriptTx(address, stateDatumEntity, uVerifyCertificates);
+                return buildForkProxyStateDatumScriptTx(address, uVerifyCertificates, bootstrapDatum.get().getTokenName());
             }
         }
     }
@@ -355,6 +373,9 @@ public class CardanoBlockchainService {
         Utxo utxo = optionalUtxo.get();
 
         StateDatum nextStateDatum = StateDatum.fromPreviousStateDatum(utxo.getInlineDatum());
+        if (nextStateDatum.getCountdown() < 0) {
+            throw new IllegalStateException("on-chain state exhausted");
+        }
         nextStateDatum.setCertificates(uVerifyCertificates);
 
         Utxo proxyStateUtxo;
