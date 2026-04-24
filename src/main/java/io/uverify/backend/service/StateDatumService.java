@@ -115,8 +115,11 @@ public class StateDatumService {
     }
 
     public Optional<StateDatumEntity> findByUserAndBootstrapToken(String address, String bootstrapTokenName) {
-        return stateDatumRepository.findByUserAndBootstrapToken(
+        List<StateDatumEntity> results = stateDatumRepository.findByUserAndBootstrapToken(
                 HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)), bootstrapTokenName);
+        if (results.isEmpty()) return Optional.empty();
+        if (results.size() == 1) return Optional.of(results.get(0));
+        return Optional.of(selectCheapestStateDatum(results));
     }
 
     @Transactional

@@ -228,7 +228,7 @@ public class UserStateService {
 
     public boolean hasBootstrapAccess(String address, String tokenName) {
         String userCredential = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address));
-        return stateDatumRepository.findByUserAndBootstrapToken(userCredential, tokenName).isPresent();
+        return !stateDatumRepository.findByUserAndBootstrapToken(userCredential, tokenName).isEmpty();
     }
 
     private boolean hasValidTimeframe(long timestamp) {
