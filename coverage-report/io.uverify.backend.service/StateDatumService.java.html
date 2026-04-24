@@ -115,15 +115,18 @@ public class StateDatumService {
     }
 
     public Optional&lt;StateDatumEntity&gt; findByUserAndBootstrapToken(String address, String bootstrapTokenName) {
-<span class="nc" id="L118">        return stateDatumRepository.findByUserAndBootstrapToken(</span>
+<span class="nc" id="L118">        List&lt;StateDatumEntity&gt; results = stateDatumRepository.findByUserAndBootstrapToken(</span>
 <span class="nc" id="L119">                HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)), bootstrapTokenName);</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (results.isEmpty()) return Optional.empty();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (results.size() == 1) return Optional.of(results.get(0));</span>
+<span class="nc" id="L122">        return Optional.of(selectCheapestStateDatum(results));</span>
     }
 
     @Transactional
     public void handleRollbackToSlot(long slot) {
-<span class="fc" id="L124">        stateDatumUpdateRepository.deleteAllAfterSlot(slot);</span>
-<span class="fc" id="L125">        stateDatumRepository.deleteAllAfterSlot(slot);</span>
-<span class="fc" id="L126">        stateDatumRepository.handleRollback();</span>
-<span class="fc" id="L127">    }</span>
+<span class="fc" id="L127">        stateDatumUpdateRepository.deleteAllAfterSlot(slot);</span>
+<span class="fc" id="L128">        stateDatumRepository.deleteAllAfterSlot(slot);</span>
+<span class="fc" id="L129">        stateDatumRepository.handleRollback();</span>
+<span class="fc" id="L130">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
