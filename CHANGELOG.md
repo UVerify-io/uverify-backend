@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.1](https://github.com/UVerify-io/uverify-backend/compare/v1.14.0...v1.14.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* fork new state once the transactions of a state are fully consumed ([5578804](https://github.com/UVerify-io/uverify-backend/commit/5578804b90b56e56fc24822ee9d0108c2f85ee80))
+
 ## [1.14.0](https://github.com/UVerify-io/uverify-backend/compare/v1.13.2...v1.14.0) (2026-04-23)
 
 
