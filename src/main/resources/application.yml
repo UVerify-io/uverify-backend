@@ -99,6 +99,9 @@ cardano:
     blockfrost:
       projectId: ${BLOCKFROST_PROJECT_ID}
       baseUrl: ${BLOCKFROST_BASE_URL}
+    query:
+      baseUrl: ${CARDANO_QUERY_BASE_URL:}
+      projectId: ${CARDANO_QUERY_PROJECT_ID:}
 
 extensions:
   connected-goods:

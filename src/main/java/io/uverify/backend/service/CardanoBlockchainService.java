@@ -98,12 +98,15 @@ public class CardanoBlockchainService {
     @Autowired
     private final LibraryService libraryService;
     private BackendService backendService;
+    private BackendService queryBackendService;
 
     @Autowired
     public CardanoBlockchainService(@Value("${cardano.service.user.address}") String serviceUserAddress,
                                     @Value("${cardano.backend.service.type}") String cardanoBackendServiceType,
                                     @Value("${cardano.backend.blockfrost.baseUrl}") String blockfrostBaseUrl,
                                     @Value("${cardano.backend.blockfrost.projectId}") String blockfrostProjectId,
+                                    @Value("${cardano.backend.query.baseUrl:}") String queryBaseUrl,
+                                    @Value("${cardano.backend.query.projectId:}") String queryProjectId,
                                     @Value("${cardano.network}") String network,
                                     UVerifyCertificateService uVerifyCertificateService,
                                     ValidatorHelper validatorHelper,
@@ -129,6 +132,13 @@ public class CardanoBlockchainService {
         } else if (cardanoBackendServiceType.equals("koios")) {
             this.backendService = new KoiosBackendService(Constants.KOIOS_PREPROD_URL);
         }
+
+        if (!queryBaseUrl.isEmpty()) {
+            String projectId = queryProjectId.isEmpty() ? "localtest" : queryProjectId;
+            this.queryBackendService = new BFBackendService(queryBaseUrl, projectId);
+        } else {
+            this.queryBackendService = this.backendService;
+        }
     }
 
     public Result<String> submitTransaction(Transaction transaction, Account signer) throws CborSerializationException, ApiException {
@@ -141,6 +151,9 @@ public class CardanoBlockchainService {
     }
 
     public void setBackendService(BackendService backendService) {
+        if (this.queryBackendService == this.backendService) {
+            this.queryBackendService = backendService;
+        }
         this.backendService = backendService;
     }
 
@@ -364,7 +377,7 @@ public class CardanoBlockchainService {
 
         String unit = proxyScriptHash + stateDatum.getId();
         String proxyScriptAddress = AddressProvider.getEntAddress(uverifyProxyContract, fromCardanoNetwork(network)).toBech32();
-        Optional<Utxo> optionalUtxo = ValidatorUtils.getCurrentUtxoByUnit(proxyScriptAddress, unit, backendService);
+        Optional<Utxo> optionalUtxo = ValidatorUtils.getCurrentUtxoByUnit(proxyScriptAddress, unit, queryBackendService);
 
         if (optionalUtxo.isEmpty()) {
             throw new IllegalArgumentException("State token not found in current UTxO set");
