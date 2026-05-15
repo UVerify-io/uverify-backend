@@ -40,12 +40,14 @@ import com.bloxbean.cardano.client.plutus.blueprint.PlutusBlueprintUtil;
 import com.bloxbean.cardano.client.plutus.blueprint.model.PlutusVersion;
 import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
+import com.bloxbean.cardano.client.function.TxBuilder;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
 import com.bloxbean.cardano.client.quicktx.Tx;
 import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.client.transaction.util.TransactionUtil;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.core.model.Redeemer;
 import com.bloxbean.cardano.yaci.core.model.RedeemerTag;
@@ -54,7 +56,9 @@ import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import com.bloxbean.cardano.yaci.store.events.EventMetadata;
 import com.bloxbean.cardano.yaci.store.events.TransactionEvent;
 import io.uverify.backend.dto.BuildStatus;
+import io.uverify.backend.dto.BuildTransactionResponse;
 import io.uverify.backend.dto.ProxyInitResponse;
+import io.uverify.backend.exception.UVerifyTransactionException;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.StateDatumEntity;
@@ -78,6 +82,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 import static io.uverify.backend.util.ValidatorUtils.*;
@@ -97,6 +102,8 @@ public class CardanoBlockchainService {
     private final Address serviceUserAddress;
     @Autowired
     private final LibraryService libraryService;
+    @Autowired
+    private final PendingTransactionCache pendingTransactionCache;
     private BackendService backendService;
     private BackendService queryBackendService;
 
@@ -111,7 +118,8 @@ public class CardanoBlockchainService {
                                     UVerifyCertificateService uVerifyCertificateService,
                                     ValidatorHelper validatorHelper,
                                     BootstrapDatumService bootstrapDatumService, StateDatumService stateDatumService,
-                                    LibraryService libraryService
+                                    LibraryService libraryService,
+                                    PendingTransactionCache pendingTransactionCache
     ) {
         this.bootstrapDatumService = bootstrapDatumService;
         this.stateDatumService = stateDatumService;
@@ -120,6 +128,7 @@ public class CardanoBlockchainService {
         this.serviceUserAddress = new Address(serviceUserAddress);
         this.validatorHelper = validatorHelper;
         this.libraryService = libraryService;
+        this.pendingTransactionCache = pendingTransactionCache;
 
         if (cardanoBackendServiceType.equals("blockfrost")) {
             if (blockfrostProjectId == null || blockfrostProjectId.isEmpty()) {
@@ -167,7 +176,7 @@ public class CardanoBlockchainService {
         }
     }
 
-    public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException {
+    public Transaction updateStateDatum(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException, CborSerializationException {
         Optional<StateDatumEntity> stateDatumEntity = Optional.empty();
         if (bootstrapTokenName.isEmpty()) {
             List<StateDatumEntity> stateDatumEntities = stateDatumService.findByOwner(address, 2);
@@ -272,16 +281,37 @@ public class CardanoBlockchainService {
         Address userAddress = new Address(address);
         PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
         PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
+        String proxyContractAddress = validatorHelper.getProxyContractAddress();
+        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
         long currentSlot = CardanoUtils.getLatestSlot(backendService);
-        return new QuickTxBuilder(backendService)
-                .compose(scriptTx)
-                .validFrom(currentSlot - 10)
-                .validTo(currentSlot + 600)
-                .collateralPayer(address)
-                .feePayer(address)
-                .withRequiredSigners(userAddress)
-                .withReferenceScripts(stateContract, proxyContract)
-                .build();
+        AtomicReference<Transaction> captured = new AtomicReference<>();
+        Transaction transaction;
+        try {
+            transaction = new QuickTxBuilder(backendService)
+                    .compose(scriptTx)
+                    .validFrom(currentSlot - 10)
+                    .validTo(currentSlot + 600)
+                    .collateralPayer(address)
+                    .feePayer(address)
+                    .withRequiredSigners(userAddress)
+                    .withReferenceScripts(stateContract, proxyContract)
+                    .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
+                    .build();
+        } catch (UVerifyTransactionException e) {
+            throw e;
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (msg.contains("collateral")) {
+                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, e.getMessage());
+            }
+            if (e instanceof ApiException ae) throw ae;
+            if (e instanceof CborSerializationException cse) throw cse;
+            throw new RuntimeException(e);
+        }
+        pendingTransactionCache.populate(
+                captured.get() != null ? captured.get() : transaction,
+                proxyContractAddress, proxyScriptHash);
+        return transaction;
     }
 
     public Transaction persistUVerifyCertificates(String address, List<UVerifyCertificate> uVerifyCertificates) throws ApiException, CborSerializationException {
@@ -289,16 +319,37 @@ public class CardanoBlockchainService {
         Address userAddress = new Address(address);
         PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
         PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
+        String proxyContractAddress = validatorHelper.getProxyContractAddress();
+        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
         long currentSlot = CardanoUtils.getLatestSlot(backendService);
-        return new QuickTxBuilder(backendService)
-                .compose(scriptTx)
-                .validFrom(currentSlot - 10)
-                .validTo(currentSlot + 600)
-                .collateralPayer(address)
-                .feePayer(address)
-                .withRequiredSigners(userAddress)
-                .withReferenceScripts(stateContract, proxyContract)
-                .build();
+        AtomicReference<Transaction> captured = new AtomicReference<>();
+        Transaction transaction;
+        try {
+            transaction = new QuickTxBuilder(backendService)
+                    .compose(scriptTx)
+                    .validFrom(currentSlot - 10)
+                    .validTo(currentSlot + 600)
+                    .collateralPayer(address)
+                    .feePayer(address)
+                    .withRequiredSigners(userAddress)
+                    .withReferenceScripts(stateContract, proxyContract)
+                    .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
+                    .build();
+        } catch (UVerifyTransactionException e) {
+            throw e;
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (msg.contains("collateral")) {
+                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, e.getMessage());
+            }
+            if (e instanceof ApiException ae) throw ae;
+            if (e instanceof CborSerializationException cse) throw cse;
+            throw new RuntimeException(e);
+        }
+        pendingTransactionCache.populate(
+                captured.get() != null ? captured.get() : transaction,
+                proxyContractAddress, proxyScriptHash);
+        return transaction;
     }
 
     public ProxyInitResponse initProxyContract() throws ApiException, CborSerializationException {
@@ -377,7 +428,12 @@ public class CardanoBlockchainService {
 
         String unit = proxyScriptHash + stateDatum.getId();
         String proxyScriptAddress = AddressProvider.getEntAddress(uverifyProxyContract, fromCardanoNetwork(network)).toBech32();
-        Optional<Utxo> optionalUtxo = ValidatorUtils.getCurrentUtxoByUnit(proxyScriptAddress, unit, queryBackendService);
+        Optional<Utxo> optionalUtxo = pendingTransactionCache.getPendingStateUtxo(unit);
+        if (optionalUtxo.isEmpty()) {
+            optionalUtxo = ValidatorUtils.getCurrentUtxoByUnit(proxyScriptAddress, unit, queryBackendService);
+        } else {
+            log.debug("Using pending chained UTxO for unit {} (skipping chain query)", unit);
+        }
 
         if (optionalUtxo.isEmpty()) {
             throw new IllegalArgumentException("State token not found in current UTxO set");
@@ -429,7 +485,7 @@ public class CardanoBlockchainService {
         return updateStateTokenTx;
     }
 
-    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
+    public Transaction updateStateDatum(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException, CborSerializationException {
         Address userAddress = new Address(address);
         PlutusScript uverifyStateContract = validatorHelper.getParameterizedUVerifyStateContract();
         PlutusScript uverifyProxyContract = validatorHelper.getParameterizedProxyContract();
@@ -440,15 +496,36 @@ public class CardanoBlockchainService {
         long validFrom = currentSlot - 10;
         long transactionTtl = currentSlot + 600; // 10 minutes
 
-        QuickTxBuilder quickTxBuilder = new QuickTxBuilder(backendService);
-        return quickTxBuilder.compose(updateStateTokenTx)
-                .validFrom(validFrom)
-                .validTo(transactionTtl)
-                .collateralPayer(address)
-                .feePayer(address)
-                .withRequiredSigners(userAddress)
-                .withReferenceScripts(uverifyStateContract, uverifyProxyContract)
-                .build();
+        String proxyContractAddress = validatorHelper.getProxyContractAddress();
+        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(uverifyProxyContract);
+        AtomicReference<Transaction> captured = new AtomicReference<>();
+        Transaction transaction;
+        try {
+            transaction = new QuickTxBuilder(backendService)
+                    .compose(updateStateTokenTx)
+                    .validFrom(validFrom)
+                    .validTo(transactionTtl)
+                    .collateralPayer(address)
+                    .feePayer(address)
+                    .withRequiredSigners(userAddress)
+                    .withReferenceScripts(uverifyStateContract, uverifyProxyContract)
+                    .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
+                    .build();
+        } catch (UVerifyTransactionException e) {
+            throw e;
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (msg.contains("collateral")) {
+                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, e.getMessage());
+            }
+            if (e instanceof ApiException ae) throw ae;
+            if (e instanceof CborSerializationException cse) throw cse;
+            throw new RuntimeException(e);
+        }
+        pendingTransactionCache.populate(
+                captured.get() != null ? captured.get() : transaction,
+                proxyContractAddress, proxyScriptHash);
+        return transaction;
     }
 
     public Transaction invalidateState(Address userAddress, String transactionId) throws ApiException {
@@ -760,10 +837,19 @@ public class CardanoBlockchainService {
         List<Utxo> userUtxos = utxoSupplier.getAll(address);
 
         if (userUtxos.isEmpty()) {
-            throw new IllegalArgumentException("No UTXOs found for user address");
+            throw new UVerifyTransactionException(BuildStatusCode.INSUFFICIENT_FUNDS, "No UTXOs found for user address");
         }
 
-        Utxo userUtxo = userUtxos.get(0);
+        List<Utxo> availableUtxos = userUtxos.stream()
+                .filter(u -> !pendingTransactionCache.isWalletUtxoLocked(u.getTxHash(), u.getOutputIndex())
+                        && !pendingTransactionCache.isCollateralUtxoLocked(u.getTxHash(), u.getOutputIndex()))
+                .toList();
+
+        if (availableUtxos.isEmpty()) {
+            throw new UVerifyTransactionException(BuildStatusCode.PENDING_TRANSACTION, "No unlocked UTxOs available; a previous transaction is still pending confirmation. Please retry in a few seconds.");
+        }
+
+        Utxo userUtxo = availableUtxos.get(0);
         String index = HexUtil.encodeHexString(ByteBuffer.allocate(2)
                 .order(ByteOrder.LITTLE_ENDIAN)
                 .putShort((short) userUtxo.getOutputIndex())
@@ -821,20 +907,42 @@ public class CardanoBlockchainService {
 
         Address userAddress = new Address(address);
         PlutusScript stateContract = validatorHelper.getParameterizedUVerifyStateContract();
+        PlutusScript proxyContract = validatorHelper.getParameterizedProxyContract();
 
         long currentSlot = CardanoUtils.getLatestSlot(backendService);
         long validFrom = currentSlot - 10;
         long transactionTtl = currentSlot + 600; // 10 minutes
 
-        return new QuickTxBuilder(backendService)
-                .compose(scriptTransaction)
-                .validFrom(validFrom)
-                .validTo(transactionTtl)
-                .withReferenceScripts(stateContract)
-                .collateralPayer(address)
-                .feePayer(address)
-                .withRequiredSigners(userAddress)
-                .build();
+        String proxyContractAddress = validatorHelper.getProxyContractAddress();
+        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
+        AtomicReference<Transaction> captured = new AtomicReference<>();
+        Transaction transaction;
+        try {
+            transaction = new QuickTxBuilder(backendService)
+                    .compose(scriptTransaction)
+                    .validFrom(validFrom)
+                    .validTo(transactionTtl)
+                    .withReferenceScripts(stateContract)
+                    .collateralPayer(address)
+                    .feePayer(address)
+                    .withRequiredSigners(userAddress)
+                    .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
+                    .build();
+        } catch (UVerifyTransactionException e) {
+            throw e;
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (msg.contains("collateral")) {
+                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, e.getMessage());
+            }
+            if (e instanceof ApiException ae) throw ae;
+            if (e instanceof CborSerializationException cse) throw cse;
+            throw new RuntimeException(e);
+        }
+        pendingTransactionCache.populate(
+                captured.get() != null ? captured.get() : transaction,
+                proxyContractAddress, proxyScriptHash);
+        return transaction;
     }
 
     private Optional<StateRedeemer> findWithdrawalRedeemer(Map<String, BigInteger> withdrawals, List<Redeemer> redeemers, Address address) {
@@ -877,6 +985,8 @@ public class CardanoBlockchainService {
         for (com.bloxbean.cardano.yaci.helper.model.Transaction transaction : transactionEvent.getTransactions()) {
             if (transaction.isInvalid())
                 continue;
+
+            pendingTransactionCache.clearLocksForTransaction(transaction.getTxHash());
 
             final String libraryContractAddress = libraryService.getLibraryAddress();
             boolean hasLibraryInteraction = transaction.getBody().getOutputs() != null && transaction.getBody().getOutputs().stream().anyMatch(utxo -> utxo.getAddress().equals(libraryContractAddress));
@@ -980,6 +1090,68 @@ public class CardanoBlockchainService {
                 }
             }
         }
+    }
+
+    public BuildTransactionResponse buildPrepareCollateralTx(String senderAddress) throws ApiException, CborSerializationException {
+        UtxoSupplier utxoSupplier = new DefaultUtxoSupplier(backendService.getUtxoService());
+        List<Utxo> allUtxos = utxoSupplier.getAll(senderAddress);
+
+        if (allUtxos.isEmpty()) {
+            return BuildTransactionResponse.builder()
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.INSUFFICIENT_FUNDS)
+                            .message("No UTxOs found for address")
+                            .build())
+                    .build();
+        }
+
+        List<Utxo> availableUtxos = allUtxos.stream()
+                .filter(u -> !pendingTransactionCache.isWalletUtxoLocked(u.getTxHash(), u.getOutputIndex())
+                        && !pendingTransactionCache.isCollateralUtxoLocked(u.getTxHash(), u.getOutputIndex()))
+                .toList();
+
+        if (availableUtxos.isEmpty()) {
+            return BuildTransactionResponse.builder()
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.PENDING_TRANSACTION)
+                            .message("All UTxOs are locked by in-flight transactions. Please retry shortly.")
+                            .build())
+                    .build();
+        }
+
+        BigInteger minCollateralLovelace = BigInteger.valueOf(5_000_000);
+        boolean hasCollateralCandidate = availableUtxos.stream()
+                .anyMatch(u -> u.getAmount().stream()
+                        .filter(a -> a.getUnit().equals("lovelace"))
+                        .anyMatch(a -> a.getQuantity().compareTo(minCollateralLovelace) >= 0));
+
+        if (hasCollateralCandidate && availableUtxos.size() >= 2) {
+            return BuildTransactionResponse.builder()
+                    .status(BuildStatus.builder()
+                            .code(BuildStatusCode.COLLATERAL_ALREADY_AVAILABLE)
+                            .build())
+                    .build();
+        }
+
+        long currentSlot = CardanoUtils.getLatestSlot(backendService);
+        Tx splitTx = new Tx()
+                .payToAddress(senderAddress, Amount.lovelace(minCollateralLovelace))
+                .from(senderAddress);
+
+        Transaction unsignedTx = new QuickTxBuilder(backendService)
+                .compose(splitTx)
+                .feePayer(senderAddress)
+                .mergeOutputs(false)
+                .validFrom(currentSlot - 10)
+                .validTo(currentSlot + 600)
+                .build();
+
+        return BuildTransactionResponse.builder()
+                .unsignedTransaction(unsignedTx.serializeToHex())
+                .status(BuildStatus.builder()
+                        .code(BuildStatusCode.SUCCESS)
+                        .build())
+                .build();
     }
 
     /**

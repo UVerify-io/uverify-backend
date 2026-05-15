@@ -16,14 +16,20 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.enums;
+package io.uverify.backend.exception;
 
-public enum BuildStatusCode {
-    SUCCESS,
-    ERROR,
-    UNKNOWN_ERROR,
-    INSUFFICIENT_FUNDS,
-    PENDING_TRANSACTION,
-    COLLATERAL_REQUIRED,
-    COLLATERAL_ALREADY_AVAILABLE,
+import io.uverify.backend.enums.BuildStatusCode;
+
+public class UVerifyTransactionException extends RuntimeException {
+
+    private final BuildStatusCode statusCode;
+
+    public UVerifyTransactionException(BuildStatusCode statusCode, String message) {
+        super(message);
+        this.statusCode = statusCode;
+    }
+
+    public BuildStatusCode getStatusCode() {
+        return statusCode;
+    }
 }

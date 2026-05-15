@@ -19,15 +19,18 @@
 package io.uverify.backend.service;
 
 import co.nstant.in.cbor.CborException;
+import com.bloxbean.cardano.client.api.UtxoSupplier;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Amount;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.api.model.Utxo;
+import com.bloxbean.cardano.client.backend.api.DefaultUtxoSupplier;
 import com.bloxbean.cardano.client.exception.AddressExcepion;
 import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.client.transaction.util.TransactionUtil;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
 import io.restassured.RestAssured;
@@ -40,6 +43,7 @@ import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.StateDatumEntity;
 import io.uverify.backend.entity.UVerifyCertificateEntity;
 import io.uverify.backend.enums.BuildStatusCode;
+import io.uverify.backend.exception.UVerifyTransactionException;
 import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.extension.service.FractionizedCertificateService;
@@ -69,6 +73,9 @@ import static io.uverify.backend.simulation.SimulationUtils.simulateAddressUtxo;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
 public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
+
+    @Autowired
+    private PendingTransactionCache pendingTransactionCache;
 
     @Autowired
     public CardanoBlockchainServiceTest(@LocalServerPort int port,
@@ -605,8 +612,86 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Assertions.assertTrue(result.isSuccessful());
     }
 
+    /**
+     * Builds two update transactions back-to-back without confirming the first.
+     * After T1 is built, populate() must store the chained state UTxO in the pending cache.
+     * We verify this directly on the cache (not through T2's inputs) because the
+     * QuickTxBuilder/ScriptTx internal input ordering is an implementation detail.
+     */
     @Test
-    @Order(20)
+    @Order(21)
+    public void testRapidConsecutiveUpdatesCachesChainedUtxo() throws ApiException, CborSerializationException, InterruptedException, CborException, AddressExcepion {
+        Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
+        Assertions.assertTrue(paymentCredentialHash.isPresent());
+
+        List<UVerifyCertificate> certs = List.of(UVerifyCertificate.builder()
+                .algorithm("SHA256")
+                .hash("aaa1f076fb4feeb1f934ac9b8c0606852e93d3a73fb2596a51c92e480e246897")
+                .issuer(Hex.encodeHexString(paymentCredentialHash.get()))
+                .extra("{\"chaining\":\"test\"}")
+                .build());
+
+        Transaction t1 = cardanoBlockchainService.persistUVerifyCertificates(
+                userAccount.baseAddress(), certs, "uverify_proxy_test_token");
+        String t1Hash = TransactionUtil.getTxHash(t1).toLowerCase();
+
+        // Verify populate() cached the chained state UTxO — this is the key invariant.
+        StateDatumEntity stateDatum = stateDatumService
+                .findByUserAndBootstrapToken(userAccount.baseAddress(), "uverify_proxy_test_token")
+                .orElseThrow(() -> new IllegalStateException("State datum not found"));
+        String proxyScriptHash = validatorHelper.getParameterizedProxyContract().getPolicyId();
+        String unit = proxyScriptHash + stateDatum.getId();
+
+        Optional<Utxo> cachedUtxo = pendingTransactionCache.getPendingStateUtxo(unit);
+        Assertions.assertTrue(cachedUtxo.isPresent(),
+                "populate() must cache the chained state UTxO immediately after T1 is built");
+        Assertions.assertEquals(t1Hash, cachedUtxo.get().getTxHash().toLowerCase(),
+                "Cached UTxO must reference T1's transaction hash so T2 chains off T1");
+
+        Result<String> r1 = cardanoBlockchainService.submitTransaction(t1, userAccount);
+        Assertions.assertTrue(r1.isSuccessful());
+        if (r1.isSuccessful()) {
+            simulateYaciStoreBehavior(r1.getValue(), t1);
+        }
+    }
+
+    /**
+     * Locks every wallet UTxO currently visible on-chain for the test user, then verifies that a
+     * fork attempt throws the expected error instead of reusing a locked UTxO.
+     */
+    @Test
+    @Order(22)
+    public void testAllWalletUtxosLockedBlocksForkAttempt() throws ApiException {
+        Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
+        Assertions.assertTrue(paymentCredentialHash.isPresent());
+
+        List<UVerifyCertificate> certs = List.of(UVerifyCertificate.builder()
+                .algorithm("SHA256")
+                .hash("bbb1f076fb4feeb1f934ac9b8c0606852e93d3a73fb2596a51c92e480e246897")
+                .issuer(Hex.encodeHexString(paymentCredentialHash.get()))
+                .extra("{\"lock\":\"test\"}")
+                .build());
+
+        UtxoSupplier utxoSupplier = new DefaultUtxoSupplier(yaciCardanoContainer.getBackendService().getUtxoService());
+        List<Utxo> userUtxos = utxoSupplier.getAll(userAccount.baseAddress());
+        Assertions.assertFalse(userUtxos.isEmpty(), "User must have UTxOs before the locking test");
+
+        for (Utxo u : userUtxos) {
+            pendingTransactionCache.lockWalletUtxo(u.getTxHash(), u.getOutputIndex());
+        }
+
+        UVerifyTransactionException exception = Assertions.assertThrows(UVerifyTransactionException.class, () ->
+                cardanoBlockchainService.forkProxyStateDatum(
+                        userAccount.baseAddress(), certs, "uverify_proxy_test_token"));
+        Assertions.assertTrue(exception.getMessage().contains("No unlocked UTxOs available"));
+        Assertions.assertEquals(BuildStatusCode.PENDING_TRANSACTION, exception.getStatusCode());
+
+        pendingTransactionCache.clearWalletLocks();
+        pendingTransactionCache.clearCollateralLocks();
+    }
+
+    @Test
+    @Order(23)
     public void testPersistUVerifyBatchCertificates() throws ApiException, CborSerializationException, InterruptedException, CborException, AddressExcepion {
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());

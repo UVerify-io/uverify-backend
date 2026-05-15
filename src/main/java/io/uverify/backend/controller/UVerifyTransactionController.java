@@ -31,6 +31,7 @@ import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.dto.SubmitTransactionRequest;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
+import org.springframework.http.HttpStatus;
 import io.uverify.backend.service.UVerifyTransactionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,6 +67,14 @@ public class UVerifyTransactionController {
         }
     }
 
+    private ResponseEntity<?> toResponse(BuildTransactionResponse response) {
+        return switch (response.getStatus().getCode()) {
+            case SUCCESS -> ResponseEntity.ok(response);
+            case PENDING_TRANSACTION -> ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            default -> ResponseEntity.badRequest().body(response);
+        };
+    }
+
     @PostMapping("/build")
     @Operation(
             summary = "Build a transaction",
@@ -86,26 +95,11 @@ public class UVerifyTransactionController {
         try {
             if (request.getType().equals(TransactionType.DEFAULT)) {
                 String bootstrapDatumName = request.getBootstrapDatum() != null ? request.getBootstrapDatum().getName() : null;
-                BuildTransactionResponse buildTransactionResponse = transactionService.buildUVerifyTransaction(request.getCertificates(), request.getAddress(), bootstrapDatumName);
-                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
-                    return ResponseEntity.ok(buildTransactionResponse);
-                } else {
-                    return ResponseEntity.badRequest().body(buildTransactionResponse);
-                }
+                return toResponse(transactionService.buildUVerifyTransaction(request.getCertificates(), request.getAddress(), bootstrapDatumName));
             } else if (request.getType().equals(TransactionType.BOOTSTRAP)) {
-                BuildTransactionResponse buildTransactionResponse = transactionService.buildBootstrapDatum(request.getBootstrapDatum());
-                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
-                    return ResponseEntity.ok(buildTransactionResponse);
-                } else {
-                    return ResponseEntity.badRequest().body(buildTransactionResponse);
-                }
+                return toResponse(transactionService.buildBootstrapDatum(request.getBootstrapDatum()));
             } else if (request.getType().equals(TransactionType.CUSTOM)) {
-                BuildTransactionResponse buildTransactionResponse = transactionService.buildCustomTransaction(request.getCertificates(), request.getAddress(), request.getBootstrapDatum().getName());
-                if (buildTransactionResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
-                    return ResponseEntity.ok(buildTransactionResponse);
-                } else {
-                    return ResponseEntity.badRequest().body(buildTransactionResponse);
-                }
+                return toResponse(transactionService.buildCustomTransaction(request.getCertificates(), request.getAddress(), request.getBootstrapDatum().getName()));
             } else if (request.getType().equals(TransactionType.INIT)) {
                 ProxyInitResponse proxyInitResponse = transactionService.buildInitProxyTx();
                 if (proxyInitResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {
