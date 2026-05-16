@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.15.0](https://github.com/UVerify-io/uverify-backend/compare/v1.14.2...v1.15.0) (2026-05-16)
+
+
+### Features
+
+* allow fetching from different source than backend service ([11f24bc](https://github.com/UVerify-io/uverify-backend/commit/11f24bcbc3bfb8465cab38353addddc7916da6e3))
+* implement a better utxo management and proper error messages ([a151dc8](https://github.com/UVerify-io/uverify-backend/commit/a151dc8e7d79598caceedd8762613dbe95c4ce3c))
+* implement a better utxo management and proper error messages ([da5ea3f](https://github.com/UVerify-io/uverify-backend/commit/da5ea3faf0611688e3d4663ea330f01f13408fb1))
+
 ## [1.14.2](https://github.com/UVerify-io/uverify-backend/compare/v1.14.1...v1.14.2) (2026-04-24)
 
 
