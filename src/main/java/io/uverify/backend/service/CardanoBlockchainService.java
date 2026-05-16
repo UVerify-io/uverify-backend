@@ -841,8 +841,8 @@ public class CardanoBlockchainService {
         }
 
         List<Utxo> availableUtxos = userUtxos.stream()
-                .filter(u -> !pendingTransactionCache.isWalletUtxoLocked(u.getTxHash(), u.getOutputIndex())
-                        && !pendingTransactionCache.isCollateralUtxoLocked(u.getTxHash(), u.getOutputIndex()))
+                .filter(walletUtxo -> !pendingTransactionCache.isWalletUtxoLocked(walletUtxo.getTxHash(), walletUtxo.getOutputIndex())
+                        && !pendingTransactionCache.isCollateralUtxoLocked(walletUtxo.getTxHash(), walletUtxo.getOutputIndex()))
                 .toList();
 
         if (availableUtxos.isEmpty()) {
@@ -1106,8 +1106,8 @@ public class CardanoBlockchainService {
         }
 
         List<Utxo> availableUtxos = allUtxos.stream()
-                .filter(u -> !pendingTransactionCache.isWalletUtxoLocked(u.getTxHash(), u.getOutputIndex())
-                        && !pendingTransactionCache.isCollateralUtxoLocked(u.getTxHash(), u.getOutputIndex()))
+                .filter(utxo -> !pendingTransactionCache.isWalletUtxoLocked(utxo.getTxHash(), utxo.getOutputIndex())
+                        && !pendingTransactionCache.isCollateralUtxoLocked(utxo.getTxHash(), utxo.getOutputIndex()))
                 .toList();
 
         if (availableUtxos.isEmpty()) {
@@ -1121,9 +1121,9 @@ public class CardanoBlockchainService {
 
         BigInteger minCollateralLovelace = BigInteger.valueOf(5_000_000);
         boolean hasCollateralCandidate = availableUtxos.stream()
-                .anyMatch(u -> u.getAmount().stream()
-                        .filter(a -> a.getUnit().equals("lovelace"))
-                        .anyMatch(a -> a.getQuantity().compareTo(minCollateralLovelace) >= 0));
+                .anyMatch(utxo -> utxo.getAmount().stream()
+                        .filter(amount -> amount.getUnit().equals("lovelace"))
+                        .anyMatch(amount -> amount.getQuantity().compareTo(minCollateralLovelace) >= 0));
 
         if (hasCollateralCandidate && availableUtxos.size() >= 2) {
             return BuildTransactionResponse.builder()

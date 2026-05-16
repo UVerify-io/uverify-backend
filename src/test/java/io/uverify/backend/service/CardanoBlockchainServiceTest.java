@@ -631,9 +631,9 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                 .extra("{\"chaining\":\"test\"}")
                 .build());
 
-        Transaction t1 = cardanoBlockchainService.persistUVerifyCertificates(
+        Transaction firstTransaction = cardanoBlockchainService.persistUVerifyCertificates(
                 userAccount.baseAddress(), certs, "uverify_proxy_test_token");
-        String t1Hash = TransactionUtil.getTxHash(t1).toLowerCase();
+        String firstTransactionHash = TransactionUtil.getTxHash(firstTransaction).toLowerCase();
 
         // Verify populate() cached the chained state UTxO — this is the key invariant.
         StateDatumEntity stateDatum = stateDatumService
@@ -645,13 +645,13 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Optional<Utxo> cachedUtxo = pendingTransactionCache.getPendingStateUtxo(unit);
         Assertions.assertTrue(cachedUtxo.isPresent(),
                 "populate() must cache the chained state UTxO immediately after T1 is built");
-        Assertions.assertEquals(t1Hash, cachedUtxo.get().getTxHash().toLowerCase(),
+        Assertions.assertEquals(firstTransactionHash, cachedUtxo.get().getTxHash().toLowerCase(),
                 "Cached UTxO must reference T1's transaction hash so T2 chains off T1");
 
-        Result<String> r1 = cardanoBlockchainService.submitTransaction(t1, userAccount);
-        Assertions.assertTrue(r1.isSuccessful());
-        if (r1.isSuccessful()) {
-            simulateYaciStoreBehavior(r1.getValue(), t1);
+        Result<String> firstSubmitResult = cardanoBlockchainService.submitTransaction(firstTransaction, userAccount);
+        Assertions.assertTrue(firstSubmitResult.isSuccessful());
+        if (firstSubmitResult.isSuccessful()) {
+            simulateYaciStoreBehavior(firstSubmitResult.getValue(), firstTransaction);
         }
     }
 
@@ -676,8 +676,8 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         List<Utxo> userUtxos = utxoSupplier.getAll(userAccount.baseAddress());
         Assertions.assertFalse(userUtxos.isEmpty(), "User must have UTxOs before the locking test");
 
-        for (Utxo u : userUtxos) {
-            pendingTransactionCache.lockWalletUtxo(u.getTxHash(), u.getOutputIndex());
+        for (Utxo userUtxo : userUtxos) {
+            pendingTransactionCache.lockWalletUtxo(userUtxo.getTxHash(), userUtxo.getOutputIndex());
         }
 
         UVerifyTransactionException exception = Assertions.assertThrows(UVerifyTransactionException.class, () ->
