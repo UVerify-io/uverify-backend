@@ -297,16 +297,16 @@ public class CardanoBlockchainService {
                     .withReferenceScripts(stateContract, proxyContract)
                     .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
                     .build();
-        } catch (UVerifyTransactionException e) {
-            throw e;
-        } catch (Exception e) {
-            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-            if (msg.contains("collateral")) {
-                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, e.getMessage());
+        } catch (UVerifyTransactionException transactionException) {
+            throw transactionException;
+        } catch (Exception exception) {
+            String exceptionMessage = exception.getMessage() != null ? exception.getMessage().toLowerCase() : "";
+            if (exceptionMessage.contains("collateral")) {
+                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, exception.getMessage());
             }
-            if (e instanceof ApiException ae) throw ae;
-            if (e instanceof CborSerializationException cse) throw cse;
-            throw new RuntimeException(e);
+            if (exception instanceof ApiException apiException) throw apiException;
+            if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
+            throw new RuntimeException(exception);
         }
         pendingTransactionCache.populate(
                 captured.get() != null ? captured.get() : transaction,
@@ -335,16 +335,16 @@ public class CardanoBlockchainService {
                     .withReferenceScripts(stateContract, proxyContract)
                     .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
                     .build();
-        } catch (UVerifyTransactionException e) {
-            throw e;
-        } catch (Exception e) {
-            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-            if (msg.contains("collateral")) {
-                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, e.getMessage());
+        } catch (UVerifyTransactionException transactionException) {
+            throw transactionException;
+        } catch (Exception exception) {
+            String exceptionMessage = exception.getMessage() != null ? exception.getMessage().toLowerCase() : "";
+            if (exceptionMessage.contains("collateral")) {
+                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, exception.getMessage());
             }
-            if (e instanceof ApiException ae) throw ae;
-            if (e instanceof CborSerializationException cse) throw cse;
-            throw new RuntimeException(e);
+            if (exception instanceof ApiException apiException) throw apiException;
+            if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
+            throw new RuntimeException(exception);
         }
         pendingTransactionCache.populate(
                 captured.get() != null ? captured.get() : transaction,
@@ -511,16 +511,16 @@ public class CardanoBlockchainService {
                     .withReferenceScripts(uverifyStateContract, uverifyProxyContract)
                     .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
                     .build();
-        } catch (UVerifyTransactionException e) {
-            throw e;
-        } catch (Exception e) {
-            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-            if (msg.contains("collateral")) {
-                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, e.getMessage());
+        } catch (UVerifyTransactionException transactionException) {
+            throw transactionException;
+        } catch (Exception exception) {
+            String exceptionMessage = exception.getMessage() != null ? exception.getMessage().toLowerCase() : "";
+            if (exceptionMessage.contains("collateral")) {
+                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, exception.getMessage());
             }
-            if (e instanceof ApiException ae) throw ae;
-            if (e instanceof CborSerializationException cse) throw cse;
-            throw new RuntimeException(e);
+            if (exception instanceof ApiException apiException) throw apiException;
+            if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
+            throw new RuntimeException(exception);
         }
         pendingTransactionCache.populate(
                 captured.get() != null ? captured.get() : transaction,
@@ -928,16 +928,16 @@ public class CardanoBlockchainService {
                     .withRequiredSigners(userAddress)
                     .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
                     .build();
-        } catch (UVerifyTransactionException e) {
-            throw e;
-        } catch (Exception e) {
-            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-            if (msg.contains("collateral")) {
-                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, e.getMessage());
+        } catch (UVerifyTransactionException transactionException) {
+            throw transactionException;
+        } catch (Exception exception) {
+            String exceptionMessage = exception.getMessage() != null ? exception.getMessage().toLowerCase() : "";
+            if (exceptionMessage.contains("collateral")) {
+                throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, exception.getMessage());
             }
-            if (e instanceof ApiException ae) throw ae;
-            if (e instanceof CborSerializationException cse) throw cse;
-            throw new RuntimeException(e);
+            if (exception instanceof ApiException apiException) throw apiException;
+            if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
+            throw new RuntimeException(exception);
         }
         pendingTransactionCache.populate(
                 captured.get() != null ? captured.get() : transaction,

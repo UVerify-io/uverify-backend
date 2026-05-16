@@ -39,12 +39,12 @@ public class PrepareCollateralService {
     public BuildTransactionResponse prepareCollateral(String senderAddress) {
         try {
             return cardanoBlockchainService.buildPrepareCollateralTx(senderAddress);
-        } catch (Exception e) {
-            log.error("Error building prepare-collateral transaction: {}", e.getMessage(), e);
+        } catch (Exception exception) {
+            log.error("Error building prepare-collateral transaction: {}", exception.getMessage(), exception);
             return BuildTransactionResponse.builder()
                     .status(BuildStatus.builder()
                             .code(BuildStatusCode.UNKNOWN_ERROR)
-                            .message(e.getMessage())
+                            .message(exception.getMessage())
                             .build())
                     .build();
         }
