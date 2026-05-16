@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RateLimitFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.filter</a> &gt; <span class="el_source">RateLimitFilter.java</span></div><h1>RateLimitFilter.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.filter;
+
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.ConsumptionProbe;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+
+@Component
+@Order(1)
+<span class="fc" id="L43">public class RateLimitFilter extends OncePerRequestFilter {</span>
+
+    private static final int MAX_BODY_BYTES = 512 * 1024;
+
+    @Value(&quot;${rate-limit.enabled:true}&quot;)
+    private boolean enabled;
+
+    @Value(&quot;${rate-limit.requests-per-minute:20}&quot;)
+    private int requestsPerMinute;
+
+<span class="fc" id="L53">    private final Map&lt;String, Bucket&gt; buckets = new ConcurrentHashMap&lt;&gt;();</span>
+
+    private Bucket createBucket() {
+<span class="fc" id="L56">        return Bucket.builder()</span>
+<span class="fc" id="L57">                .addLimit(Bandwidth.builder()</span>
+<span class="fc" id="L58">                        .capacity(requestsPerMinute)</span>
+<span class="fc" id="L59">                        .refillGreedy(requestsPerMinute, Duration.ofMinutes(1))</span>
+<span class="fc" id="L60">                        .build())</span>
+<span class="fc" id="L61">                .build();</span>
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">        return !enabled</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">                || !&quot;POST&quot;.equalsIgnoreCase(request.getMethod())</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">                || !request.getRequestURI().startsWith(&quot;/api/v1/&quot;);</span>
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws ServletException, IOException {
+
+<span class="fc" id="L75">        int contentLength = request.getContentLength();</span>
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        if (contentLength &gt; MAX_BODY_BYTES) {</span>
+<span class="nc" id="L77">            sendError(response, HttpStatus.PAYLOAD_TOO_LARGE, &quot;Request body exceeds the 512 KB limit.&quot;);</span>
+<span class="nc" id="L78">            return;</span>
+        }
+
+<span class="fc" id="L81">        String ip = request.getRemoteAddr();</span>
+<span class="fc" id="L82">        Bucket bucket = buckets.computeIfAbsent(ip, k -&gt; createBucket());</span>
+<span class="fc" id="L83">        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);</span>
+
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">        if (probe.isConsumed()) {</span>
+<span class="fc" id="L86">            response.addHeader(&quot;X-Rate-Limit-Remaining&quot;, String.valueOf(probe.getRemainingTokens()));</span>
+<span class="fc" id="L87">            chain.doFilter(request, response);</span>
+        } else {
+<span class="nc" id="L89">            long retryAfter = TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()) + 1;</span>
+<span class="nc" id="L90">            response.addHeader(&quot;Retry-After&quot;, String.valueOf(retryAfter));</span>
+<span class="nc" id="L91">            sendError(response, HttpStatus.TOO_MANY_REQUESTS, &quot;Rate limit exceeded. Retry after &quot; + retryAfter + &quot; seconds.&quot;);</span>
+        }
+<span class="fc" id="L93">    }</span>
+
+    private void sendError(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+<span class="nc" id="L96">        response.setStatus(status.value());</span>
+<span class="nc" id="L97">        response.setContentType(MediaType.APPLICATION_JSON_VALUE);</span>
+<span class="nc" id="L98">        response.getWriter().write(&quot;{\&quot;error\&quot;:\&quot;&quot; + message + &quot;\&quot;}&quot;);</span>
+<span class="nc" id="L99">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
