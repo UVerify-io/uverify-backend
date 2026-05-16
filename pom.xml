@@ -59,6 +59,7 @@
         <version.scalus-bloxbean-cardano-client-lib>0.10.3</version.scalus-bloxbean-cardano-client-lib>
         <version.zxing>3.5.3</version.zxing>
         <version.postgres>42.7.7</version.postgres>
+        <version.bucket4j>8.10.1</version.bucket4j>
     </properties>
 
     <dependencyManagement>
@@ -102,6 +103,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
             <version>${version.spring-boot}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>${version.bucket4j}</version>
         </dependency>
 
         <dependency>

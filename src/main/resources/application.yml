@@ -29,6 +29,15 @@ spring:
       max-lifetime: 1200000
       leak-detection-threshold: 60000
 
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 1MB
+
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  requests-per-minute: ${RATE_LIMIT_REQUESTS_PER_MINUTE:20}
+
 springdoc:
   writer-with-default-pretty-printer: true
   api-docs:
