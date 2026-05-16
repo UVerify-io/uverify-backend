@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PendingTransactionCache.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.service</a> &gt; <span class="el_source">PendingTransactionCache.java</span></div><h1>PendingTransactionCache.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.service;
+
+import com.bloxbean.cardano.client.api.model.Amount;
+import com.bloxbean.cardano.client.api.model.Utxo;
+import com.bloxbean.cardano.client.transaction.spec.MultiAsset;
+import com.bloxbean.cardano.client.transaction.spec.Transaction;
+import com.bloxbean.cardano.client.transaction.spec.TransactionInput;
+import com.bloxbean.cardano.client.transaction.util.TransactionUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * In-memory cache of UTxOs that have been consumed or created in pending (unconfirmed) transactions.
+ *
+ * Rapid consecutive build requests from the same user hit the same on-chain UTxO set before any
+ * transaction confirms. This cache lets subsequent builds &quot;chain&quot; off the output of an in-flight
+ * transaction instead of querying stale chain state.
+ *
+ * Two concerns are tracked:
+ *  - State token UTxOs: the specific UTxO holding the user's state token, which the contract
+ *    requires to be spent-and-recreated on every certificate update.
+ *  - Wallet UTxOs: regular ADA inputs consumed during a fork (new state datum creation), which
+ *    must not be reused across concurrent forks.
+ *
+ * Entries expire after TTL_MINUTES. The TTL matches the transaction validity window
+ * (validTo = currentSlot + 600, ~10 minutes), with a small buffer.
+ */
+@Component
+<span class="fc" id="L54">@Slf4j</span>
+public class PendingTransactionCache {
+
+<span class="fc" id="L57">    private static final Duration DEFAULT_TTL = Duration.ofMinutes(15);</span>
+    private final Duration ttl;
+
+<span class="fc" id="L60">    public PendingTransactionCache() {</span>
+<span class="fc" id="L61">        this.ttl = DEFAULT_TTL;</span>
+<span class="fc" id="L62">    }</span>
+
+    // Package-private: allows unit tests to inject a short TTL without modifying production behaviour.
+<span class="fc" id="L65">    PendingTransactionCache(Duration ttl) {</span>
+<span class="fc" id="L66">        this.ttl = ttl;</span>
+<span class="fc" id="L67">    }</span>
+
+<span class="fc" id="L69">    private record PendingEntry&lt;T&gt;(T value, Instant expiry) {</span>
+        boolean isExpired() {
+<span class="fc" id="L71">            return Instant.now().isAfter(expiry);</span>
+        }
+    }
+
+<span class="fc" id="L75">    private final ConcurrentHashMap&lt;String, PendingEntry&lt;Utxo&gt;&gt; pendingStateUtxos = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L76">    private final ConcurrentHashMap&lt;String, Instant&gt; lockedWalletUtxos = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L77">    private final ConcurrentHashMap&lt;String, Instant&gt; lockedCollateralUtxos = new ConcurrentHashMap&lt;&gt;();</span>
+
+    /**
+     * Returns the chained state token UTxO for the given unit if a pending transaction
+     * will produce it. Returns empty if no pending entry exists or it has expired.
+     */
+    public Optional&lt;Utxo&gt; getPendingStateUtxo(String unit) {
+<span class="fc" id="L84">        PendingEntry&lt;Utxo&gt; entry = pendingStateUtxos.get(unit);</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (entry == null) return Optional.empty();</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">        if (entry.isExpired()) {</span>
+<span class="fc" id="L87">            pendingStateUtxos.remove(unit);</span>
+<span class="fc" id="L88">            return Optional.empty();</span>
+        }
+<span class="fc" id="L90">        return Optional.of(entry.value());</span>
+    }
+
+    public void putPendingStateUtxo(String unit, Utxo utxo) {
+<span class="fc" id="L94">        pendingStateUtxos.put(unit, new PendingEntry&lt;&gt;(utxo, Instant.now().plus(ttl)));</span>
+<span class="fc" id="L95">        log.debug(&quot;Cached pending state UTxO for unit {} → {}:{}&quot;, unit, utxo.getTxHash(), utxo.getOutputIndex());</span>
+<span class="fc" id="L96">    }</span>
+
+    public void lockWalletUtxo(String txHash, int index) {
+<span class="fc" id="L99">        lockedWalletUtxos.put(walletKey(txHash, index), Instant.now().plus(ttl));</span>
+<span class="fc" id="L100">    }</span>
+
+    public boolean isWalletUtxoLocked(String txHash, int index) {
+<span class="fc" id="L103">        Instant expiry = lockedWalletUtxos.get(walletKey(txHash, index));</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (expiry == null) return false;</span>
+<span class="fc bfc" id="L105" title="All 2 branches covered.">        if (Instant.now().isAfter(expiry)) {</span>
+<span class="fc" id="L106">            lockedWalletUtxos.remove(walletKey(txHash, index));</span>
+<span class="fc" id="L107">            return false;</span>
+        }
+<span class="fc" id="L109">        return true;</span>
+    }
+
+    public void lockCollateralUtxo(String txHash, int index) {
+<span class="fc" id="L113">        lockedCollateralUtxos.put(walletKey(txHash, index), Instant.now().plus(ttl));</span>
+<span class="fc" id="L114">    }</span>
+
+    public boolean isCollateralUtxoLocked(String txHash, int index) {
+<span class="fc" id="L117">        Instant expiry = lockedCollateralUtxos.get(walletKey(txHash, index));</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">        if (expiry == null) return false;</span>
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        if (Instant.now().isAfter(expiry)) {</span>
+<span class="fc" id="L120">            lockedCollateralUtxos.remove(walletKey(txHash, index));</span>
+<span class="fc" id="L121">            return false;</span>
+        }
+<span class="fc" id="L123">        return true;</span>
+    }
+
+    public void clearLocksForTransaction(String txHash) {
+<span class="fc" id="L127">        String prefix = txHash + &quot;:&quot;;</span>
+<span class="fc" id="L128">        lockedWalletUtxos.entrySet().removeIf(e -&gt; e.getKey().startsWith(prefix));</span>
+<span class="fc" id="L129">        lockedCollateralUtxos.entrySet().removeIf(e -&gt; e.getKey().startsWith(prefix));</span>
+<span class="fc" id="L130">        pendingStateUtxos.entrySet().removeIf(e -&gt; e.getValue().value().getTxHash().equalsIgnoreCase(txHash));</span>
+<span class="fc" id="L131">    }</span>
+
+    /**
+     * Inspects a freshly-built unsigned transaction and populates the cache.
+     *
+     * All regular inputs are locked so they won't be reused in a concurrent fork.
+     * Any output going to {@code proxyScriptAddress} that carries a multi-asset under
+     * {@code proxyScriptHash} is stored as the chained state token UTxO.
+     *
+     * @param transaction      The unsigned transaction returned by QuickTxBuilder.build()
+     * @param proxyScriptAddress Bech32 address of the proxy contract (used to locate the output)
+     * @param proxyScriptHash  Policy-id hex of the proxy contract (identifies the state token)
+     */
+    public void populate(Transaction transaction, String proxyScriptAddress, String proxyScriptHash) {
+        String txHash;
+        try {
+<span class="fc" id="L147">            txHash = TransactionUtil.getTxHash(transaction);</span>
+<span class="nc" id="L148">        } catch (Exception e) {</span>
+<span class="nc" id="L149">            log.warn(&quot;Could not compute tx hash for pending cache population: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L150">            return;</span>
+<span class="fc" id="L151">        }</span>
+
+<span class="pc bpc" id="L153" title="1 of 2 branches missed.">        if (transaction.getBody().getInputs() != null) {</span>
+<span class="fc bfc" id="L154" title="All 2 branches covered.">            for (TransactionInput input : transaction.getBody().getInputs()) {</span>
+<span class="fc" id="L155">                lockWalletUtxo(input.getTransactionId(), input.getIndex());</span>
+<span class="fc" id="L156">            }</span>
+        }
+
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">        if (transaction.getBody().getCollateral() != null) {</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">            for (TransactionInput collateral : transaction.getBody().getCollateral()) {</span>
+<span class="fc" id="L161">                lockCollateralUtxo(collateral.getTransactionId(), collateral.getIndex());</span>
+<span class="fc" id="L162">            }</span>
+        }
+
+<span class="pc bpc" id="L165" title="1 of 2 branches missed.">        if (transaction.getBody().getOutputs() == null) return;</span>
+
+<span class="fc" id="L167">        List&lt;com.bloxbean.cardano.client.transaction.spec.TransactionOutput&gt; outputs =</span>
+<span class="fc" id="L168">                transaction.getBody().getOutputs();</span>
+
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">        for (int i = 0; i &lt; outputs.size(); i++) {</span>
+<span class="fc" id="L171">            com.bloxbean.cardano.client.transaction.spec.TransactionOutput output = outputs.get(i);</span>
+<span class="pc bpc" id="L172" title="2 of 4 branches missed.">            if (output.getValue() == null || output.getValue().getMultiAssets() == null) continue;</span>
+
+<span class="fc" id="L174">            Optional&lt;MultiAsset&gt; maybeStateAsset = output.getValue().getMultiAssets().stream()</span>
+<span class="fc" id="L175">                    .filter(ma -&gt; ma.getPolicyId().equalsIgnoreCase(proxyScriptHash))</span>
+<span class="fc" id="L176">                    .findFirst();</span>
+<span class="pc bpc" id="L177" title="1 of 2 branches missed.">            if (maybeStateAsset.isEmpty()) continue;</span>
+
+<span class="fc" id="L179">            List&lt;Amount&gt; amounts = buildAmounts(output);</span>
+
+<span class="fc" id="L181">            String inlineDatumHex = null;</span>
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">            if (output.getInlineDatum() != null) {</span>
+                try {
+<span class="fc" id="L184">                    inlineDatumHex = output.getInlineDatum().serializeToHex();</span>
+<span class="nc" id="L185">                } catch (Exception e) {</span>
+<span class="nc" id="L186">                    log.warn(&quot;Could not serialize inline datum for pending cache: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L187">                }</span>
+            }
+
+<span class="fc" id="L190">            Utxo chainedUtxo = Utxo.builder()</span>
+<span class="fc" id="L191">                    .txHash(txHash)</span>
+<span class="fc" id="L192">                    .outputIndex(i)</span>
+<span class="fc" id="L193">                    .address(proxyScriptAddress)</span>
+<span class="fc" id="L194">                    .amount(amounts)</span>
+<span class="fc" id="L195">                    .inlineDatum(inlineDatumHex)</span>
+<span class="fc" id="L196">                    .build();</span>
+
+<span class="fc bfc" id="L198" title="All 2 branches covered.">            for (com.bloxbean.cardano.client.transaction.spec.Asset asset : maybeStateAsset.get().getAssets()) {</span>
+<span class="fc" id="L199">                String rawNameHex = asset.getNameAsHex();</span>
+<span class="pc bpc" id="L200" title="2 of 4 branches missed.">                String nameHex = (rawNameHex != null &amp;&amp; rawNameHex.startsWith(&quot;0x&quot;))</span>
+<span class="pc" id="L201">                        ? rawNameHex.substring(2) : rawNameHex;</span>
+<span class="fc" id="L202">                String unit = proxyScriptHash + nameHex;</span>
+<span class="fc" id="L203">                putPendingStateUtxo(unit, chainedUtxo);</span>
+<span class="fc" id="L204">            }</span>
+<span class="fc" id="L205">            break;</span>
+        }
+<span class="fc" id="L207">    }</span>
+
+    private List&lt;Amount&gt; buildAmounts(com.bloxbean.cardano.client.transaction.spec.TransactionOutput output) {
+<span class="fc" id="L210">        List&lt;Amount&gt; amounts = new ArrayList&lt;&gt;();</span>
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">        if (output.getValue().getCoin() != null) {</span>
+<span class="fc" id="L212">            amounts.add(Amount.lovelace(output.getValue().getCoin()));</span>
+        }
+<span class="pc bpc" id="L214" title="1 of 2 branches missed.">        if (output.getValue().getMultiAssets() == null) return amounts;</span>
+<span class="fc bfc" id="L215" title="All 2 branches covered.">        for (MultiAsset ma : output.getValue().getMultiAssets()) {</span>
+<span class="fc bfc" id="L216" title="All 2 branches covered.">            for (com.bloxbean.cardano.client.transaction.spec.Asset asset : ma.getAssets()) {</span>
+<span class="fc" id="L217">                String rawNameHex = asset.getNameAsHex();</span>
+<span class="pc bpc" id="L218" title="2 of 4 branches missed.">                String nameHex = (rawNameHex != null &amp;&amp; rawNameHex.startsWith(&quot;0x&quot;))</span>
+<span class="pc" id="L219">                        ? rawNameHex.substring(2) : rawNameHex;</span>
+<span class="fc" id="L220">                amounts.add(Amount.asset(ma.getPolicyId() + nameHex, asset.getValue()));</span>
+<span class="fc" id="L221">            }</span>
+<span class="fc" id="L222">        }</span>
+<span class="fc" id="L223">        return amounts;</span>
+    }
+
+    void clearWalletLocks() {
+<span class="fc" id="L227">        lockedWalletUtxos.clear();</span>
+<span class="fc" id="L228">    }</span>
+
+    void clearCollateralLocks() {
+<span class="fc" id="L231">        lockedCollateralUtxos.clear();</span>
+<span class="fc" id="L232">    }</span>
+
+    private String walletKey(String txHash, int index) {
+<span class="fc" id="L235">        return txHash + &quot;:&quot; + index;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

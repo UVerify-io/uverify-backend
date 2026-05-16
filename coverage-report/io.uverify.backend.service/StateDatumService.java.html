@@ -115,10 +115,10 @@ public class StateDatumService {
     }
 
     public Optional&lt;StateDatumEntity&gt; findByUserAndBootstrapToken(String address, String bootstrapTokenName) {
-<span class="nc" id="L118">        List&lt;StateDatumEntity&gt; results = stateDatumRepository.findByUserAndBootstrapToken(</span>
-<span class="nc" id="L119">                HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)), bootstrapTokenName);</span>
-<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (results.isEmpty()) return Optional.empty();</span>
-<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (results.size() == 1) return Optional.of(results.get(0));</span>
+<span class="fc" id="L118">        List&lt;StateDatumEntity&gt; results = stateDatumRepository.findByUserAndBootstrapToken(</span>
+<span class="fc" id="L119">                HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address)), bootstrapTokenName);</span>
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">        if (results.isEmpty()) return Optional.empty();</span>
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">        if (results.size() == 1) return Optional.of(results.get(0));</span>
 <span class="nc" id="L122">        return Optional.of(selectCheapestStateDatum(results));</span>
     }
 
