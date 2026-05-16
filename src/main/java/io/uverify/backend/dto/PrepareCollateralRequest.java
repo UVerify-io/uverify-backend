@@ -16,14 +16,11 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.enums;
+package io.uverify.backend.dto;
 
-public enum BuildStatusCode {
-    SUCCESS,
-    ERROR,
-    UNKNOWN_ERROR,
-    INSUFFICIENT_FUNDS,
-    PENDING_TRANSACTION,
-    COLLATERAL_REQUIRED,
-    COLLATERAL_ALREADY_AVAILABLE,
+import lombok.Data;
+
+@Data
+public class PrepareCollateralRequest {
+    private String senderAddress;
 }

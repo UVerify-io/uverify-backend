@@ -30,6 +30,7 @@ import com.bloxbean.cardano.client.util.HexUtil;
 import io.uverify.backend.dto.*;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
+import io.uverify.backend.exception.UVerifyTransactionException;
 import io.uverify.backend.model.BootstrapDatum;
 import io.uverify.backend.model.UVerifyCertificate;
 import io.uverify.backend.repository.TransactionRepository;
@@ -80,10 +81,18 @@ public class UVerifyTransactionService {
                             .build())
                     .type(TransactionType.DEFAULT)
                     .build();
+        } catch (UVerifyTransactionException exception) {
+            return BuildTransactionResponse.builder()
+                    .status(BuildStatus.builder()
+                            .code(exception.getStatusCode())
+                            .message(exception.getMessage())
+                            .build())
+                    .type(TransactionType.DEFAULT)
+                    .build();
         } catch (Exception exception) {
             return BuildTransactionResponse.builder()
                     .status(BuildStatus.builder()
-                            .code(BuildStatusCode.ERROR)
+                            .code(BuildStatusCode.UNKNOWN_ERROR)
                             .message(exception.getMessage())
                             .build())
                     .type(TransactionType.DEFAULT)
@@ -148,10 +157,18 @@ public class UVerifyTransactionService {
                                 .build())
                         .type(TransactionType.CUSTOM)
                         .build();
+            } catch (UVerifyTransactionException exception) {
+                return BuildTransactionResponse.builder()
+                        .status(BuildStatus.builder()
+                                .code(exception.getStatusCode())
+                                .message(exception.getMessage())
+                                .build())
+                        .type(TransactionType.CUSTOM)
+                        .build();
             } catch (Exception exception) {
                 return BuildTransactionResponse.builder()
                         .status(BuildStatus.builder()
-                                .code(BuildStatusCode.ERROR)
+                                .code(BuildStatusCode.UNKNOWN_ERROR)
                                 .message(exception.getMessage())
                                 .build())
                         .type(TransactionType.CUSTOM)
@@ -166,7 +183,7 @@ public class UVerifyTransactionService {
         } catch (Exception exception) {
             return BuildTransactionResponse.builder()
                     .status(BuildStatus.builder()
-                            .code(BuildStatusCode.ERROR)
+                            .code(BuildStatusCode.UNKNOWN_ERROR)
                             .message(exception.getMessage())
                             .build())
                     .type(TransactionType.CUSTOM)
