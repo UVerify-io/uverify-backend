@@ -31,6 +31,8 @@ import io.uverify.backend.repository.TransactionRepository;
 import io.uverify.backend.storage.UVerifyStorage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +62,7 @@ public class StatisticsService {
         this.transactionRepository = transactionRepository;
     }
 
+    @Cacheable("stats-categories")
     public Map<String, Integer> getTotalUVerifyCertificates() {
         List<UVerifyCertificateEntity> certificates = certificateRepository.findAll();
 
@@ -97,6 +100,7 @@ public class StatisticsService {
         return usageStatistics.getUseCaseStatistics();
     }
 
+    @Cacheable("stats-fees")
     public Long getTransactionFees() {
         List<UVerifyCertificateEntity> certificates = certificateRepository.findAll();
         BigInteger totalFees = BigInteger.ZERO;
@@ -116,6 +120,7 @@ public class StatisticsService {
 
     @EventListener
     @Transactional
+    @CacheEvict(cacheNames = {"stats-categories", "stats-fees"}, allEntries = true)
     @SuppressWarnings({"unused", "rawtypes"})
     public void reactOnCommitEvent(CommitEvent commitEvent) {
         transactionRepository.deleteIrrelevantTransactions();

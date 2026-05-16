@@ -9,9 +9,9 @@ RUN ./mvnw verify clean --fail-never
 COPY . /app
 RUN ./mvnw clean package -DskipTests
 
-FROM eclipse-temurin:21-jdk-jammy AS runtime
+FROM eclipse-temurin:21-jre-jammy AS runtime
 WORKDIR /app
 COPY --from=build /app/target/*.jar /app/uverify-backend.jar
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "uverify-backend.jar"]
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "uverify-backend.jar"]

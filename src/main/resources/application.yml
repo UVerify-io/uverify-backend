@@ -7,6 +7,11 @@ spring:
     active: ${SPRING_ACTIVE_PROFILES:preprod,h2}
   main:
     banner-mode: off
+  threads:
+    virtual:
+      enabled: true
+  cache:
+    type: simple
   flyway:
     out-of-order: true
     locations:
@@ -16,6 +21,13 @@ spring:
     url: ${DB_URL:jdbc:h2:./data/db}
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:password}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      leak-detection-threshold: 60000
 
 springdoc:
   writer-with-default-pretty-printer: true
@@ -34,6 +46,8 @@ logging:
     name: ${LOG_FILE:}
 
 management:
+  server:
+    port: ${MANAGEMENT_PORT:9091}
   endpoints:
     web:
       exposure:
@@ -41,6 +55,9 @@ management:
           - health
           - info
           - prometheus
+          - threaddump
+          - metrics
+          - loggers
 
 store:
   sync-auto-start: ${YACI_STORE_AUTO_START:true}
