@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IdentityIndexerService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.service</a> &gt; <span class="el_source">IdentityIndexerService.java</span></div><h1>IdentityIndexerService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.service;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.uverify.backend.entity.UVerifyCertificateEntity;
+import io.uverify.backend.entity.UVerifyCredentialEntity;
+import io.uverify.backend.repository.CredentialRepository;
+import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+<span class="fc" id="L42">@Slf4j</span>
+@Service
+public class IdentityIndexerService {
+
+    private static final String TYPE_AUTH = &quot;AUTH&quot;;
+    private static final String TYPE_REVOKE = &quot;REVOKE&quot;;
+    private static final String IDENTITY_AUTH_TEMPLATE_ID = &quot;IdentityAuth&quot;;
+
+    private static final String CACHE_NAME = &quot;vlei-verifier&quot;;
+
+    private final CredentialRepository credentialRepository;
+    private final ObjectMapper objectMapper;
+    private final RestTemplate restTemplate;
+    private final CacheManager cacheManager;
+
+    @Value(&quot;${credential.vlei-verifier-url:}&quot;)
+    private String vleiVerifierUrl;
+
+    public IdentityIndexerService(CredentialRepository credentialRepository,
+                                  ObjectMapper objectMapper,
+                                  CacheManager cacheManager,
+<span class="fc" id="L63">                                  @Qualifier(&quot;vleiVerifierRestTemplate&quot;) RestTemplate restTemplate) {</span>
+<span class="fc" id="L64">        this.credentialRepository = credentialRepository;</span>
+<span class="fc" id="L65">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L66">        this.cacheManager = cacheManager;</span>
+<span class="fc" id="L67">        this.restTemplate = restTemplate;</span>
+<span class="fc" id="L68">    }</span>
+
+    @Async
+    public void processNewCertificates(List&lt;UVerifyCertificateEntity&gt; certs) {
+<span class="fc bfc" id="L72" title="All 2 branches covered.">        for (UVerifyCertificateEntity cert : certs) {</span>
+            try {
+<span class="fc" id="L74">                processOneCertificate(cert);</span>
+<span class="nc" id="L75">            } catch (Exception e) {</span>
+<span class="nc" id="L76">                log.warn(&quot;Failed to index credential for cert hash={}: {}&quot;, cert.getHash(), e.getMessage());</span>
+<span class="fc" id="L77">            }</span>
+<span class="fc" id="L78">        }</span>
+<span class="fc" id="L79">    }</span>
+
+    @Transactional
+    public void deleteCredentialsAfterSlot(long slot) {
+<span class="fc" id="L83">        credentialRepository.deleteAllAfterSlot(slot);</span>
+<span class="fc" id="L84">    }</span>
+
+    public boolean isVleiVerifierConfigured() {
+<span class="pc bpc" id="L87" title="2 of 4 branches missed.">        return vleiVerifierUrl != null &amp;&amp; !vleiVerifierUrl.isBlank();</span>
+    }
+
+    private void processOneCertificate(UVerifyCertificateEntity cert) throws Exception {
+<span class="fc" id="L91">        String extra = cert.getExtra();</span>
+<span class="pc bpc" id="L92" title="2 of 4 branches missed.">        if (extra == null || extra.isBlank()) {</span>
+<span class="nc" id="L93">            return;</span>
+        }
+<span class="fc" id="L95">        Map&lt;String, Object&gt; fields = objectMapper.readValue(extra, new TypeReference&lt;&gt;() {</span>
+        });
+
+<span class="fc bfc" id="L98" title="All 2 branches covered.">        if (!IDENTITY_AUTH_TEMPLATE_ID.equals(fields.get(&quot;uverify_template_id&quot;))) {</span>
+<span class="fc" id="L99">            return;</span>
+        }
+
+<span class="fc" id="L102">        String type = (String) fields.get(&quot;t&quot;);</span>
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">        if (type == null) {</span>
+<span class="nc" id="L104">            return;</span>
+        }
+
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">        if (TYPE_AUTH.equals(type)) {</span>
+<span class="nc" id="L108">            handleAuthCert(cert, fields);</span>
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">        } else if (TYPE_REVOKE.equals(type)) {</span>
+<span class="fc" id="L110">            handleRevokeCert(fields);</span>
+        }
+<span class="fc" id="L112">    }</span>
+
+    private void handleAuthCert(UVerifyCertificateEntity cert, Map&lt;String, Object&gt; fields) {
+<span class="nc" id="L115">        String credentialType = (String) fields.get(&quot;ct&quot;);</span>
+<span class="nc" id="L116">        String aid = (String) fields.get(&quot;i&quot;);</span>
+<span class="nc" id="L117">        String schema = (String) fields.get(&quot;s&quot;);</span>
+<span class="nc" id="L118">        String oobi = (String) fields.get(&quot;o&quot;);</span>
+
+<span class="nc bnc" id="L120" title="All 4 branches missed.">        if (credentialType == null || credentialType.isBlank()) {</span>
+<span class="nc" id="L121">            log.warn(&quot;AUTH cert hash={} missing ct field, skipping&quot;, cert.getHash());</span>
+<span class="nc" id="L122">            return;</span>
+        }
+
+        // Direct call (bypasses proxy/cache) — we want a live result at indexing time.
+<span class="nc" id="L126">        boolean verified = checkVleiVerifier(aid);</span>
+        // Pre-populate the cache so the first GET does not make a second live call.
+<span class="nc" id="L128">        Cache cache = cacheManager.getCache(CACHE_NAME);</span>
+<span class="nc bnc" id="L129" title="All 4 branches missed.">        if (cache != null &amp;&amp; aid != null) {</span>
+<span class="nc" id="L130">            cache.put(aid, verified);</span>
+        }
+
+<span class="nc" id="L133">        Optional&lt;UVerifyCredentialEntity&gt; existing = credentialRepository.findByAuthCertHash(cert.getHash());</span>
+        UVerifyCredentialEntity entity;
+<span class="nc" id="L135">        entity = existing.orElseGet(() -&gt; UVerifyCredentialEntity.builder()</span>
+<span class="nc" id="L136">                .authCertHash(cert.getHash())</span>
+<span class="nc" id="L137">                .paymentCredential(cert.getPaymentCredential())</span>
+<span class="nc" id="L138">                .credentialType(credentialType)</span>
+<span class="nc" id="L139">                .keriAid(aid)</span>
+<span class="nc" id="L140">                .keriSchema(schema)</span>
+<span class="nc" id="L141">                .keriOobi(oobi)</span>
+<span class="nc" id="L142">                .txHash(cert.getTransactionId())</span>
+<span class="nc" id="L143">                .slot(cert.getSlot())</span>
+<span class="nc" id="L144">                .build());</span>
+<span class="nc" id="L145">        entity.setKeriVerified(verified);</span>
+<span class="nc" id="L146">        entity.setLastVerifiedAt(Instant.now());</span>
+<span class="nc" id="L147">        credentialRepository.save(entity);</span>
+
+<span class="nc" id="L149">        log.info(&quot;Indexed credential type={} for wallet={}, keriVerified={}&quot;, credentialType,</span>
+<span class="nc" id="L150">                cert.getPaymentCredential(), verified);</span>
+<span class="nc" id="L151">    }</span>
+
+    private void handleRevokeCert(Map&lt;String, Object&gt; fields) {
+<span class="fc" id="L154">        String targetHash = (String) fields.get(&quot;th&quot;);</span>
+<span class="pc bpc" id="L155" title="2 of 4 branches missed.">        if (targetHash == null || targetHash.isBlank()) {</span>
+<span class="nc" id="L156">            log.warn(&quot;REVOKE cert missing th field, skipping&quot;);</span>
+<span class="nc" id="L157">            return;</span>
+        }
+<span class="fc" id="L159">        credentialRepository.findByAuthCertHash(targetHash).ifPresentOrElse(</span>
+                entity -&gt; {
+<span class="fc" id="L161">                    entity.setRevoked(true);</span>
+<span class="fc" id="L162">                    credentialRepository.save(entity);</span>
+                    // Evict so the next GET re-checks the vLEI Verifier live.
+<span class="fc" id="L164">                    Cache cache = cacheManager.getCache(CACHE_NAME);</span>
+<span class="pc bpc" id="L165" title="2 of 4 branches missed.">                    if (cache != null &amp;&amp; entity.getKeriAid() != null) {</span>
+<span class="fc" id="L166">                        cache.evict(entity.getKeriAid());</span>
+                    }
+<span class="fc" id="L168">                    log.info(&quot;Revoked credential authHash={}&quot;, targetHash);</span>
+<span class="fc" id="L169">                },</span>
+<span class="nc" id="L170">                () -&gt; log.warn(&quot;REVOKE target authHash={} not found in credential table&quot;, targetHash));</span>
+<span class="fc" id="L171">    }</span>
+
+    @Cacheable(value = &quot;vlei-verifier&quot;, key = &quot;#aid&quot;, condition = &quot;#aid != null &amp;&amp; !#aid.isEmpty()&quot;)
+    public boolean checkVleiVerifier(String aid) {
+<span class="pc bpc" id="L175" title="4 of 8 branches missed.">        if (vleiVerifierUrl == null || vleiVerifierUrl.isBlank() || aid == null || aid.isBlank()) {</span>
+<span class="nc" id="L176">            log.debug(&quot;vLEI Verifier URL not configured, skipping verification&quot;);</span>
+<span class="nc" id="L177">            return false;</span>
+        }
+        try {
+<span class="fc" id="L180">            var response = restTemplate.getForEntity(vleiVerifierUrl + &quot;/authorizations/&quot; + aid, Map.class);</span>
+<span class="fc" id="L181">            return response.getStatusCode().is2xxSuccessful();</span>
+<span class="fc" id="L182">        } catch (Exception e) {</span>
+<span class="fc" id="L183">            log.warn(&quot;vLEI Verifier check failed for aid={}: {}&quot;, aid, e.getMessage());</span>
+<span class="fc" id="L184">            return false;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
