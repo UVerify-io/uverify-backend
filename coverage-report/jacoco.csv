@@ -1,7 +1,7 @@
 GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
 Uverify Backend,io.uverify.backend.config,SecurityConfig,0,34,0,0,0,5,0,4,0,4
 Uverify Backend,io.uverify.backend.config,CorsConfig,0,42,0,2,0,11,0,3,0,2
-Uverify Backend,io.uverify.backend.config,AsyncConfig,0,40,0,0,0,10,0,3,0,3
+Uverify Backend,io.uverify.backend.config,AsyncConfig,0,48,0,0,0,10,0,3,0,3
 Uverify Backend,io.uverify.backend.extension.entity,ConnectedGoodUpdateEntity.ConnectedGoodUpdateEntityBuilder,55,0,0,0,1,0,8,0,8,0
 Uverify Backend,io.uverify.backend.extension.entity,ConnectedGoodUpdateEntity,45,15,0,0,7,2,9,4,9,4
 Uverify Backend,io.uverify.backend.extension.entity,ConnectedGoodEntity.ConnectedGoodEntityBuilder,47,0,0,0,1,0,7,0,7,0
