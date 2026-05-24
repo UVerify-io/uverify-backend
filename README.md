@@ -45,24 +45,41 @@ The API will be available at [http://localhost:9090](http://localhost:9090). The
 
 An example `docker-compose.yml` is available [here](https://github.com/UVerify-io/.github/blob/main/scripts/docker-compose.yml).
 
-```zsh
-curl -O https://raw.githubusercontent.com/UVerify-io/.github/main/scripts/docker-compose.yml
-cp .env.example .env
-docker compose up
-```
+1. Download the example compose file:
+   ```zsh
+   curl -O https://raw.githubusercontent.com/UVerify-io/.github/main/scripts/docker-compose.yml
+   ```
+2. Copy and configure your environment file as above.
 
-Frontend: [http://localhost:3000](http://localhost:3000) — Backend: [http://localhost:9090](http://localhost:9090).
+3. Start all services:
+   ```zsh
+   docker compose up
+   ```
+   This will start the backend, ui, and database containers.
+   By default, the frontend will be available at [http://localhost:3000](http://localhost:3000) and the backend at [http://localhost:9090](http://localhost:9090).
 
-## 🛠️ Running from Source
+> **Tip:** You can customize the services and ports in the `docker-compose.yml` file as needed.
 
-```zsh
-git clone https://github.com/UVerify-io/uverify-backend.git
-cd uverify-backend
-cp .env.example .env
-# Edit .env with your settings
-mvn clean package
-java -jar target/uverify-backend-*.jar
-```
+### Installation
+
+1. Clone the repository:
+   ```zsh
+   git clone https://github.com/UVerify-io/uverify-backend.git
+   cd uverify-backend
+    ```
+
+2. Configure environment variables:
+    - Copy the .env.example file to .env:
+      ```zsh
+      cp src/main/resources/.env.example .env
+      ```
+    - Edit the .env file with your configuration (see [Environment Variables](#-environment-variables) section)
+
+3. Build and run the application:
+   ```zsh
+   mvn clean package
+   java -jar target/uverify-backend-1.17.0.jar
+   ```
 
 ## 🔧 Environment Variables
 
