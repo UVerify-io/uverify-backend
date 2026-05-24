@@ -31,9 +31,13 @@ public class UVerifyCertificateService {
     @Autowired
     private final CertificateRepository certificateRepository;
 
+    private final IdentityIndexerService identityIndexerService;
+
     @Autowired
-    public UVerifyCertificateService(CertificateRepository certificateRepository) {
+    public UVerifyCertificateService(CertificateRepository certificateRepository,
+                                     IdentityIndexerService identityIndexerService) {
         this.certificateRepository = certificateRepository;
+        this.identityIndexerService = identityIndexerService;
     }
 
     public List<UVerifyCertificateEntity> getCertificatesByHash(String hash) {
@@ -47,10 +51,12 @@ public class UVerifyCertificateService {
     @Transactional
     public void deleteAllCertificatesAfterSlot(long slot) {
         certificateRepository.deleteAllAfterSlot(slot);
+        identityIndexerService.deleteCredentialsAfterSlot(slot);
     }
 
     public void saveAllCertificates(List<UVerifyCertificateEntity> UVerifyCertificateEntities) {
         certificateRepository.saveAll(UVerifyCertificateEntities);
+        identityIndexerService.processNewCertificates(UVerifyCertificateEntities);
     }
 
     public UVerifyCertificateEntity getCertificateByTransactionHash(String transactionHash, String dataHash) {

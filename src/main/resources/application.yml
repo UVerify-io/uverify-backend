@@ -150,6 +150,10 @@ extensions:
         private-key: ${TADAMON_GOOGLE_SHEETS_PRIVATE_KEY:}
         service-account: ${TADAMON_GOOGLE_SHEETS_SERVICE_ACCOUNT:}
 
+credential:
+  vlei-verifier-url: ${VLEI_VERIFIER_URL:}
+  keria-timeout-ms: ${KERIA_TIMEOUT_MS:3000}
+
 faucet:
   enabled: ${FAUCET_ENABLED:false}
   mnemonic: ${FAUCET_MNEMONIC:}
