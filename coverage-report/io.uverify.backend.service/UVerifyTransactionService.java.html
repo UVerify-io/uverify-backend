@@ -137,8 +137,8 @@ public class UVerifyTransactionService {
     }
 
     public boolean isTransactionConfirmed(String txHash) {
-<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (transactionRepository.existsById(txHash)) {</span>
-<span class="nc" id="L141">            return true;</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (!transactionRepository.existsById(txHash)) {</span>
+<span class="nc" id="L141">            return false;</span>
         }
 <span class="nc" id="L143">        return cardanoBlockchainService.isTransactionOnChain(txHash);</span>
     }
