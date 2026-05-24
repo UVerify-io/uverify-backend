@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.17.0](https://github.com/UVerify-io/uverify-backend/compare/v1.16.0...v1.17.0) (2026-05-24)
+
+
+### Features
+
+* add keri based identity and credential registration and validation ([93e23b7](https://github.com/UVerify-io/uverify-backend/commit/93e23b72d3d4137b03985dd30bf21348c7f4cdf3))
+
+
+### Bug Fixes
+
+* prevent confirming transaction before also confirmed by blockfrost ([02aacad](https://github.com/UVerify-io/uverify-backend/commit/02aacad96dcd8723297baf27d1d375e549525f7f))
+
 ## [1.16.0](https://github.com/UVerify-io/uverify-backend/compare/v1.15.0...v1.16.0) (2026-05-16)
 
 
