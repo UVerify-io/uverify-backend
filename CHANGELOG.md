@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.16.0](https://github.com/UVerify-io/uverify-backend/compare/v1.15.0...v1.16.0) (2026-05-16)
+
+
+### Features
+
+* enable ip rate limits and max request body size for the production environment ([f611b0f](https://github.com/UVerify-io/uverify-backend/commit/f611b0f1d75eecb33f895ce0dd3065ad678a7a68))
+
+
+### Bug Fixes
+
+* keep an eye on threads and enable virtual threads and caching to protect the service and host machine. Fixes [#49](https://github.com/UVerify-io/uverify-backend/issues/49) ([69b94d3](https://github.com/UVerify-io/uverify-backend/commit/69b94d3b54240c90d54018bb627b8cb4eaa05a1d))
+
 ## [1.15.0](https://github.com/UVerify-io/uverify-backend/compare/v1.14.2...v1.15.0) (2026-05-16)
 
 
