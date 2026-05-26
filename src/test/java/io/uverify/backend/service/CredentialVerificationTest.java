@@ -44,10 +44,10 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -284,7 +284,7 @@ class CredentialVerificationTest {
         public CacheManager cacheManager() {
             CaffeineCacheManager manager = new CaffeineCacheManager("vlei-verifier");
             manager.setCaffeine(Caffeine.newBuilder()
-                    .expireAfterWrite(1, TimeUnit.HOURS)
+                    .expireAfterWrite(Duration.ofHours(1))
                     .maximumSize(100));
             return manager;
         }

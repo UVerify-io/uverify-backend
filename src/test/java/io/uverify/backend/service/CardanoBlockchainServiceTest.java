@@ -690,8 +690,66 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         pendingTransactionCache.clearCollateralLocks();
     }
 
+    /**
+     * Mints a bootstrap datum whose allowedCredentials list is restricted to userAccount only.
+     * Verifies the datum is persisted with exactly one allowed credential.
+     */
     @Test
     @Order(23)
+    public void testMintRestrictedBootstrapDatum() throws CborSerializationException, ApiException, InterruptedException, CborException, AddressExcepion {
+        BootstrapDatum bootstrapDatum = BootstrapDatum.generateFrom(List.of(feeReceiverAccount.baseAddress()));
+        bootstrapDatum.setTokenName("restricted_access_token");
+        bootstrapDatum.setAllowedCredentials(List.of(BootstrapDatum.extractCredentialFromAddress(userAccount.baseAddress())));
+        bootstrapDatum.setFeeInterval(100);
+        bootstrapDatum.setFee(0);
+        bootstrapDatum.setBatchSize(5);
+        bootstrapDatum.setTransactionLimit(10);
+
+        Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
+        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
+
+        if (result.isSuccessful()) {
+            simulateYaciStoreBehavior(result.getValue(), transaction);
+        }
+
+        Assertions.assertTrue(result.isSuccessful());
+
+        Optional<BootstrapDatumEntity> entity = bootstrapDatumService.getBootstrapDatum("restricted_access_token", 1);
+        Assertions.assertTrue(entity.isPresent());
+        Assertions.assertEquals(1, entity.get().getAllowedCredentials().size(),
+                "Restricted datum must have exactly one allowed credential");
+    }
+
+    /**
+     * Verifies that the allow list is enforced at the repository query level:
+     * the restricted datum appears in the candidate pool for the allowed credential
+     * and is absent from the candidate pool for any other credential.
+     */
+    @Test
+    @Order(24)
+    public void testRestrictedBootstrapDatumAccessControl() {
+        Optional<byte[]> allowedCredential = userAccount.getBaseAddress().getPaymentCredentialHash();
+        Optional<byte[]> blockedCredential = facilitatorAccount.getBaseAddress().getPaymentCredentialHash();
+
+        Assertions.assertTrue(allowedCredential.isPresent());
+        Assertions.assertTrue(blockedCredential.isPresent());
+
+        String allowedHex = HexUtil.encodeHexString(allowedCredential.get());
+        String blockedHex = HexUtil.encodeHexString(blockedCredential.get());
+
+        List<BootstrapDatumEntity> allowedCandidates = bootstrapDatumRepository.findByAllowedCredential(allowedHex, 2);
+        Assertions.assertTrue(
+                allowedCandidates.stream().anyMatch(b -> b.getTokenName().equals("restricted_access_token")),
+                "Allowed credential must find the restricted datum in its candidate pool");
+
+        List<BootstrapDatumEntity> blockedCandidates = bootstrapDatumRepository.findByAllowedCredential(blockedHex, 2);
+        Assertions.assertTrue(
+                blockedCandidates.stream().noneMatch(b -> b.getTokenName().equals("restricted_access_token")),
+                "Non-allowed credential must not see the restricted datum");
+    }
+
+    @Test
+    @Order(25)
     public void testPersistUVerifyBatchCertificates() throws ApiException, CborSerializationException, InterruptedException, CborException, AddressExcepion {
         Optional<byte[]> paymentCredentialHash = userAccount.getBaseAddress().getPaymentCredentialHash();
         Assertions.assertTrue(paymentCredentialHash.isPresent());
