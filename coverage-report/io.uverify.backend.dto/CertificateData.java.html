@@ -18,13 +18,17 @@
 
 package io.uverify.backend.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
-<span class="nc bnc" id="L23" title="All 30 branches missed.">@Data</span>
-<span class="pc" id="L24">@Builder</span>
+<span class="pc bnc" id="L24" title="All 30 branches missed.">@Data</span>
+<span class="pc" id="L25">@Builder</span>
+<span class="fc" id="L26">@NoArgsConstructor</span>
+<span class="fc" id="L27">@AllArgsConstructor</span>
 public class CertificateData {
-<span class="fc" id="L26">    private String hash;</span>
-<span class="fc" id="L27">    private String metadata;</span>
-<span class="fc" id="L28">    private String algorithm;</span>
+    @NotBlank(message = &quot;hash is required&quot;)
+<span class="fc" id="L30">    private String hash;</span>
+<span class="fc" id="L31">    private String metadata;</span>
+<span class="fc" id="L32">    private String algorithm;</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

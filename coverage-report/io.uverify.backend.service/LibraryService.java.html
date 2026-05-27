@@ -123,15 +123,15 @@ public class LibraryService {
 <span class="fc" id="L123">    }</span>
 
     public Utxo getProxyLibraryUtxo() {
-<span class="pc bpc" id="L126" title="1 of 2 branches missed.">        if (proxyLibraryUtxo == null) {</span>
-<span class="nc" id="L127">            reloadLibraryCache();</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">        if (proxyLibraryUtxo == null) {</span>
+<span class="fc" id="L127">            reloadLibraryCache();</span>
         }
 <span class="fc" id="L129">        return proxyLibraryUtxo;</span>
     }
 
     public Utxo getStateLibraryUtxo() {
-<span class="fc bfc" id="L133" title="All 2 branches covered.">        if (stateLibraryUtxo == null) {</span>
-<span class="fc" id="L134">            reloadLibraryCache();</span>
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">        if (stateLibraryUtxo == null) {</span>
+<span class="nc" id="L134">            reloadLibraryCache();</span>
         }
 <span class="fc" id="L136">        return stateLibraryUtxo;</span>
     }

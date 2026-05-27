@@ -19,12 +19,12 @@
 package io.uverify.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 <span class="nc bnc" id="L25" title="All 22 branches missed.">@Data</span>
 public class SubmitTransactionRequest {
-    @NotNull
+    @NotBlank(message = &quot;transaction is required&quot;)
 <span class="nc" id="L28">    private String transaction;</span>
     @JsonAlias({&quot;witnessSet&quot;, &quot;witness_set&quot;})
 <span class="nc" id="L30">    private String witnessSet;</span>
