@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.1](https://github.com/UVerify-io/uverify-backend/compare/v1.17.0...v1.17.1) (2026-05-24)
+
+
+### Bug Fixes
+
+* register cache names ([13dbe9c](https://github.com/UVerify-io/uverify-backend/commit/13dbe9c353b7af47a9b9d704d636e615c576a93b))
+
 ## [1.17.0](https://github.com/UVerify-io/uverify-backend/compare/v1.16.0...v1.17.0) (2026-05-24)
 
 
