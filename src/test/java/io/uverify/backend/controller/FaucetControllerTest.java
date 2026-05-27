@@ -19,8 +19,9 @@
 package io.uverify.backend.controller;
 
 import com.bloxbean.cardano.client.account.Account;
-import com.bloxbean.cardano.client.api.exception.ApiException;
-import com.bloxbean.cardano.client.api.model.Result;
+import com.bloxbean.cardano.client.backend.api.DefaultUtxoSupplier;
+import com.bloxbean.cardano.client.api.model.Utxo;
+import com.bloxbean.cardano.client.backend.blockfrost.service.BFBackendService;
 import com.bloxbean.cardano.client.cip.cip30.CIP30DataSigner;
 import com.bloxbean.cardano.client.cip.cip30.DataSignError;
 import com.bloxbean.cardano.client.cip.cip30.DataSignature;
@@ -42,6 +43,7 @@ import io.uverify.backend.repository.LibraryRepository;
 import io.uverify.backend.repository.StateDatumRepository;
 import io.uverify.backend.service.*;
 import io.uverify.backend.util.ValidatorHelper;
+import io.uverify.backend.sandbox.SandboxContainers;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,6 +51,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -85,11 +88,15 @@ public class FaucetControllerTest extends CardanoBlockchainTest {
                 cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService,
                 fractionizedCertificateService,
                 stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository,
-                extensionManager, validatorHelper, libraryService,
-                List.of(Account.createFromMnemonic(Networks.testnet(), faucetMnemonic).baseAddress(),
-                        Account.createFromMnemonic(Networks.testnet(), faucetMnemonic).baseAddress()));
+                extensionManager, validatorHelper, libraryService);
         this.faucetAccount = Account.createFromMnemonic(Networks.testnet(), faucetMnemonic);
         RestAssured.port = port;
+    }
+
+    @BeforeAll
+    public void fundFaucetAccount() throws IOException, InterruptedException {
+        fundAddress(faucetAccount.baseAddress(), 50_000_000_000L);
+        waitForUtxos(faucetAccount.baseAddress());
     }
 
     @Test
@@ -128,7 +135,7 @@ public class FaucetControllerTest extends CardanoBlockchainTest {
 
     @Test
     @Order(2)
-    public void testClaimFaucetFunds() throws DataSignError, InterruptedException, ApiException {
+    public void testClaimFaucetFunds() throws DataSignError, InterruptedException {
         DataSignature dataSignature = CIP30DataSigner.INSTANCE.signData(
                 userAccount.getBaseAddress().getBytes(),
                 this.challengeResponse.getMessage().getBytes(),
@@ -159,10 +166,11 @@ public class FaucetControllerTest extends CardanoBlockchainTest {
         // Verify the faucet produced the expected number of separate UTxOs instead
         // of merging them into one (mergeOutputs must be false in sendAda).
         waitForTransaction(claimResponse.getTxHash());
-        Result<List<com.bloxbean.cardano.client.api.model.Utxo>> utxosResult =
-                yaciCardanoContainer.getBackendService().getUtxoService()
-                        .getUtxos(userAccount.baseAddress(), 100, 1);
-        long faucetUtxos = utxosResult.getValue().stream()
+        BFBackendService backendService = new BFBackendService(
+                SandboxContainers.YANO.getBlockfrostBaseUrl(), "test");
+        List<Utxo> utxos = new DefaultUtxoSupplier(backendService.getUtxoService())
+                .getAll(userAccount.baseAddress());
+        long faucetUtxos = utxos.stream()
                 .filter(u -> u.getTxHash().equals(claimResponse.getTxHash()))
                 .count();
         Assertions.assertEquals(3, faucetUtxos,

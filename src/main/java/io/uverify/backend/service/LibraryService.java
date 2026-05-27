@@ -503,6 +503,10 @@ public class LibraryService {
         }
     }
 
+    public void deleteAllAfterSlot(long slot) {
+        libraryRepository.deleteAllAfterSlot(slot);
+    }
+
     public void deployToLibrary(ArrayList<com.bloxbean.cardano.yaci.helper.model.Utxo> utxos, Long slot) {
         if (isFirstDeployment()) {
             boolean proxyScriptInUtxos = utxos.stream().anyMatch(this::hasProxyScriptRef);

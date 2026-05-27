@@ -22,6 +22,7 @@ import com.bloxbean.cardano.client.account.Account;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.api.model.Utxo;
+import com.bloxbean.cardano.client.backend.blockfrost.service.BFBackendService;
 import com.bloxbean.cardano.client.common.model.Networks;
 import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
@@ -46,6 +47,7 @@ import io.uverify.backend.extension.service.ConnectedGoodsService;
 import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.extension.validators.SocialHubDatum;
 import io.uverify.backend.extension.validators.converter.SocialHubDatumConverter;
+import io.uverify.backend.sandbox.SandboxContainers;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.LibraryRepository;
@@ -115,12 +117,11 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             ConnectedGoodsService connectedGoodsService,
             LibraryService libraryService) {
         super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, fractionizedCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper,
-                libraryService, List.of(serviceWalletAddress));
+                libraryService);
         RestAssured.port = port;
         this.connectedGoodsServiceWallet = Account.createFromMnemonic(Networks.testnet(), serviceWalletMnemonic);
 
         this.connectedGoodsService = connectedGoodsService;
-        this.connectedGoodsService.setBackendService(yaciCardanoContainer.getBackendService());
     }
 
     private void generateQRCode(String batchDir, String data, String filename) throws WriterException, IOException {
@@ -142,6 +143,12 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
         String filePath = System.getProperty("user.home");
         Path path = Paths.get(filePath, ".uverify", "extension", "connected_goods", batchDir, "qr_codes", filename + ".png");
         MatrixToImageWriter.writeToPath(bitMatrix, "PNG", path);
+    }
+
+    @BeforeAll
+    public void fundConnectedGoodsWallet() throws IOException, InterruptedException {
+        fundAddress(connectedGoodsServiceWallet.baseAddress(), 20_000_000_000L);
+        waitForUtxos(connectedGoodsServiceWallet.baseAddress());
     }
 
     @Test
@@ -295,8 +302,8 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
     @Order(5)
     public void updateSocialHub() throws Exception {
         String mintingTransactionHash = mintingTransactionHashes.get(batchDirs.get(1));
-        Result<Utxo> output = yaciCardanoContainer.getUtxoService().getTxOutput(mintingTransactionHash, 0);
-        Utxo utxo = output.getValue();
+        BFBackendService bfBackendService = new BFBackendService(SandboxContainers.YANO.getBlockfrostBaseUrl(), "test");
+        Utxo utxo = bfBackendService.getUtxoService().getTxOutput(mintingTransactionHash, 0).getValue();
 
         SocialHubDatum socialHubDatum = new SocialHubDatumConverter().deserialize(utxo.getInlineDatum());
         String password = items.get(itemName);

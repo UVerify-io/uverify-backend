@@ -20,27 +20,21 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: 🐳 Build sandbox node image
+        working-directory: uverify-examples/sandbox/yano
+        run: docker build -t uverify/sandbox-node:latest .
+
       - name: 🔨 Build
         run: |
           ./mvnw --batch-mode --update-snapshots clean package -DskipTests
 
       - name: 🍀 Generate .env file
         run: |
-          echo "SPRING_PROFILES_ACTIVE=preprod,h2" >> src/test/resources/.env
-          echo "DB_URL=jdbc:h2:mem:uverify-test" >> src/test/resources/.env
-          echo "YACI_STORE_AUTO_START=false" >> src/test/resources/.env
-          echo "SERVICE_USER_ADDRESS=${{ secrets.SERVICE_USER_ADDRESS }}" >> src/test/resources/.env
-
           echo "TEST_USER_MNEMONIC=${{ secrets.TEST_USER_MNEMONIC }}" >> src/test/resources/.env
           echo "SERVICE_ACCOUNT_MNEMONIC=${{ secrets.SERVICE_ACCOUNT_MNEMONIC }}" >> src/test/resources/.env
           echo "FEE_RECEIVER_MNEMONIC=${{ secrets.FEE_RECEIVER_MNEMONIC }}" >> src/test/resources/.env
           echo "FEE_RECEIVER_PARTNER_ADDRESS=${{ secrets.FEE_RECEIVER_PARTNER_ADDRESS }}" >> src/test/resources/.env
           echo "FACILITATOR_ACCOUNT_MNEMONIC=${{ secrets.FACILITATOR_ACCOUNT_MNEMONIC }}" >> src/test/resources/.env
-
-          echo "BLOCKFROST_PROJECT_ID=${{ secrets.BLOCKFROST_PROJECT_ID }}" >> src/test/resources/.env
-          echo "BLOCKFROST_BASE_URL=https://cardano-preprod.blockfrost.io/api/v0/" >> src/test/resources/.env
-          echo "CARDANO_BACKEND_TYPE=custom" >> src/test/resources/.env
-          echo "CARDANO_NETWORK=PREPROD" >> src/test/resources/.env
 
           echo "CONNECTED_GOODS_EXTENSION_ENABLED=true" >> src/test/resources/.env
           echo "CONNECTED_GOODS_SERVICE_WALLET_MNEMONIC=${{ secrets.CONNECTED_GOODS_SERVICE_WALLET_MNEMONIC }}" >> src/test/resources/.env
@@ -48,9 +42,6 @@ jobs:
           echo "CONNECTED_GOODS_ENCRYPTION_SALT=${{ secrets.CONNECTED_GOODS_ENCRYPTION_SALT }}" >> src/test/resources/.env
 
           echo "TADAMON_EXTENSION_ENABLED=false" >> src/test/resources/.env
-
-          echo "PROXY_TX_HASH=" >> src/test/resources/.env
-          echo "PROXY_OUTPUT_INDEX=0" >> src/test/resources/.env
 
           echo "FAUCET_ENABLED=true" >> src/test/resources/.env
           echo "FAUCET_MNEMONIC=abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art" >> src/test/resources/.env

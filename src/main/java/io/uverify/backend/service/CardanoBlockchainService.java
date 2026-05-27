@@ -695,11 +695,13 @@ public class CardanoBlockchainService {
     }
 
     public void handleRollbackToSlot(long slot) {
+        log.info("Handling rollback to slot: {}", slot);
         bootstrapDatumService.undoInvalidationBeforeSlot(slot);
         uVerifyCertificateService.deleteAllCertificatesAfterSlot(slot);
         stateDatumService.undoInvalidationBeforeSlot(slot);
         stateDatumService.handleRollbackToSlot(slot);
         bootstrapDatumService.deleteAllAfterSlot(slot);
+        libraryService.deleteAllAfterSlot(slot);
     }
 
     public Transaction invalidateStates(Address userAddress, List<String> transactionIds) throws ApiException {
