@@ -19,12 +19,12 @@
 package io.uverify.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 @Data
 public class SubmitTransactionRequest {
-    @NotNull
+    @NotBlank(message = "transaction is required")
     private String transaction;
     @JsonAlias({"witnessSet", "witness_set"})
     private String witnessSet;
