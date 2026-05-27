@@ -43,17 +43,32 @@ public interface StateDatumRepository extends JpaRepository<StateDatumEntity, St
     @Query(value = """
             UPDATE state_datum
             SET
-                countdown = latest.countdown,
-                transaction_id = latest.transaction_id
-            FROM (
-                SELECT DISTINCT ON (state_datum_id)
-                    state_datum_id,
-                    countdown,
-                    transaction_id
-                FROM state_datum_update
-                ORDER BY state_datum_id, slot DESC, id DESC
-            ) AS latest
-            WHERE state_datum.id = latest.state_datum_id
+                countdown = (
+                    SELECT countdown FROM state_datum_update
+                    WHERE id = (
+                        SELECT MAX(id) FROM state_datum_update
+                        WHERE state_datum_id = state_datum.id
+                          AND slot = (
+                            SELECT MAX(slot) FROM state_datum_update
+                            WHERE state_datum_id = state_datum.id
+                          )
+                    )
+                ),
+                transaction_id = (
+                    SELECT transaction_id FROM state_datum_update
+                    WHERE id = (
+                        SELECT MAX(id) FROM state_datum_update
+                        WHERE state_datum_id = state_datum.id
+                          AND slot = (
+                            SELECT MAX(slot) FROM state_datum_update
+                            WHERE state_datum_id = state_datum.id
+                          )
+                    )
+                )
+            WHERE EXISTS (
+                SELECT 1 FROM state_datum_update
+                WHERE state_datum_id = state_datum.id
+            )
             """, nativeQuery = true)
     void handleRollback();
 
