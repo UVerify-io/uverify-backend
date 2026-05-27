@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.18.0](https://github.com/UVerify-io/uverify-backend/compare/v1.17.1...v1.18.0) (2026-05-27)
+
+
+### Features
+
+* add tests around bootstrap datum with restricted access ([df479c7](https://github.com/UVerify-io/uverify-backend/commit/df479c7fcc676f7f2845751cc952288d42e8a560))
+
+
+### Bug Fixes
+
+* adjust sql structure to add h2 support ([314b3e3](https://github.com/UVerify-io/uverify-backend/commit/314b3e3270b08a14b158dcb57dc609067cc81d94))
+* allow having more uverify transactions in the same block ([5798fdf](https://github.com/UVerify-io/uverify-backend/commit/5798fdfebe481a819facf0b3f0a7923b2446ed31))
+
+## [1.17.1](https://github.com/UVerify-io/uverify-backend/compare/v1.17.0...v1.17.1) (2026-05-24)
+
+
+### Bug Fixes
+
+* register cache names ([13dbe9c](https://github.com/UVerify-io/uverify-backend/commit/13dbe9c353b7af47a9b9d704d636e615c576a93b))
+
 ## [1.17.0](https://github.com/UVerify-io/uverify-backend/compare/v1.16.0...v1.17.0) (2026-05-24)
 
 

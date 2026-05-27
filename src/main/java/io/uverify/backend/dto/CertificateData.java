@@ -18,11 +18,15 @@
 
 package io.uverify.backend.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CertificateData {
+    @NotBlank(message = "hash is required")
     private String hash;
     private String metadata;
     private String algorithm;

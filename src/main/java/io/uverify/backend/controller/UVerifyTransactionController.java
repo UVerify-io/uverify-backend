@@ -29,6 +29,7 @@ import io.uverify.backend.dto.BuildTransactionRequest;
 import io.uverify.backend.dto.BuildTransactionResponse;
 import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.dto.SubmitTransactionRequest;
+import jakarta.validation.Valid;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.TransactionType;
 import org.springframework.http.HttpStatus;
@@ -91,7 +92,7 @@ public class UVerifyTransactionController {
             @ApiResponse(responseCode = "400", description = "Invalid transaction type or request data"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> buildTransaction(@RequestBody BuildTransactionRequest request) {
+    public ResponseEntity<?> buildTransaction(@Valid @RequestBody BuildTransactionRequest request) {
         try {
             if (request.getType().equals(TransactionType.DEFAULT)) {
                 String bootstrapDatumName = request.getBootstrapDatum() != null ? request.getBootstrapDatum().getName() : null;
@@ -127,7 +128,7 @@ public class UVerifyTransactionController {
                     content = @Content(mediaType = "application/json")),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> submitTransaction(@RequestBody SubmitTransactionRequest request) {
+    public ResponseEntity<?> submitTransaction(@Valid @RequestBody SubmitTransactionRequest request) {
         try {
             Result<String> result = transactionService.submit(request.getTransaction(), request.getWitnessSet());
             if (result.isSuccessful()) {

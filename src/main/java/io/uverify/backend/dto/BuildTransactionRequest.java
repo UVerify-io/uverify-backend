@@ -30,7 +30,7 @@ import java.util.List;
 @AllArgsConstructor
 public class BuildTransactionRequest {
     private List<CertificateData> certificates;
-    private TransactionType type;
+    private TransactionType type = TransactionType.DEFAULT;
     private String address;
     @JsonAlias({"bootstrapDatum", "bootstrap_datum"})
     private BootstrapData bootstrapDatum;

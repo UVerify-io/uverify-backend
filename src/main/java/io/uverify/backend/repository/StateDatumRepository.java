@@ -44,25 +44,31 @@ public interface StateDatumRepository extends JpaRepository<StateDatumEntity, St
             UPDATE state_datum
             SET
                 countdown = (
-                    SELECT latestUpdate.countdown
-                    FROM state_datum_update latestUpdate
-                    WHERE latestUpdate.state_datum_id = state_datum.id
-                    AND latestUpdate.slot = (
-                        SELECT MAX(slot)
-                        FROM state_datum_update
-                        WHERE state_datum_update.state_datum_id = state_datum.id
+                    SELECT countdown FROM state_datum_update
+                    WHERE id = (
+                        SELECT MAX(id) FROM state_datum_update
+                        WHERE state_datum_id = state_datum.id
+                          AND slot = (
+                            SELECT MAX(slot) FROM state_datum_update
+                            WHERE state_datum_id = state_datum.id
+                          )
                     )
                 ),
                 transaction_id = (
-                    SELECT latestUpdate.transaction_id
-                    FROM state_datum_update latestUpdate
-                    WHERE latestUpdate.state_datum_id = state_datum.id
-                    AND latestUpdate.slot = (
-                        SELECT MAX(slot)
-                        FROM state_datum_update
-                        WHERE state_datum_update.state_datum_id = state_datum.id
+                    SELECT transaction_id FROM state_datum_update
+                    WHERE id = (
+                        SELECT MAX(id) FROM state_datum_update
+                        WHERE state_datum_id = state_datum.id
+                          AND slot = (
+                            SELECT MAX(slot) FROM state_datum_update
+                            WHERE state_datum_id = state_datum.id
+                          )
                     )
                 )
+            WHERE EXISTS (
+                SELECT 1 FROM state_datum_update
+                WHERE state_datum_id = state_datum.id
+            )
             """, nativeQuery = true)
     void handleRollback();
 
