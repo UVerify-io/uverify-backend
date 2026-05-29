@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.0](https://github.com/UVerify-io/uverify-backend/compare/v1.18.0...v1.19.0) (2026-05-27)
+
+
+### Features
+
+* add clear error messages for bad requests ([9379af6](https://github.com/UVerify-io/uverify-backend/commit/9379af66dd4e24f528e98b4bb0cea5f759e6adbf))
+
 ## [1.18.0](https://github.com/UVerify-io/uverify-backend/compare/v1.17.1...v1.18.0) (2026-05-27)
 
 
