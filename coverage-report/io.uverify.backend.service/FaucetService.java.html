@@ -177,62 +177,66 @@ public class FaucetService {
         }
     }
 
+    public String getFaucetAddress() {
+<span class="nc" id="L181">        return faucetAccount.baseAddress();</span>
+    }
+
     private boolean isInCooldown(String address) {
         String credentialHex;
         try {
-<span class="fc" id="L183">            credentialHex = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address));</span>
-<span class="nc" id="L184">        } catch (IllegalArgumentException e) {</span>
-<span class="nc" id="L185">            return false;</span>
-<span class="fc" id="L186">        }</span>
+<span class="fc" id="L187">            credentialHex = HexUtil.encodeHexString(CardanoUtils.extractCredentialFromAddress(address));</span>
+<span class="nc" id="L188">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L189">            return false;</span>
+<span class="fc" id="L190">        }</span>
 
-<span class="fc" id="L188">        Long lastClaim = cooldownMap.get(credentialHex);</span>
-<span class="fc bfc" id="L189" title="All 2 branches covered.">        if (lastClaim == null) {</span>
-<span class="fc" id="L190">            return false;</span>
+<span class="fc" id="L192">        Long lastClaim = cooldownMap.get(credentialHex);</span>
+<span class="fc bfc" id="L193" title="All 2 branches covered.">        if (lastClaim == null) {</span>
+<span class="fc" id="L194">            return false;</span>
         }
 
-<span class="pc bpc" id="L193" title="1 of 2 branches missed.">        if (System.currentTimeMillis() - lastClaim &gt;= cooldownMs) {</span>
-<span class="nc" id="L194">            cooldownMap.remove(credentialHex);</span>
-<span class="nc" id="L195">            return false;</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">        if (System.currentTimeMillis() - lastClaim &gt;= cooldownMs) {</span>
+<span class="nc" id="L198">            cooldownMap.remove(credentialHex);</span>
+<span class="nc" id="L199">            return false;</span>
         }
 
-<span class="fc" id="L198">        return true;</span>
+<span class="fc" id="L202">        return true;</span>
     }
 
     private boolean signaturesAreValid(FaucetClaimRequest request) {
-<span class="fc" id="L202">        String expectedMessage = buildMessage(request.getAddress(), request.getTimestamp());</span>
-<span class="pc bpc" id="L203" title="1 of 2 branches missed.">        if (!expectedMessage.equals(request.getMessage())) {</span>
-<span class="nc" id="L204">            return false;</span>
+<span class="fc" id="L206">        String expectedMessage = buildMessage(request.getAddress(), request.getTimestamp());</span>
+<span class="pc bpc" id="L207" title="1 of 2 branches missed.">        if (!expectedMessage.equals(request.getMessage())) {</span>
+<span class="nc" id="L208">            return false;</span>
         }
 
-<span class="fc" id="L207">        EdDSASigningProvider edDSASigningProvider = new EdDSASigningProvider();</span>
-<span class="fc" id="L208">        boolean backendSignatureValid = edDSASigningProvider.verify(</span>
-<span class="fc" id="L209">                HexUtil.decodeHexString(request.getSignature()),</span>
-<span class="fc" id="L210">                request.getMessage().getBytes(StandardCharsets.UTF_8),</span>
-<span class="fc" id="L211">                faucetAccount.publicKeyBytes());</span>
+<span class="fc" id="L211">        EdDSASigningProvider edDSASigningProvider = new EdDSASigningProvider();</span>
+<span class="fc" id="L212">        boolean backendSignatureValid = edDSASigningProvider.verify(</span>
+<span class="fc" id="L213">                HexUtil.decodeHexString(request.getSignature()),</span>
+<span class="fc" id="L214">                request.getMessage().getBytes(StandardCharsets.UTF_8),</span>
+<span class="fc" id="L215">                faucetAccount.publicKeyBytes());</span>
 
-<span class="pc bpc" id="L213" title="1 of 2 branches missed.">        if (!backendSignatureValid) {</span>
-<span class="nc" id="L214">            return false;</span>
+<span class="pc bpc" id="L217" title="1 of 2 branches missed.">        if (!backendSignatureValid) {</span>
+<span class="nc" id="L218">            return false;</span>
         }
 
-<span class="fc" id="L217">        CIP30Verifier cip30Verifier = new CIP30Verifier(request.getUserSignature(), request.getUserPublicKey());</span>
-<span class="fc" id="L218">        Cip30VerificationResult result = cip30Verifier.verify();</span>
-<span class="fc" id="L219">        Optional&lt;String&gt; optionalUserAddress = result.getAddress(AddressFormat.TEXT);</span>
+<span class="fc" id="L221">        CIP30Verifier cip30Verifier = new CIP30Verifier(request.getUserSignature(), request.getUserPublicKey());</span>
+<span class="fc" id="L222">        Cip30VerificationResult result = cip30Verifier.verify();</span>
+<span class="fc" id="L223">        Optional&lt;String&gt; optionalUserAddress = result.getAddress(AddressFormat.TEXT);</span>
 
-<span class="fc bfc" id="L221" title="All 2 branches covered.">        if (optionalUserAddress.isEmpty()) {</span>
-<span class="fc" id="L222">            return false;</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">        if (optionalUserAddress.isEmpty()) {</span>
+<span class="fc" id="L226">            return false;</span>
         }
 
-<span class="pc bpc" id="L225" title="1 of 2 branches missed.">        return result.isValid()</span>
-<span class="pc bpc" id="L226" title="1 of 2 branches missed.">                &amp;&amp; expectedMessage.equals(result.getMessage(MessageFormat.TEXT))</span>
-<span class="pc bpc" id="L227" title="1 of 2 branches missed.">                &amp;&amp; request.getAddress().equals(optionalUserAddress.get());</span>
+<span class="pc bpc" id="L229" title="1 of 2 branches missed.">        return result.isValid()</span>
+<span class="pc bpc" id="L230" title="1 of 2 branches missed.">                &amp;&amp; expectedMessage.equals(result.getMessage(MessageFormat.TEXT))</span>
+<span class="pc bpc" id="L231" title="1 of 2 branches missed.">                &amp;&amp; request.getAddress().equals(optionalUserAddress.get());</span>
     }
 
     private boolean hasValidTimeframe(long timestamp) {
-<span class="pc bpc" id="L231" title="1 of 2 branches missed.">        return Math.abs(System.currentTimeMillis() - timestamp) &lt;= 600_000;</span>
+<span class="pc bpc" id="L235" title="1 of 2 branches missed.">        return Math.abs(System.currentTimeMillis() - timestamp) &lt;= 600_000;</span>
     }
 
     private String buildMessage(String address, long timestamp) {
-<span class="fc" id="L235">        return &quot;[&quot; + ACTION_NAME + &quot;@&quot; + timestamp + &quot;] Please sign this message with your private key to verify, &quot; +</span>
+<span class="fc" id="L239">        return &quot;[&quot; + ACTION_NAME + &quot;@&quot; + timestamp + &quot;] Please sign this message with your private key to verify, &quot; +</span>
                 &quot;that you are the owner of the address &quot; + address + &quot;.&quot;;
     }
 }
