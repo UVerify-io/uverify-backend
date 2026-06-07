@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.1](https://github.com/UVerify-io/uverify-backend/compare/v1.19.0...v1.19.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* repair faucet wait behavior by making sure that also faucet address utxos will be processed ([bc5f4b0](https://github.com/UVerify-io/uverify-backend/commit/bc5f4b0a5ce1af06582be09e1d367cea60a8eec3))
+
 ## [1.19.0](https://github.com/UVerify-io/uverify-backend/compare/v1.18.0...v1.19.0) (2026-05-27)
 
 
