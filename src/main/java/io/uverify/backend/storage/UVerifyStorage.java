@@ -26,6 +26,7 @@ import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.TxInputRepos
 import com.bloxbean.cardano.yaci.store.utxo.storage.impl.repository.UtxoRepository;
 import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.service.CardanoBlockchainService;
+import io.uverify.backend.service.FaucetService;
 import io.uverify.backend.util.ValidatorHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.jooq.DSLContext;
@@ -55,6 +56,9 @@ public class UVerifyStorage extends UtxoStorageImpl {
     @Autowired
     private final ValidatorHelper validatorHelper;
 
+    @Autowired(required = false)
+    private FaucetService faucetService;
+
     private String proxyContractAddress;
     private String proxyPolicyId;
 
@@ -76,6 +80,14 @@ public class UVerifyStorage extends UtxoStorageImpl {
         allProcessedUtxos.addAll(processedByUVerifyCore);
         allProcessedUtxos.addAll(processedByExtensions);
         allProcessedUtxos.addAll(processedByUVerifyProxy);
+
+        if (faucetService != null) {
+            String faucetAddress = faucetService.getFaucetAddress();
+            addressUtxoList.stream()
+                    .filter(addressUtxo -> faucetAddress.equals(addressUtxo.getOwnerAddr()))
+                    .forEach(allProcessedUtxos::add);
+        }
+
         if (!allProcessedUtxos.isEmpty()) {
             super.saveUnspent(new ArrayList<>(allProcessedUtxos));
         }

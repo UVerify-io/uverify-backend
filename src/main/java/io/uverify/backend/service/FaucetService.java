@@ -177,6 +177,10 @@ public class FaucetService {
         }
     }
 
+    public String getFaucetAddress() {
+        return faucetAccount.baseAddress();
+    }
+
     private boolean isInCooldown(String address) {
         String credentialHex;
         try {
