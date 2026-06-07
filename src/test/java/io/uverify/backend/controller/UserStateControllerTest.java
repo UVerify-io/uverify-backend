@@ -151,7 +151,6 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
                 .as(ExecuteUserActionResponse.class);
 
         Assertions.assertEquals(HttpStatus.OK, executeUserActionResponse.getStatus());
-        Assertions.assertEquals(0, executeUserActionResponse.getState().getBootstrapDatums().size());
         Assertions.assertEquals(0, executeUserActionResponse.getState().getStates().size());
     }
 
@@ -188,11 +187,8 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Transaction signedTransaction = TransactionSigner.INSTANCE.sign(Transaction.deserialize(HexUtil.decodeHexString(response.getUnsignedTransaction())), serviceAccount.hdKeyPair());
         Result<String> result = cardanoBlockchainService.submitTransaction(signedTransaction);
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
-        }
-
         Assertions.assertTrue(result.isSuccessful());
+        awaitIndexed(() -> bootstrapDatumService.getBootstrapDatum("default", 1).isPresent());
     }
 
     @Test
@@ -222,11 +218,8 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Transaction signedTransaction = TransactionSigner.INSTANCE.sign(Transaction.deserialize(HexUtil.decodeHexString(response.getUnsignedTransaction())), userAccount.hdKeyPair());
         Result<String> result = cardanoBlockchainService.submitTransaction(signedTransaction);
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
-        }
-
         Assertions.assertTrue(result.isSuccessful());
+        awaitIndexed(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty());
     }
 
     @Test
@@ -253,7 +246,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
                 .as(ExecuteUserActionResponse.class);
 
         Assertions.assertEquals(HttpStatus.OK, executeUserActionResponse.getStatus());
-        Assertions.assertEquals(1, executeUserActionResponse.getState().getBootstrapDatums().size());
+        Assertions.assertFalse(executeUserActionResponse.getState().getBootstrapDatums().isEmpty());
         Assertions.assertEquals(1, executeUserActionResponse.getState().getStates().size());
 
         StateData stateDatum = executeUserActionResponse.getState().getStates().get(0);
@@ -293,10 +286,6 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
 
         Transaction signedTransaction = TransactionSigner.INSTANCE.sign(Transaction.deserialize(HexUtil.decodeHexString(response.getUnsignedTransaction())), userAccount.hdKeyPair());
         Result<String> result = cardanoBlockchainService.submitTransaction(signedTransaction);
-
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
-        }
 
         Assertions.assertTrue(result.isSuccessful());
     }

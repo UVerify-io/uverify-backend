@@ -18,28 +18,21 @@
 
 package io.uverify.backend.extension;
 
-import co.nstant.in.cbor.CborException;
 import com.bloxbean.cardano.client.api.exception.ApiException;
 import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.api.model.Utxo;
-import com.bloxbean.cardano.client.backend.blockfrost.service.BFBackendService;
-import io.uverify.backend.sandbox.SandboxContainers;
-import com.bloxbean.cardano.client.exception.AddressExcepion;
 import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
-import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.uverify.backend.CardanoBlockchainTest;
-import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.extension.dto.fractionized.FractionizedBuildRequest;
 import io.uverify.backend.extension.enums.ExtensionTransactionType;
 import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.extension.validators.fractionized.FractionizedConfig;
-import io.uverify.backend.model.BootstrapDatum;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.LibraryRepository;
@@ -112,24 +105,6 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
     }
 
     @Test
-    @Order(0)
-    public void setupBootstrapToken() throws CborSerializationException, ApiException, InterruptedException, CborException, AddressExcepion {
-        BootstrapDatum bootstrapDatum = BootstrapDatum.generateFrom(List.of(feeReceiverAccount.baseAddress()));
-        bootstrapDatum.setTokenName("frn_test_bootstrap_token");
-        bootstrapDatum.setFeeInterval(3);
-        bootstrapDatum.setTransactionLimit(15);
-
-        Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), transaction);
-        }
-
-        Assertions.assertTrue(result.isSuccessful());
-    }
-
-    @Test
     @Order(1)
     public void extensionRegistryShouldListFractionizedAsEnabled() {
         Response response = given()
@@ -146,10 +121,8 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
 
     @Test
     @Order(2)
-    public void initFractionizedContract() throws ApiException, CborSerializationException, InterruptedException, CborException, AddressExcepion, CborDeserializationException {
-        // Pick a UTxO from the service account to use as the one-shot init UTxO
-        BFBackendService bfBackendService = new BFBackendService(SandboxContainers.YANO.getBlockfrostBaseUrl(), "test");
-        Result<List<Utxo>> utxoResult = bfBackendService.getUtxoService().getUtxos(serviceAccount.baseAddress(), 100, 1);
+    public void initFractionizedContract() throws ApiException, CborSerializationException, CborDeserializationException {
+        Result<List<Utxo>> utxoResult = backendService.getUtxoService().getUtxos(serviceAccount.baseAddress(), 100, 1);
         Assertions.assertTrue(utxoResult.isSuccessful() && !utxoResult.getValue().isEmpty());
         Utxo selectedUtxo = utxoResult.getValue().get(0);
 
@@ -181,7 +154,6 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
         buildRequest.setTotalAmount(INIT_TOTAL);
         buildRequest.setClaimants(List.of());
         buildRequest.setAssetName(INIT_ASSET_NAME);
-        buildRequest.setBootstrapTokenName("frn_test_bootstrap_token");
 
         String unsignedTxCbor = given()
                 .contentType(ContentType.JSON)
@@ -200,9 +172,8 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
-        }
+        waitForTransaction(result.getValue());
+        awaitIndexed(() -> !stateDatumService.findByOwner(serviceAccount.baseAddress(), 2).isEmpty());
     }
 
     @Test
@@ -226,8 +197,7 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
 
     @Test
     @Order(4)
-    public void inserterAddsFirstCertificate() throws ApiException, CborSerializationException,
-            InterruptedException, CborDeserializationException {
+    public void inserterAddsFirstCertificate() throws ApiException, CborSerializationException, CborDeserializationException {
         FractionizedBuildRequest buildRequest = new FractionizedBuildRequest();
         buildRequest.setType(ExtensionTransactionType.CREATE);
         buildRequest.setSenderAddress(userAccount.baseAddress());
@@ -237,7 +207,6 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
         buildRequest.setAssetName(FRN_ASSET_NAME_HEX);
         buildRequest.setInitUtxoTxHash(initTxHash);
         buildRequest.setInitUtxoOutputIndex(initOutputIndex);
-        buildRequest.setBootstrapTokenName("frn_test_bootstrap_token");
 
         String unsignedTxCbor = given()
                 .contentType(ContentType.JSON)
@@ -254,9 +223,7 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
-        }
+        waitForTransaction(result.getValue());
     }
 
     @Test
@@ -282,7 +249,7 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
     @Test
     @Order(6)
     public void userClaimsPartialAmount() throws ApiException, CborSerializationException,
-            InterruptedException, CborDeserializationException {
+            CborDeserializationException {
         FractionizedBuildRequest buildRequest = new FractionizedBuildRequest();
         buildRequest.setType(ExtensionTransactionType.REDEEM);
         buildRequest.setSenderAddress(userAccount.baseAddress());
@@ -306,9 +273,7 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
-        }
+        waitForTransaction(result.getValue());
     }
 
     @Test
@@ -377,9 +342,7 @@ public class FractionizedCertificateControllerTest extends CardanoBlockchainTest
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
-        }
+        waitForTransaction(result.getValue());
     }
 
     @Test

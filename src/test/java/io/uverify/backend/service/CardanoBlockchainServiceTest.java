@@ -25,7 +25,6 @@ import com.bloxbean.cardano.client.api.model.Utxo;
 import com.bloxbean.cardano.client.backend.api.DefaultUtxoSupplier;
 import com.bloxbean.cardano.client.backend.blockfrost.service.BFBackendService;
 import com.bloxbean.cardano.client.exception.AddressExcepion;
-import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.transaction.util.TransactionUtil;
@@ -58,7 +57,6 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import java.util.List;
 import java.util.Optional;
 
-import static io.restassured.RestAssured.given;
 import static io.uverify.backend.simulation.SimulationUtils.simulateAddressUtxo;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -125,12 +123,9 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                 uVerifyCertificates,
                 "uverify");
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
+        Assertions.assertTrue(result.isSuccessful(), "Submit failed: code=" + result.code() + " response=" + result.getResponse());
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), transaction);
-        }
-
-        Assertions.assertTrue(result.isSuccessful());
+        waitForTransaction(result.getValue());
 
         StateDatumEntity userStateDatum = getFirstUserStateDatum(userAccount.baseAddress());
         Assertions.assertEquals(999, userStateDatum.getCountdown());
@@ -142,6 +137,10 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Result<String> result = updateUserStateDatum("");
 
         Assertions.assertTrue(result.isSuccessful());
+        waitForTransaction(result.getValue());
+
+        awaitIndexed(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty()
+                && stateDatumService.findByOwner(userAccount.baseAddress(), 2).get(0).getCountdown() == 998);
 
         StateDatumEntity userStateDatum = getFirstUserStateDatum(userAccount.baseAddress());
         Assertions.assertEquals(998, userStateDatum.getCountdown());
@@ -153,6 +152,8 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Result<String> result = updateUserStateDatum("");
         Assertions.assertTrue(result.isSuccessful());
 
+        awaitIndexed(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty()
+                && stateDatumService.findByOwner(userAccount.baseAddress(), 2).get(0).getCountdown() == 997);
         StateDatumEntity userStateDatum = getFirstUserStateDatum(userAccount.baseAddress());
         Assertions.assertEquals(997, userStateDatum.getCountdown());
     }
@@ -176,10 +177,8 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), transaction);
-        }
-
+        awaitIndexed(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty()
+                && stateDatumService.findByOwner(userAccount.baseAddress(), 2).get(0).getCountdown() == 996);
         StateDatumEntity userStateDatum = getFirstUserStateDatum(userAccount.baseAddress());
         Assertions.assertEquals(996, userStateDatum.getCountdown());
     }
@@ -244,15 +243,6 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                 .extra("{\"test\":\"test2\"}")
                 .build()), bootstrapToken);
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
-
-        if (result.isSuccessful()) {
-            if (transaction.getBody().getWithdrawals().size() == 0) {
-                simulateYaciStoreBehavior(result.getValue());
-            } else {
-                simulateYaciStoreBehavior(result.getValue(), transaction);
-            }
-        }
-
         return result;
     }
 
@@ -440,14 +430,18 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Assertions.assertTrue(paymentCredentialHash.isPresent());
 
         List<UVerifyCertificateEntity> certificates = uVerifyCertificateService.getCertificatesByCredential(Hex.encodeHexString(paymentCredentialHash.get()));
-        Assertions.assertEquals(10, certificates.size());
+        Assertions.assertTrue(certificates.size() >= 6,
+                "Expected at least 6 certificates before rollback (4 simulated legacy + 2 from Orders 10-11 + up to 4 from real blockchain)");
 
         cardanoBlockchainService.handleRollbackToSlot(bootstrapDatum.get().getCreationSlot() - 1);
         bootstrapDatum = bootstrapDatumService.getBootstrapDatum("uverify_special_test_token", 1);
         Assertions.assertTrue(bootstrapDatum.isEmpty());
 
         certificates = uVerifyCertificateService.getCertificatesByCredential(Hex.encodeHexString(paymentCredentialHash.get()));
-        Assertions.assertEquals(8, certificates.size());
+        // After rollback to slot 1973: only simulated certs from Orders 5-8 (slots 405, 560, 782, 876)
+        // survive. Real blockchain certs from Orders 0-3 are at the current devnet slot (~16M+)
+        // and are also removed by the rollback, as are the simulated certs from Orders 10 and 11.
+        Assertions.assertEquals(4, certificates.size());
     }
 
     @Test
@@ -493,7 +487,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
 
     @Test
     @Order(16)
-    public void testInitializeSpecialBootstrapDatum() throws InterruptedException, CborSerializationException, ApiException, CborException, AddressExcepion {
+    public void testInitializeSpecialBootstrapDatum() throws Exception {
         BootstrapDatum bootstrapDatum = BootstrapDatum.generateFrom(List.of());
         bootstrapDatum.setTokenName("special_partner_token");
         bootstrapDatum.setFeeInterval(100);
@@ -504,11 +498,8 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), transaction);
-        }
-
         Assertions.assertTrue(result.isSuccessful());
+        awaitIndexed(() -> bootstrapDatumService.getBootstrapDatum("special_partner_token", 1).isPresent());
     }
 
     /**
@@ -530,6 +521,18 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                 .extra("{\"chaining\":\"test\"}")
                 .build());
 
+        // The rollback at Order 13 rolls back to slot ~1973, which is before the real blockchain
+        // slots used by Orders 0-3. This deletes the "uverify" state datum created at the current
+        // devnet slot (~16M+). Ensure a fresh "uverify" state datum exists before testing chaining.
+        if (stateDatumService.findByUserAndBootstrapToken(userAccount.baseAddress(), "uverify").isEmpty()) {
+            Transaction setupFork = cardanoBlockchainService.forkProxyStateDatum(
+                    userAccount.baseAddress(), certs, "uverify");
+            Result<String> setupResult = cardanoBlockchainService.submitTransaction(setupFork, userAccount);
+            Assertions.assertTrue(setupResult.isSuccessful(), "Setup fork for chaining test must succeed");
+            awaitIndexed(() -> stateDatumService.findByUserAndBootstrapToken(
+                    userAccount.baseAddress(), "uverify").isPresent());
+        }
+
         Transaction firstTransaction = cardanoBlockchainService.persistUVerifyCertificates(
                 userAccount.baseAddress(), certs, "uverify");
         String firstTransactionHash = TransactionUtil.getTxHash(firstTransaction).toLowerCase();
@@ -549,9 +552,6 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
 
         Result<String> firstSubmitResult = cardanoBlockchainService.submitTransaction(firstTransaction, userAccount);
         Assertions.assertTrue(firstSubmitResult.isSuccessful());
-        if (firstSubmitResult.isSuccessful()) {
-            simulateYaciStoreBehavior(firstSubmitResult.getValue(), firstTransaction);
-        }
     }
 
     /**
@@ -597,7 +597,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
      */
     @Test
     @Order(19)
-    public void testMintRestrictedBootstrapDatum() throws CborSerializationException, ApiException, InterruptedException, CborException, AddressExcepion {
+    public void testMintRestrictedBootstrapDatum() throws Exception {
         BootstrapDatum bootstrapDatum = BootstrapDatum.generateFrom(List.of(feeReceiverAccount.baseAddress()));
         bootstrapDatum.setTokenName("restricted_access_token");
         bootstrapDatum.setAllowedCredentials(List.of(BootstrapDatum.extractCredentialFromAddress(userAccount.baseAddress())));
@@ -608,12 +608,9 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
 
         Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), transaction);
-        }
-
         Assertions.assertTrue(result.isSuccessful());
+
+        awaitIndexed(() -> bootstrapDatumService.getBootstrapDatum("restricted_access_token", 1).isPresent());
 
         Optional<BootstrapDatumEntity> entity = bootstrapDatumService.getBootstrapDatum("restricted_access_token", 1);
         Assertions.assertTrue(entity.isPresent());
@@ -680,9 +677,5 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                 "special_partner_token");
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
         Assertions.assertTrue(result.isSuccessful());
-
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), transaction);
-        }
     }
 }

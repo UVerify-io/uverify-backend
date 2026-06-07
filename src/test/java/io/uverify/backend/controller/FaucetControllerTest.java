@@ -19,8 +19,8 @@
 package io.uverify.backend.controller;
 
 import com.bloxbean.cardano.client.account.Account;
-import com.bloxbean.cardano.client.backend.api.DefaultUtxoSupplier;
 import com.bloxbean.cardano.client.api.model.Utxo;
+import com.bloxbean.cardano.client.backend.api.DefaultUtxoSupplier;
 import com.bloxbean.cardano.client.backend.blockfrost.service.BFBackendService;
 import com.bloxbean.cardano.client.cip.cip30.CIP30DataSigner;
 import com.bloxbean.cardano.client.cip.cip30.DataSignError;
@@ -41,9 +41,9 @@ import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.LibraryRepository;
 import io.uverify.backend.repository.StateDatumRepository;
+import io.uverify.backend.sandbox.SandboxContainers;
 import io.uverify.backend.service.*;
 import io.uverify.backend.util.ValidatorHelper;
-import io.uverify.backend.sandbox.SandboxContainers;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,7 +51,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -91,12 +90,6 @@ public class FaucetControllerTest extends CardanoBlockchainTest {
                 extensionManager, validatorHelper, libraryService);
         this.faucetAccount = Account.createFromMnemonic(Networks.testnet(), faucetMnemonic);
         RestAssured.port = port;
-    }
-
-    @BeforeAll
-    public void fundFaucetAccount() throws IOException, InterruptedException {
-        fundAddress(faucetAccount.baseAddress(), 50_000_000_000L);
-        waitForUtxos(faucetAccount.baseAddress());
     }
 
     @Test

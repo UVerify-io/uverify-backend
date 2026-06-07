@@ -114,12 +114,7 @@ public class LibraryControllerTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        if (result.isSuccessful()) {
-            // The signed transaction needs to be submitted as the processor
-            // ensures it has been signed by the service account
-            Transaction signedTransaction = TransactionSigner.INSTANCE.sign(transaction, serviceAccount.hdKeyPair());
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
-        }
+        awaitIndexed(() -> libraryRepository.count() >= 3);
     }
 
     @Test

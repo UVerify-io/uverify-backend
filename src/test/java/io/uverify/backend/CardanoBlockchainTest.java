@@ -19,22 +19,21 @@
 package io.uverify.backend;
 
 import com.bloxbean.cardano.client.account.Account;
+import com.bloxbean.cardano.client.backend.api.BackendService;
 import com.bloxbean.cardano.client.common.model.Networks;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
+import com.bloxbean.cardano.yaci.store.core.service.StartService;
 import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.extension.service.FractionizedCertificateService;
-import io.uverify.backend.repository.BootstrapDatumRepository;
-import io.uverify.backend.repository.CertificateRepository;
-import io.uverify.backend.repository.LibraryRepository;
-import io.uverify.backend.repository.StateDatumRepository;
+import io.uverify.backend.repository.*;
 import io.uverify.backend.sandbox.SandboxContainers;
-import io.uverify.backend.sandbox.SandboxResetExtension;
+import io.uverify.backend.sandbox.YanoContainer;
 import io.uverify.backend.service.*;
 import io.uverify.backend.util.ValidatorHelper;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,28 +42,23 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 
 import static org.awaitility.Awaitility.await;
 
 @Slf4j
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ActiveProfiles("devnet")
-@ExtendWith(SandboxResetExtension.class)
+@ActiveProfiles({"devnet", "h2"})
 public class CardanoBlockchainTest {
 
     protected final Account serviceAccount;
     protected final Account userAccount;
     protected final Account feeReceiverAccount;
     protected final Account facilitatorAccount;
-
     @Autowired
     protected final CardanoBlockchainService cardanoBlockchainService;
     @Autowired
@@ -88,6 +82,12 @@ public class CardanoBlockchainTest {
     @Autowired
     protected final LibraryService libraryService;
     protected final Optional<FractionizedCertificateService> fractionizedCertificateService;
+    protected BackendService backendService;
+    @Autowired
+    private StartService startService;
+
+    @Autowired
+    private TransactionRepository transactionRepository;
 
     @Autowired
     public CardanoBlockchainTest(@Value("${cardano.service.user.mnemonic}") String testServiceUserMnemonic,
@@ -142,13 +142,9 @@ public class CardanoBlockchainTest {
         registry.add("proxy.transaction-hash", () -> "0667d4932b2a2ae6259a5ff1e0b78b8b650568980b1d95e5bd859c2a019bcc0e");
         registry.add("proxy.output-index", () -> "0");
 
-        registry.add("spring.datasource.url", SandboxContainers.POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", SandboxContainers.POSTGRES::getUsername);
-        registry.add("spring.datasource.password", SandboxContainers.POSTGRES::getPassword);
-        registry.add("spring.datasource.driverClassName", () -> "org.postgresql.Driver");
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "update");
-        registry.add("spring.flyway.locations[0]", () -> "classpath:db/store/{vendor}");
-        registry.add("spring.flyway.locations[1]", () -> "classpath:db/migration/postgres/uverify");
+        registry.add("cardano.service.user.address", () -> YanoContainer.SNAPSHOT_SERVICE_ADDRESS);
+
+        registry.add("DB_URL", () -> "jdbc:h2:mem:uverify;DB_CLOSE_DELAY=-1");
 
         String genesisBase = "classpath:genesis/devnet/";
         registry.add("store.cardano.byron-genesis-file", () -> genesisBase + "byron-genesis.json");
@@ -159,65 +155,36 @@ public class CardanoBlockchainTest {
 
     @BeforeAll
     public void fundTestAccounts() throws Exception {
-        SandboxContainers.YANO.fundAddress(serviceAccount.baseAddress(), 230_000_000_000L);
-        SandboxContainers.YANO.fundAddress(userAccount.baseAddress(), 10_000_000_000L);
-        SandboxContainers.YANO.fundAddress(feeReceiverAccount.baseAddress(), 1_000_000_000L);
-        SandboxContainers.YANO.fundAddress(facilitatorAccount.baseAddress(), 20_000_000_000L);
-        waitForUtxos(serviceAccount.baseAddress());
-        waitForUtxos(facilitatorAccount.baseAddress());
+        SandboxContainers.YANO.restoreSnapshot();
+        SandboxContainers.YANO.setTransactionRepository(transactionRepository);
+        this.backendService = SandboxContainers.YANO.getBackendService();
+
+        fundAddress(serviceAccount.baseAddress(), 230_000_000_000L);
+        fundAddress(serviceAccount.baseAddress(), 50_000_000L);
+        fundAddress(userAccount.baseAddress(), 10_000_000_000L);
+        fundAddress(userAccount.baseAddress(), 50_000_000L);
+        fundAddress(feeReceiverAccount.baseAddress(), 1_000_000_000L);
+        fundAddress(feeReceiverAccount.baseAddress(), 50_000_000L);
+        fundAddress(facilitatorAccount.baseAddress(), 20_000_000_000L);
+        fundAddress(facilitatorAccount.baseAddress(), 50_000_000L);
+
+        awaitIndexed(() ->
+                bootstrapDatumService.getBootstrapDatum("uverify", 2).isPresent()
+        );
     }
 
-    protected void waitForUtxos(String address) {
-        await()
-                .atMost(Duration.ofSeconds(120))
-                .pollInterval(Duration.ofSeconds(1))
-                .ignoreExceptions()
-                .until(() -> {
-                    String url = SandboxContainers.YANO.getBlockfrostBaseUrl()
-                            + "addresses/" + address + "/utxos";
-                    HttpResponse<String> response = HttpClient.newHttpClient().send(
-                            HttpRequest.newBuilder().uri(URI.create(url)).GET().build(),
-                            HttpResponse.BodyHandlers.ofString());
-                    return response.statusCode() == 200 && !response.body().equals("[]");
-                });
+    @AfterAll
+    public void tearDownSuite() {
+        startService.stop();
     }
 
     protected void waitForTransaction(String txHash) {
-        await()
-                .atMost(Duration.ofSeconds(60))
-                .pollInterval(Duration.ofSeconds(1))
-                .ignoreExceptions()
-                .until(() -> {
-                    String url = SandboxContainers.YANO.getBlockfrostBaseUrl() + "txs/" + txHash + "/utxos";
-                    HttpResponse<String> response = HttpClient.newHttpClient().send(
-                            HttpRequest.newBuilder().uri(URI.create(url)).GET().build(),
-                            HttpResponse.BodyHandlers.ofString());
-                    return response.statusCode() == 200;
-                });
+        SandboxContainers.YANO.waitForTransactionInclusion(txHash);
     }
 
     /**
-     * Waits for the transaction to land on-chain and then gives the embedded Yaci Store
-     * time to process the block and fire application events.
-     */
-    protected void simulateYaciStoreBehavior(String transactionId) throws InterruptedException {
-        waitForTransaction(transactionId);
-        Thread.sleep(3000);
-    }
-
-    /**
-     * Same as simulateYaciStoreBehavior(txHash) — the transaction object is no longer needed
-     * because the embedded Yaci Store processes script redeemers from real block data.
-     */
-    protected void simulateYaciStoreBehavior(String transactionId,
-                                             com.bloxbean.cardano.client.transaction.spec.Transaction transaction)
-            throws InterruptedException {
-        simulateYaciStoreBehavior(transactionId);
-    }
-
-    /**
-     * Legacy path: directly injects UTXOs into the backend processing pipeline.
-     * Used by tests that verify old-format UTXO parsing with hardcoded CBOR data.
+     * Directly injects UTXOs into the backend processing pipeline.
+     * Used by legacy tests that verify old-format UTXO parsing with hardcoded CBOR data.
      * These UTXOs have non-existent tx hashes so the embedded Yaci Store will never
      * emit events for them; calling processAddressUtxos directly is safe.
      */
@@ -227,6 +194,15 @@ public class CardanoBlockchainTest {
     }
 
     protected void fundAddress(String address, long lovelaceAmount) throws IOException, InterruptedException {
-        SandboxContainers.YANO.fundAddress(address, lovelaceAmount);
+        String transactionHash = SandboxContainers.YANO.fundAddress(address, lovelaceAmount);
+        SandboxContainers.YANO.waitForTransaction(transactionHash);
+    }
+
+    protected void awaitIndexed(Callable<Boolean> condition) {
+        await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofSeconds(1))
+                .ignoreExceptions()
+                .until(condition);
     }
 }

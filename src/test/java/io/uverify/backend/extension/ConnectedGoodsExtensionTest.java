@@ -47,11 +47,11 @@ import io.uverify.backend.extension.service.ConnectedGoodsService;
 import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.extension.validators.SocialHubDatum;
 import io.uverify.backend.extension.validators.converter.SocialHubDatumConverter;
-import io.uverify.backend.sandbox.SandboxContainers;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.LibraryRepository;
 import io.uverify.backend.repository.StateDatumRepository;
+import io.uverify.backend.sandbox.SandboxContainers;
 import io.uverify.backend.service.*;
 import io.uverify.backend.util.ValidatorHelper;
 import org.junit.jupiter.api.*;
@@ -148,7 +148,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
     @BeforeAll
     public void fundConnectedGoodsWallet() throws IOException, InterruptedException {
         fundAddress(connectedGoodsServiceWallet.baseAddress(), 20_000_000_000L);
-        waitForUtxos(connectedGoodsServiceWallet.baseAddress());
+        fundAddress(connectedGoodsServiceWallet.baseAddress(), 5_000_000L);
     }
 
     @Test
@@ -235,7 +235,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
                     HexUtil.decodeHexString(response.getUnsignedTransaction())), connectedGoodsServiceWallet);
 
             if (result.isSuccessful()) {
-                simulateYaciStoreBehavior(result.getValue());
+                waitForTransaction(result.getValue());
                 mintingTransactionHashes.put(batchDirs.get(i), result.getValue());
                 batchIds.put(batchDirs.get(i), response.getBatchId());
             }
@@ -283,7 +283,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             Result<String> result = cardanoBlockchainService.submitTransaction(unsignedTransaction, facilitatorAccount);
 
             if (result.isSuccessful()) {
-                simulateYaciStoreBehavior(result.getValue());
+                waitForTransaction(result.getValue());
             }
 
             mintingTransactionHashes.put(batchDirs.get(i), result.getValue());
@@ -327,13 +327,14 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
 
         Result<String> result = cardanoBlockchainService.submitTransaction(unsignedTransaction, facilitatorAccount);
 
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
-        }
-
         Assertions.assertTrue(result.isSuccessful());
 
         String batchId = batchIds.get(batchDirs.get(1));
+        awaitIndexed(() -> {
+            SocialHubEntity entity = connectedGoodsService.getSocialHubByBatchIdAndMintHash(batchId, applySHA3_256(password));
+            SocialHub hub = connectedGoodsService.decryptSocialHub(fromSocialHubEntity(entity, Networks.preprod()), password);
+            return "JonathanMaxwellAnderson".equals(hub.getName());
+        });
 
         SocialHubEntity socialHubEntity = connectedGoodsService.getSocialHubByBatchIdAndMintHash(batchId, applySHA3_256(password));
         SocialHub socialHub = connectedGoodsService.decryptSocialHub(fromSocialHubEntity(socialHubEntity, Networks.preprod()), password);
