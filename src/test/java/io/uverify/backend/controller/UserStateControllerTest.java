@@ -56,7 +56,6 @@ import org.springframework.http.HttpStatus;
 import java.util.List;
 import java.util.Optional;
 
-
 import static io.restassured.RestAssured.given;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -188,7 +187,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(signedTransaction);
 
         Assertions.assertTrue(result.isSuccessful());
-        awaitIndexed(() -> bootstrapDatumService.getBootstrapDatum("default", 1).isPresent());
+        awaitCondition(() -> bootstrapDatumService.getBootstrapDatum("default", 1).isPresent());
     }
 
     @Test
@@ -219,7 +218,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(signedTransaction);
 
         Assertions.assertTrue(result.isSuccessful());
-        awaitIndexed(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty());
+        awaitCondition(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty());
     }
 
     @Test

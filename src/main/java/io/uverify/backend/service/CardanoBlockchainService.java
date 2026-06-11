@@ -924,7 +924,7 @@ public class CardanoBlockchainService {
                     .collateralPayer(address)
                     .feePayer(address)
                     .withRequiredSigners(userAddress)
-                    .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
+                    .postBalanceTx((ctx, tx) -> captured.set(tx))
                     .build();
         } catch (UVerifyTransactionException transactionException) {
             throw transactionException;

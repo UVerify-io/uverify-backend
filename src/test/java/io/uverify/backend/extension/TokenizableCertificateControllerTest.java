@@ -179,7 +179,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
         Assertions.assertTrue(result.isSuccessful());
 
         waitForTransaction(result.getValue());
-        awaitIndexed(() -> !stateDatumService.findByOwner(serviceAccount.baseAddress(), 2).isEmpty());
+        awaitCondition(() -> !stateDatumService.findByOwner(serviceAccount.baseAddress(), 2).isEmpty());
     }
 
     @Test

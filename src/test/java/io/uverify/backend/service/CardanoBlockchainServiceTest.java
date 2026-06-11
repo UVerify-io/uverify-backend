@@ -139,7 +139,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Assertions.assertTrue(result.isSuccessful());
         waitForTransaction(result.getValue());
 
-        awaitIndexed(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty()
+        awaitCondition(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty()
                 && stateDatumService.findByOwner(userAccount.baseAddress(), 2).get(0).getCountdown() == 998);
 
         StateDatumEntity userStateDatum = getFirstUserStateDatum(userAccount.baseAddress());
@@ -152,7 +152,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Result<String> result = updateUserStateDatum("");
         Assertions.assertTrue(result.isSuccessful());
 
-        awaitIndexed(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty()
+        awaitCondition(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty()
                 && stateDatumService.findByOwner(userAccount.baseAddress(), 2).get(0).getCountdown() == 997);
         StateDatumEntity userStateDatum = getFirstUserStateDatum(userAccount.baseAddress());
         Assertions.assertEquals(997, userStateDatum.getCountdown());
@@ -177,7 +177,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, userAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        awaitIndexed(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty()
+        awaitCondition(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty()
                 && stateDatumService.findByOwner(userAccount.baseAddress(), 2).get(0).getCountdown() == 996);
         StateDatumEntity userStateDatum = getFirstUserStateDatum(userAccount.baseAddress());
         Assertions.assertEquals(996, userStateDatum.getCountdown());
@@ -499,7 +499,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
 
         Assertions.assertTrue(result.isSuccessful());
-        awaitIndexed(() -> bootstrapDatumService.getBootstrapDatum("special_partner_token", 1).isPresent());
+        awaitCondition(() -> bootstrapDatumService.getBootstrapDatum("special_partner_token", 1).isPresent());
     }
 
     /**
@@ -529,7 +529,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
                     userAccount.baseAddress(), certs, "uverify");
             Result<String> setupResult = cardanoBlockchainService.submitTransaction(setupFork, userAccount);
             Assertions.assertTrue(setupResult.isSuccessful(), "Setup fork for chaining test must succeed");
-            awaitIndexed(() -> stateDatumService.findByUserAndBootstrapToken(
+            awaitCondition(() -> stateDatumService.findByUserAndBootstrapToken(
                     userAccount.baseAddress(), "uverify").isPresent());
         }
 
@@ -610,7 +610,7 @@ public class CardanoBlockchainServiceTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        awaitIndexed(() -> bootstrapDatumService.getBootstrapDatum("restricted_access_token", 1).isPresent());
+        awaitCondition(() -> bootstrapDatumService.getBootstrapDatum("restricted_access_token", 1).isPresent());
 
         Optional<BootstrapDatumEntity> entity = bootstrapDatumService.getBootstrapDatum("restricted_access_token", 1);
         Assertions.assertTrue(entity.isPresent());

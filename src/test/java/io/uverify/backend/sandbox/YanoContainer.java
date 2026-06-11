@@ -51,7 +51,7 @@ public class YanoContainer extends GenericContainer<YanoContainer> {
                 "cp -a /app/snapshots/" + SNAPSHOT + "/checkpoint/. /app/chainstate/ && " +
                         "java -Dquarkus.profile=devnet " +
                         "-Dyano.block-producer.tx-evaluation=true " +
-                        "-Dyano.block-producer.script-evaluator=aiken " +
+                        "-Dyano.block-producer.script-evaluator=scalus " +
                         "-jar yano.jar");
         withExposedPorts(7070, 13337);
         waitingFor(Wait.forHttp("/q/health/ready").forPort(7070)
@@ -77,9 +77,23 @@ public class YanoContainer extends GenericContainer<YanoContainer> {
     public void restoreSnapshot() throws IOException, InterruptedException {
         applySnapshot();
         waitForHealthy();
-        waitForAddressIndexReady();
+        catchUp();
         waitForProtocolParamsReady();
+        waitForAddressIndexReady();
         waitForNewBlock();
+    }
+
+    private void catchUp() {
+        try {
+            HttpClient.newHttpClient().send(
+                    HttpRequest.newBuilder()
+                            .uri(URI.create("http://" + getHost() + ":" + getMappedPort(7070) + "/api/v1/devnet/epochs/catch-up"))
+                            .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                            .header("Content-Type", "application/json")
+                            .build(),
+                    HttpResponse.BodyHandlers.discarding());
+        } catch (IOException | InterruptedException ignored) {
+        }
     }
 
     /**
@@ -145,17 +159,6 @@ public class YanoContainer extends GenericContainer<YanoContainer> {
         }
         throw new RuntimeException(
                 "Protocol params not available within 120 s after snapshot restore");
-    }
-
-    private int parseEpochNumber(String body) {
-        int idx = body.indexOf("\"epoch\":");
-        if (idx < 0) return -1;
-        int start = idx + 8;
-        while (start < body.length() && body.charAt(start) == ' ') start++;
-        int end = start;
-        while (end < body.length() && Character.isDigit(body.charAt(end))) end++;
-        if (start == end) return -1;
-        return Integer.parseInt(body.substring(start, end));
     }
 
     private void waitForNewBlock() throws IOException, InterruptedException {

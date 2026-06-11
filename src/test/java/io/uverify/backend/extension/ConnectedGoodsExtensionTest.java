@@ -146,9 +146,8 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
     }
 
     @BeforeAll
-    public void fundConnectedGoodsWallet() throws IOException, InterruptedException {
-        fundAddress(connectedGoodsServiceWallet.baseAddress(), 20_000_000_000L);
-        fundAddress(connectedGoodsServiceWallet.baseAddress(), 5_000_000L);
+    public void fundConnectedGoodsWallet() throws Exception {
+        fundAddress(connectedGoodsServiceWallet.baseAddress(), 120_000_000L);
     }
 
     @Test
@@ -330,7 +329,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
         Assertions.assertTrue(result.isSuccessful());
 
         String batchId = batchIds.get(batchDirs.get(1));
-        awaitIndexed(() -> {
+        awaitCondition(() -> {
             SocialHubEntity entity = connectedGoodsService.getSocialHubByBatchIdAndMintHash(batchId, applySHA3_256(password));
             SocialHub hub = connectedGoodsService.decryptSocialHub(fromSocialHubEntity(entity, Networks.preprod()), password);
             return "JonathanMaxwellAnderson".equals(hub.getName());

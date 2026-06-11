@@ -25,7 +25,6 @@ import com.bloxbean.cardano.client.api.model.Utxo;
 import com.bloxbean.cardano.client.exception.AddressExcepion;
 import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
-import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
 import io.restassured.RestAssured;
@@ -114,7 +113,7 @@ public class LibraryControllerTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
         Assertions.assertTrue(result.isSuccessful());
 
-        awaitIndexed(() -> libraryRepository.count() >= 3);
+        awaitCondition(() -> libraryRepository.count() >= 3);
     }
 
     @Test

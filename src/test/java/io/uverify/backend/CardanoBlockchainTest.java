@@ -19,6 +19,7 @@
 package io.uverify.backend;
 
 import com.bloxbean.cardano.client.account.Account;
+import com.bloxbean.cardano.client.api.model.Result;
 import com.bloxbean.cardano.client.backend.api.BackendService;
 import com.bloxbean.cardano.client.common.model.Networks;
 import com.bloxbean.cardano.yaci.store.common.domain.AddressUtxo;
@@ -31,7 +32,7 @@ import io.uverify.backend.sandbox.YanoContainer;
 import io.uverify.backend.service.*;
 import io.uverify.backend.util.ValidatorHelper;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.AfterAll;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +42,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-import java.io.IOException;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -83,11 +84,18 @@ public class CardanoBlockchainTest {
     protected final LibraryService libraryService;
     protected final Optional<FractionizedCertificateService> fractionizedCertificateService;
     protected BackendService backendService;
+    @Value("${faucet.mnemonic}")
+    private String faucetMnemonic;
+    @Autowired
+    private FaucetService faucetService;
     @Autowired
     private StartService startService;
 
     @Autowired
     private TransactionRepository transactionRepository;
+
+    @Autowired
+    private Flyway flyway;
 
     @Autowired
     public CardanoBlockchainTest(@Value("${cardano.service.user.mnemonic}") String testServiceUserMnemonic,
@@ -145,6 +153,7 @@ public class CardanoBlockchainTest {
         registry.add("cardano.service.user.address", () -> YanoContainer.SNAPSHOT_SERVICE_ADDRESS);
 
         registry.add("DB_URL", () -> "jdbc:h2:mem:uverify;DB_CLOSE_DELAY=-1");
+        registry.add("spring.flyway.clean-disabled", () -> "false");
 
         String genesisBase = "classpath:genesis/devnet/";
         registry.add("store.cardano.byron-genesis-file", () -> genesisBase + "byron-genesis.json");
@@ -155,27 +164,28 @@ public class CardanoBlockchainTest {
 
     @BeforeAll
     public void fundTestAccounts() throws Exception {
+        startService.stop();
+        flyway.clean();
+        flyway.migrate();
+
         SandboxContainers.YANO.restoreSnapshot();
         SandboxContainers.YANO.setTransactionRepository(transactionRepository);
         this.backendService = SandboxContainers.YANO.getBackendService();
 
-        fundAddress(serviceAccount.baseAddress(), 230_000_000_000L);
-        fundAddress(serviceAccount.baseAddress(), 50_000_000L);
-        fundAddress(userAccount.baseAddress(), 10_000_000_000L);
-        fundAddress(userAccount.baseAddress(), 50_000_000L);
-        fundAddress(feeReceiverAccount.baseAddress(), 1_000_000_000L);
-        fundAddress(feeReceiverAccount.baseAddress(), 50_000_000L);
-        fundAddress(facilitatorAccount.baseAddress(), 20_000_000_000L);
-        fundAddress(facilitatorAccount.baseAddress(), 50_000_000L);
+        // Cursor table is empty after clean+migrate, so start() syncs from sync-start-slot=0.
+        startService.start();
 
-        awaitIndexed(() ->
+        awaitCondition(() -> !backendService.getUtxoService()
+                .getUtxos(faucetService.getFaucetAddress(), 100, 1).getValue().isEmpty());
+
+        fundAddress(serviceAccount.baseAddress(), 120_000_000L);
+        fundAddress(userAccount.baseAddress(), 120_000_000L);
+        fundAddress(feeReceiverAccount.baseAddress(), 120_000_000L);
+        fundAddress(facilitatorAccount.baseAddress(), 120_000_000L);
+
+        awaitCondition(() ->
                 bootstrapDatumService.getBootstrapDatum("uverify", 2).isPresent()
         );
-    }
-
-    @AfterAll
-    public void tearDownSuite() {
-        startService.stop();
     }
 
     protected void waitForTransaction(String txHash) {
@@ -193,12 +203,16 @@ public class CardanoBlockchainTest {
         extensionManager.processAddressUtxos(addressUtxos);
     }
 
-    protected void fundAddress(String address, long lovelaceAmount) throws IOException, InterruptedException {
-        String transactionHash = SandboxContainers.YANO.fundAddress(address, lovelaceAmount);
-        SandboxContainers.YANO.waitForTransaction(transactionHash);
+    protected void fundAddress(String address, long lovelaceAmount) throws Exception {
+        Account faucet = Account.createFromMnemonic(Networks.testnet(), faucetMnemonic);
+        Result<String> result = cardanoBlockchainService.sendAda(faucet, address, 2, BigInteger.valueOf(lovelaceAmount));
+        if (!result.isSuccessful()) {
+            throw new RuntimeException("Faucet transfer to " + address + " failed: " + result.getResponse());
+        }
+        waitForTransaction(result.getValue());
     }
 
-    protected void awaitIndexed(Callable<Boolean> condition) {
+    protected void awaitCondition(Callable<Boolean> condition) {
         await()
                 .atMost(Duration.ofSeconds(30))
                 .pollInterval(Duration.ofSeconds(1))
