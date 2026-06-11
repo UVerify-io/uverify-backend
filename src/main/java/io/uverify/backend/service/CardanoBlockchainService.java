@@ -36,18 +36,17 @@ import com.bloxbean.cardano.client.backend.model.TxContentUtxo;
 import com.bloxbean.cardano.client.backend.model.TxContentUtxoOutputs;
 import com.bloxbean.cardano.client.crypto.Blake2bUtil;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
+import com.bloxbean.cardano.client.function.TxBuilder;
 import com.bloxbean.cardano.client.plutus.blueprint.PlutusBlueprintUtil;
 import com.bloxbean.cardano.client.plutus.blueprint.model.PlutusVersion;
 import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
-import com.bloxbean.cardano.client.function.TxBuilder;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
 import com.bloxbean.cardano.client.quicktx.Tx;
 import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Asset;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
-import com.bloxbean.cardano.client.transaction.util.TransactionUtil;
 import com.bloxbean.cardano.client.util.HexUtil;
 import com.bloxbean.cardano.yaci.core.model.Redeemer;
 import com.bloxbean.cardano.yaci.core.model.RedeemerTag;
@@ -58,7 +57,6 @@ import com.bloxbean.cardano.yaci.store.events.TransactionEvent;
 import io.uverify.backend.dto.BuildStatus;
 import io.uverify.backend.dto.BuildTransactionResponse;
 import io.uverify.backend.dto.ProxyInitResponse;
-import io.uverify.backend.exception.UVerifyTransactionException;
 import io.uverify.backend.entity.BootstrapDatumEntity;
 import io.uverify.backend.entity.FeeReceiverEntity;
 import io.uverify.backend.entity.StateDatumEntity;
@@ -66,6 +64,7 @@ import io.uverify.backend.entity.UVerifyCertificateEntity;
 import io.uverify.backend.enums.BuildStatusCode;
 import io.uverify.backend.enums.CardanoNetwork;
 import io.uverify.backend.enums.UVerifyScriptPurpose;
+import io.uverify.backend.exception.UVerifyTransactionException;
 import io.uverify.backend.model.*;
 import io.uverify.backend.model.converter.ProxyRedeemerConverter;
 import io.uverify.backend.util.CardanoUtils;
@@ -304,8 +303,6 @@ public class CardanoBlockchainService {
             if (exceptionMessage.contains("collateral")) {
                 throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, exception.getMessage());
             }
-            if (exception instanceof ApiException apiException) throw apiException;
-            if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
             throw new RuntimeException(exception);
         }
         pendingTransactionCache.populate(
@@ -333,7 +330,7 @@ public class CardanoBlockchainService {
                     .feePayer(address)
                     .withRequiredSigners(userAddress)
                     .withReferenceScripts(stateContract, proxyContract)
-                    .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
+                    .postBalanceTx((ctx, tx) -> captured.set(tx))
                     .build();
         } catch (UVerifyTransactionException transactionException) {
             throw transactionException;
@@ -342,8 +339,6 @@ public class CardanoBlockchainService {
             if (exceptionMessage.contains("collateral")) {
                 throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, exception.getMessage());
             }
-            if (exception instanceof ApiException apiException) throw apiException;
-            if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
             throw new RuntimeException(exception);
         }
         pendingTransactionCache.populate(
@@ -519,7 +514,8 @@ public class CardanoBlockchainService {
                 throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, exception.getMessage());
             }
             if (exception instanceof ApiException apiException) throw apiException;
-            if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
+            if (exception instanceof CborSerializationException cborSerializationException)
+                throw cborSerializationException;
             throw new RuntimeException(exception);
         }
         pendingTransactionCache.populate(
@@ -695,11 +691,13 @@ public class CardanoBlockchainService {
     }
 
     public void handleRollbackToSlot(long slot) {
+        log.info("Handling rollback to slot: {}", slot);
         bootstrapDatumService.undoInvalidationBeforeSlot(slot);
         uVerifyCertificateService.deleteAllCertificatesAfterSlot(slot);
         stateDatumService.undoInvalidationBeforeSlot(slot);
         stateDatumService.handleRollbackToSlot(slot);
         bootstrapDatumService.deleteAllAfterSlot(slot);
+        libraryService.deleteAllAfterSlot(slot);
     }
 
     public Transaction invalidateStates(Address userAddress, List<String> transactionIds) throws ApiException {
@@ -926,7 +924,7 @@ public class CardanoBlockchainService {
                     .collateralPayer(address)
                     .feePayer(address)
                     .withRequiredSigners(userAddress)
-                    .postBalanceTx((TxBuilder) (ctx, tx) -> captured.set(tx))
+                    .postBalanceTx((ctx, tx) -> captured.set(tx))
                     .build();
         } catch (UVerifyTransactionException transactionException) {
             throw transactionException;
@@ -935,8 +933,6 @@ public class CardanoBlockchainService {
             if (exceptionMessage.contains("collateral")) {
                 throw new UVerifyTransactionException(BuildStatusCode.COLLATERAL_REQUIRED, exception.getMessage());
             }
-            if (exception instanceof ApiException apiException) throw apiException;
-            if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
             throw new RuntimeException(exception);
         }
         pendingTransactionCache.populate(

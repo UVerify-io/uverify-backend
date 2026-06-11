@@ -85,7 +85,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
             ValidatorHelper validatorHelper,
             ExtensionManager extensionManager,
             LibraryService libraryService) {
-        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, fractionizedCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper, libraryService, List.of());
+        super(testServiceUserMnemonic, testUserMnemonic, feeReceiverMnemonic, facilitatorMnemonic, cardanoBlockchainService, stateDatumService, bootstrapDatumService, uVerifyCertificateService, fractionizedCertificateService, stateDatumRepository, bootstrapDatumRepository, certificateRepository, libraryRepository, extensionManager, validatorHelper, libraryService);
         RestAssured.port = port;
         this.feeReceiverPartnerAddress = feeReceiverPartnerAddress;
     }
@@ -150,59 +150,11 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
                 .as(ExecuteUserActionResponse.class);
 
         Assertions.assertEquals(HttpStatus.OK, executeUserActionResponse.getStatus());
-        Assertions.assertEquals(0, executeUserActionResponse.getState().getBootstrapDatums().size());
         Assertions.assertEquals(0, executeUserActionResponse.getState().getStates().size());
     }
 
     @Test
     @Order(3)
-    public void initProxyContract() throws ApiException, CborSerializationException, CborDeserializationException, InterruptedException {
-        BuildTransactionRequest request = new BuildTransactionRequest();
-        request.setType(TransactionType.INIT);
-
-        ProxyInitResponse buildTransactionResponse = given()
-                .contentType(ContentType.JSON)
-                .body(request)
-                .when()
-                .post("/api/v1/transaction/build")
-                .then()
-                .extract()
-                .as(ProxyInitResponse.class);
-
-        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(buildTransactionResponse.getUnsignedProxyTransaction()));
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-        Assertions.assertTrue(result.isSuccessful());
-
-        waitForTransaction(result.getValue());
-
-        validatorHelper.setProxy(buildTransactionResponse.getProxyTxHash(), buildTransactionResponse.getProxyOutputIndex());
-    }
-
-    @Test
-    @Order(4)
-    public void deployUVerifyContracts() throws CborSerializationException, ApiException, InterruptedException, CborDeserializationException, CborException, AddressExcepion {
-        BuildTransactionResponse buildTransactionResponse = given()
-                .contentType(ContentType.JSON)
-                .when()
-                .post("/api/v1/library/deploy/proxy")
-                .then()
-                .extract()
-                .as(BuildTransactionResponse.class);
-
-        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(buildTransactionResponse.getUnsignedTransaction()));
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-        Assertions.assertTrue(result.isSuccessful());
-
-        if (result.isSuccessful()) {
-            // The signed transaction needs to be submitted as the processor
-            // ensures it has been signed by the service account
-            Transaction signedTransaction = TransactionSigner.INSTANCE.sign(transaction, serviceAccount.hdKeyPair());
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
-        }
-    }
-
-    @Test
-    @Order(5)
     public void testBuildBootstrapDatum() throws ApiException, InterruptedException, CborDeserializationException, CborSerializationException, CborException, AddressExcepion {
         BuildTransactionRequest request = new BuildTransactionRequest();
         request.setType(TransactionType.BOOTSTRAP);
@@ -232,21 +184,19 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Assertions.assertEquals(BuildStatusCode.SUCCESS, response.getStatus().getCode());
 
         Transaction signedTransaction = TransactionSigner.INSTANCE.sign(Transaction.deserialize(HexUtil.decodeHexString(response.getUnsignedTransaction())), serviceAccount.hdKeyPair());
-        Result<String> result = yaciCardanoContainer.getBackendService().getTransactionService().submitTransaction(signedTransaction.serialize());
-
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
-        }
+        Result<String> result = cardanoBlockchainService.submitTransaction(signedTransaction);
 
         Assertions.assertTrue(result.isSuccessful());
+        awaitCondition(() -> bootstrapDatumService.getBootstrapDatum("default", 1).isPresent());
     }
 
     @Test
-    @Order(6)
+    @Order(4)
     public void testCreateState() throws ApiException, CborDeserializationException, CborSerializationException, InterruptedException, CborException, AddressExcepion {
         BuildTransactionRequest request = new BuildTransactionRequest();
         request.setType(TransactionType.DEFAULT);
         request.setAddress(userAccount.baseAddress());
+        request.setBootstrapDatum(BootstrapData.builder().name("default").build());
         request.setCertificates(List.of(CertificateData.builder()
                 .hash("b652f076fb4feeb1f934ac9b8c0606852e93d3a73fb2596a51c92e480e246897")
                 .metadata("{\"test\":\"test\"}")
@@ -265,17 +215,14 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Assertions.assertEquals(BuildStatusCode.SUCCESS, response.getStatus().getCode());
 
         Transaction signedTransaction = TransactionSigner.INSTANCE.sign(Transaction.deserialize(HexUtil.decodeHexString(response.getUnsignedTransaction())), userAccount.hdKeyPair());
-        Result<String> result = yaciCardanoContainer.getBackendService().getTransactionService().submitTransaction(signedTransaction.serialize());
-
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
-        }
+        Result<String> result = cardanoBlockchainService.submitTransaction(signedTransaction);
 
         Assertions.assertTrue(result.isSuccessful());
+        awaitCondition(() -> !stateDatumService.findByOwner(userAccount.baseAddress(), 2).isEmpty());
     }
 
     @Test
-    @Order(7)
+    @Order(5)
     public void testUserInfoAfterUsage() throws DataSignError {
         DataSignature dataSignature = CIP30DataSigner.INSTANCE.signData(userAccount.getBaseAddress().getBytes(), this.userInfoResponse.getMessage().getBytes(), userAccount);
 
@@ -298,7 +245,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
                 .as(ExecuteUserActionResponse.class);
 
         Assertions.assertEquals(HttpStatus.OK, executeUserActionResponse.getStatus());
-        Assertions.assertEquals(1, executeUserActionResponse.getState().getBootstrapDatums().size());
+        Assertions.assertFalse(executeUserActionResponse.getState().getBootstrapDatums().isEmpty());
         Assertions.assertEquals(1, executeUserActionResponse.getState().getStates().size());
 
         StateData stateDatum = executeUserActionResponse.getState().getStates().get(0);
@@ -310,7 +257,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(8)
+    @Order(6)
     public void testCreateAnotherState() throws ApiException, CborDeserializationException, CborSerializationException, InterruptedException {
         BuildTransactionRequest request = new BuildTransactionRequest();
         request.setType(TransactionType.DEFAULT);
@@ -337,11 +284,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Assertions.assertEquals(BuildStatusCode.SUCCESS, response.getStatus().getCode());
 
         Transaction signedTransaction = TransactionSigner.INSTANCE.sign(Transaction.deserialize(HexUtil.decodeHexString(response.getUnsignedTransaction())), userAccount.hdKeyPair());
-        Result<String> result = yaciCardanoContainer.getBackendService().getTransactionService().submitTransaction(signedTransaction.serialize());
-
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
-        }
+        Result<String> result = cardanoBlockchainService.submitTransaction(signedTransaction);
 
         Assertions.assertTrue(result.isSuccessful());
     }
