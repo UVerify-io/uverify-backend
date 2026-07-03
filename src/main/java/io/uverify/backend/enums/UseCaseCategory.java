@@ -22,7 +22,8 @@ public enum UseCaseCategory {
     IDENTITY("Identity"),
     CONNECTED_GOODS("Connected Goods"),
     NOTARY("Notary"),
-    STUDENT_CERTIFICATION("Student Certification");
+    STUDENT_CERTIFICATION("Student Certification"),
+    CROSS_CHAIN_ATTESTATION("Cross-Chain Attestation");
 
     private final String displayName;
 

@@ -56,6 +56,8 @@ class StatisticsCategorizeTest {
                 StatisticsService.categorize("{\"uverify_template_id\":\"productVerification\"}", mapper));
         assertEquals(UseCaseCategory.STUDENT_CERTIFICATION,
                 StatisticsService.categorize("{\"uverify_template_id\":\"diploma\"}", mapper));
+        assertEquals(UseCaseCategory.CROSS_CHAIN_ATTESTATION,
+                StatisticsService.categorize("{\"uverify_template_id\":\"blockforce\"}", mapper));
         assertEquals(UseCaseCategory.NOTARY,
                 StatisticsService.categorize("{\"uverify_template_id\":\"somethingElse\"}", mapper));
     }
