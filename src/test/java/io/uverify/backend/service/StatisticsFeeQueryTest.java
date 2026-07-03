@@ -60,7 +60,7 @@ class StatisticsFeeQueryTest {
                     "INSERT INTO uverify_certificate " +
                     "(hash, payment_credential, block_hash, block_number, transaction_id, " +
                     "creation_time, slot, extra, hash_algorithm, state_datum_id) " +
-                    "VALUES (:hash, 'cred', 'block', 1, :transactionId, CURRENT_TIMESTAMP, 1, '{}', 'SHA256', 'sd')")
+                    "VALUES (:hash, 'cred', 'block', 1, :transactionId, CURRENT_TIMESTAMP, 1, '{}', 'SHA256', 'state_datum_test')")
                     .setParameter("hash", "hash-" + index)
                     .setParameter("transactionId", txHash)
                     .executeUpdate();

@@ -106,6 +106,6 @@ class StatisticsServiceTest {
         var captor = org.mockito.ArgumentCaptor.forClass(StatisticEntity.class);
         verify(statisticRepository, atLeastOnce()).save(captor.capture());
         return captor.getAllValues().stream()
-                .collect(Collectors.toMap(StatisticEntity::getStatisticKey, StatisticEntity::getStatisticValue, (a, b) -> b));
+                .collect(Collectors.toMap(StatisticEntity::getStatisticKey, StatisticEntity::getStatisticValue));
     }
 }

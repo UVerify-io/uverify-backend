@@ -51,6 +51,8 @@ class StatisticsCategorizeTest {
         assertEquals(UseCaseCategory.CONNECTED_GOODS,
                 StatisticsService.categorize("{\"uverify_template_id\":\"socialHub\"}", mapper));
         assertEquals(UseCaseCategory.CONNECTED_GOODS,
+                StatisticsService.categorize("{\"uverify_template_id\":\"linktree\"}", mapper));
+        assertEquals(UseCaseCategory.CONNECTED_GOODS,
                 StatisticsService.categorize("{\"uverify_template_id\":\"productVerification\"}", mapper));
         assertEquals(UseCaseCategory.STUDENT_CERTIFICATION,
                 StatisticsService.categorize("{\"uverify_template_id\":\"diploma\"}", mapper));
