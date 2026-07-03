@@ -19,17 +19,24 @@
 package io.uverify.backend.repository;
 
 import io.uverify.backend.entity.UVerifyCertificateEntity;
+import jakarta.persistence.QueryHint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 @Repository
 public interface CertificateRepository extends JpaRepository<UVerifyCertificateEntity, String> {
     List<UVerifyCertificateEntity> findAllByHash(String hash);
+
+    @QueryHints(@QueryHint(name = "org.hibernate.fetchSize", value = "1000"))
+    @Query("SELECT c.extra FROM UVerifyCertificateEntity c")
+    Stream<String> streamAllExtra();
 
     @Modifying
     @Query("DELETE FROM UVerifyCertificateEntity WHERE slot > :target")

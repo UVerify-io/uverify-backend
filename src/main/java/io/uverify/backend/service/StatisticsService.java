@@ -118,6 +118,26 @@ public class StatisticsService {
         return totalFees.longValue();
     }
 
+    protected static UseCaseCategory categorize(String extra, ObjectMapper mapper) {
+        if (extra == null || extra.isEmpty()) {
+            return UseCaseCategory.NOTARY;
+        }
+        try {
+            JsonNode templateId = mapper.readTree(extra).get("uverify_template_id");
+            if (templateId == null || templateId.isNull()) {
+                return UseCaseCategory.NOTARY;
+            }
+            return switch (templateId.asText()) {
+                case "tadamon" -> UseCaseCategory.IDENTITY;
+                case "socialHub", "linktree", "productVerification" -> UseCaseCategory.CONNECTED_GOODS;
+                case "diploma" -> UseCaseCategory.STUDENT_CERTIFICATION;
+                default -> UseCaseCategory.NOTARY;
+            };
+        } catch (Exception exception) {
+            return UseCaseCategory.NOTARY;
+        }
+    }
+
     @EventListener
     @Transactional
     @CacheEvict(cacheNames = {"stats-categories", "stats-fees"}, allEntries = true)
