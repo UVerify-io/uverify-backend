@@ -16,22 +16,35 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.enums;
+package io.uverify.backend.entity;
 
-public enum UseCaseCategory {
-    IDENTITY("Identity"),
-    CONNECTED_GOODS("Connected Goods"),
-    NOTARY("Notary"),
-    STUDENT_CERTIFICATION("Student Certification"),
-    CROSS_CHAIN_ATTESTATION("Cross-Chain Attestation");
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-    private final String displayName;
+import java.time.Instant;
 
-    UseCaseCategory(String displayName) {
-        this.displayName = displayName;
-    }
+@Entity
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "uverify_statistic")
+public class StatisticEntity {
+    @Id
+    @Column(name = "stat_key", nullable = false, length = 64)
+    private String statisticKey;
 
-    public String getDisplayName() {
-        return displayName;
-    }
+    @Column(name = "stat_value", nullable = false)
+    private Long statisticValue;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 }

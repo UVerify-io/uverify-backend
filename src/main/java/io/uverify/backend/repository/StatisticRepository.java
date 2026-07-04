@@ -16,22 +16,15 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend.enums;
+package io.uverify.backend.repository;
 
-public enum UseCaseCategory {
-    IDENTITY("Identity"),
-    CONNECTED_GOODS("Connected Goods"),
-    NOTARY("Notary"),
-    STUDENT_CERTIFICATION("Student Certification"),
-    CROSS_CHAIN_ATTESTATION("Cross-Chain Attestation");
+import io.uverify.backend.entity.StatisticEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-    private final String displayName;
+import java.util.List;
 
-    UseCaseCategory(String displayName) {
-        this.displayName = displayName;
-    }
-
-    public String getDisplayName() {
-        return displayName;
-    }
+@Repository
+public interface StatisticRepository extends JpaRepository<StatisticEntity, String> {
+    List<StatisticEntity> findByStatisticKeyStartingWith(String prefix);
 }

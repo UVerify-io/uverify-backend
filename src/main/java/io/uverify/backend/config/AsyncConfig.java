@@ -40,7 +40,7 @@ public class AsyncConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager manager = new CaffeineCacheManager("vlei-verifier", "stats-categories", "stats-fees");
+        CaffeineCacheManager manager = new CaffeineCacheManager("vlei-verifier");
         manager.setCaffeine(Caffeine.newBuilder()
                 .expireAfterWrite(1, TimeUnit.HOURS)
                 .maximumSize(10_000));

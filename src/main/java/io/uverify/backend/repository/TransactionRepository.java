@@ -24,6 +24,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.math.BigInteger;
+
 public interface TransactionRepository extends JpaRepository<TxnEntity, String> {
 
     @Modifying(clearAutomatically = true)
@@ -35,4 +37,10 @@ public interface TransactionRepository extends JpaRepository<TxnEntity, String> 
     )
     """)
     void deleteIrrelevantTransactions();
+
+    @Query("""
+    SELECT COALESCE(SUM(t.fee), 0) FROM TxnEntity t
+    WHERE t.txHash IN (SELECT DISTINCT c.transactionId FROM UVerifyCertificateEntity c)
+    """)
+    BigInteger sumUVerifyCertificateFees();
 }
