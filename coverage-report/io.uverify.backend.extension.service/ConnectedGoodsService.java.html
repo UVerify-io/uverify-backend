@@ -240,16 +240,16 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
 
     @Override
     public void addUsageStatistics(UsageStatistics usageStatistics) {
-<span class="nc" id="L243">        List&lt;ConnectedGoodEntity&gt; registeredBatches = connectedGoodsRepository.findAll();</span>
-<span class="nc" id="L244">        List&lt;ConnectedGoodUpdateEntity&gt; claimedItems = connectedGoodUpdateRepository.findAll();</span>
-<span class="nc" id="L245">        usageStatistics.addCertificatesToCategory(UseCaseCategory.CONNECTED_GOODS, registeredBatches.size() + claimedItems.size());</span>
-<span class="nc" id="L246">    }</span>
+<span class="fc" id="L243">        List&lt;ConnectedGoodEntity&gt; registeredBatches = connectedGoodsRepository.findAll();</span>
+<span class="fc" id="L244">        List&lt;ConnectedGoodUpdateEntity&gt; claimedItems = connectedGoodUpdateRepository.findAll();</span>
+<span class="fc" id="L245">        usageStatistics.addCertificatesToCategory(UseCaseCategory.CONNECTED_GOODS, registeredBatches.size() + claimedItems.size());</span>
+<span class="fc" id="L246">    }</span>
 
     @Override
     public BigInteger addTransactionFees(BigInteger totalFees) {
         // registered batches are already included in the certificate transaction fee itself
-<span class="nc" id="L251">        List&lt;ConnectedGoodUpdateEntity&gt; claimedItems = connectedGoodUpdateRepository.findAll();</span>
-<span class="nc bnc" id="L252" title="All 2 branches missed.">        for (ConnectedGoodUpdateEntity claimedItem : claimedItems) {</span>
+<span class="fc" id="L251">        List&lt;ConnectedGoodUpdateEntity&gt; claimedItems = connectedGoodUpdateRepository.findAll();</span>
+<span class="pc bpc" id="L252" title="1 of 2 branches missed.">        for (ConnectedGoodUpdateEntity claimedItem : claimedItems) {</span>
 <span class="nc" id="L253">            Optional&lt;TxnEntity&gt; transaction = transactionRepository.findById(claimedItem.getTransactionId());</span>
 <span class="nc bnc" id="L254" title="All 2 branches missed.">            if (transaction.isPresent()) {</span>
 <span class="nc" id="L255">                totalFees = totalFees.add(transaction.get().getFee());</span>
@@ -258,7 +258,7 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
             }
 <span class="nc" id="L259">        }</span>
 
-<span class="nc" id="L261">        return totalFees;</span>
+<span class="fc" id="L261">        return totalFees;</span>
     }
 
     private SecretKey generateKey(String key) throws Exception {

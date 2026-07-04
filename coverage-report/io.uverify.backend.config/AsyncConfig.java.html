@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit;
 
     @Bean
     public CacheManager cacheManager() {
-<span class="fc" id="L43">        CaffeineCacheManager manager = new CaffeineCacheManager(&quot;vlei-verifier&quot;, &quot;stats-categories&quot;, &quot;stats-fees&quot;);</span>
+<span class="fc" id="L43">        CaffeineCacheManager manager = new CaffeineCacheManager(&quot;vlei-verifier&quot;);</span>
 <span class="fc" id="L44">        manager.setCaffeine(Caffeine.newBuilder()</span>
 <span class="fc" id="L45">                .expireAfterWrite(1, TimeUnit.HOURS)</span>
 <span class="fc" id="L46">                .maximumSize(10_000));</span>
