@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.20.0](https://github.com/UVerify-io/uverify-backend/compare/v1.19.1...v1.20.0) (2026-07-04)
+
+
+### Features
+
+* **stats:** add categorize helper and streaming extra projection ([6800b03](https://github.com/UVerify-io/uverify-backend/commit/6800b037a303babd30804901dd769067da9bddc4))
+* **stats:** add CROSS_CHAIN_ATTESTATION category for blockforce template ([0265ae7](https://github.com/UVerify-io/uverify-backend/commit/0265ae7a17eefa3ebaaadae27d69309c9a41c3de))
+* **stats:** add uverify_statistic table, entity, and repository ([b2c7d93](https://github.com/UVerify-io/uverify-backend/commit/b2c7d9391f19700973c8d7cdbdb3779b92e73890))
+* **stats:** serve precomputed stats from table, recompute on 10-minute schedule ([4271e52](https://github.com/UVerify-io/uverify-backend/commit/4271e52e55245f062cde033898de45d80435887e))
+
+
+### Bug Fixes
+
+* **stats:** count transaction fee once per transaction, not per certificate ([0c35c15](https://github.com/UVerify-io/uverify-backend/commit/0c35c157aad83473956a211d7d289a5fa6ece55c))
+
 ## [1.19.1](https://github.com/UVerify-io/uverify-backend/compare/v1.19.0...v1.19.1) (2026-06-07)
 
 
