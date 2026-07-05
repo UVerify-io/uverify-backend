@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TemplateIdResolver.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.util</a> &gt; <span class="el_source">TemplateIdResolver.java</span></div><h1>TemplateIdResolver.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.util;
+
+import com.fasterxml.jackson.databind.JsonNode;
+
+import java.util.Map;
+
+
+public final class TemplateIdResolver {
+
+    public static final String TEMPLATE_ID_KEY = &quot;uv_tid&quot;;
+    public static final String LEGACY_TEMPLATE_ID_KEY = &quot;uverify_template_id&quot;;
+
+    private TemplateIdResolver() {
+    }
+
+    public static String resolveTemplateId(JsonNode extraRoot) {
+<span class="pc bpc" id="L35" title="1 of 2 branches missed.">        if (extraRoot == null) {</span>
+<span class="nc" id="L36">            return null;</span>
+        }
+<span class="fc" id="L38">        JsonNode shortKey = extraRoot.get(TEMPLATE_ID_KEY);</span>
+<span class="fc bfc" id="L39" title="All 4 branches covered.">        if (shortKey != null &amp;&amp; shortKey.isTextual()) {</span>
+<span class="fc" id="L40">            return shortKey.asText();</span>
+        }
+<span class="fc" id="L42">        JsonNode legacyKey = extraRoot.get(LEGACY_TEMPLATE_ID_KEY);</span>
+<span class="pc bpc" id="L43" title="1 of 4 branches missed.">        if (legacyKey != null &amp;&amp; legacyKey.isTextual()) {</span>
+<span class="fc" id="L44">            return legacyKey.asText();</span>
+        }
+<span class="fc" id="L46">        return null;</span>
+    }
+
+    public static String resolveTemplateId(Map&lt;String, Object&gt; extraFields) {
+<span class="pc bpc" id="L50" title="1 of 2 branches missed.">        if (extraFields == null) {</span>
+<span class="nc" id="L51">            return null;</span>
+        }
+<span class="fc" id="L53">        Object shortKey = extraFields.get(TEMPLATE_ID_KEY);</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        if (shortKey instanceof String value) {</span>
+<span class="fc" id="L55">            return value;</span>
+        }
+<span class="fc" id="L57">        Object legacyKey = extraFields.get(LEGACY_TEMPLATE_ID_KEY);</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (legacyKey instanceof String value) {</span>
+<span class="fc" id="L59">            return value;</span>
+        }
+<span class="fc" id="L61">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

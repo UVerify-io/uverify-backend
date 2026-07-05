@@ -19,7 +19,6 @@
 package io.uverify.backend.service;
 
 import com.bloxbean.cardano.yaci.store.events.internal.CommitEvent;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.uverify.backend.dto.UsageStatistics;
 import io.uverify.backend.entity.StatisticEntity;
@@ -28,6 +27,7 @@ import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.StatisticRepository;
 import io.uverify.backend.repository.TransactionRepository;
+import io.uverify.backend.util.TemplateIdResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -120,11 +120,11 @@ public class StatisticsService {
 <span class="fc" id="L120">            return UseCaseCategory.NOTARY;</span>
         }
         try {
-<span class="fc" id="L123">            JsonNode templateId = mapper.readTree(extra).get(&quot;uverify_template_id&quot;);</span>
-<span class="pc bpc" id="L124" title="1 of 4 branches missed.">            if (templateId == null || templateId.isNull()) {</span>
+<span class="fc" id="L123">            String templateId = TemplateIdResolver.resolveTemplateId(mapper.readTree(extra));</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">            if (templateId == null) {</span>
 <span class="fc" id="L125">                return UseCaseCategory.NOTARY;</span>
             }
-<span class="fc bfc" id="L127" title="All 5 branches covered.">            return switch (templateId.asText()) {</span>
+<span class="fc bfc" id="L127" title="All 5 branches covered.">            return switch (templateId) {</span>
 <span class="fc" id="L128">                case &quot;tadamon&quot; -&gt; UseCaseCategory.IDENTITY;</span>
 <span class="fc" id="L129">                case &quot;socialHub&quot;, &quot;linktree&quot;, &quot;productVerification&quot; -&gt; UseCaseCategory.CONNECTED_GOODS;</span>
 <span class="fc" id="L130">                case &quot;diploma&quot; -&gt; UseCaseCategory.STUDENT_CERTIFICATION;</span>
