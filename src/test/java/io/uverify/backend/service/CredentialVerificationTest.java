@@ -189,6 +189,19 @@ class CredentialVerificationTest {
         mockServer.verify();
     }
 
+    @Test
+    void revokeCert_withShortTemplateIdKey_isProcessed() {
+        UVerifyCredentialEntity entity = credentialEntity(AUTH_HASH);
+        given(credentialRepository.findByAuthCertHash(AUTH_HASH)).willReturn(Optional.of(entity));
+        given(credentialRepository.save(any())).willReturn(entity);
+
+        identityIndexerService.processNewCertificates(List.of(
+                revokeCert("{\"uv_tid\":\"IdentityAuth\",\"t\":\"REVOKE\",\"ct\":\"identity\",\"th\":\"" + AUTH_HASH + "\"}")
+        ));
+
+        verify(credentialRepository).save(any());
+    }
+
     // ── cache eviction on revoke ───────────────────────────────────────────────
 
     @Test

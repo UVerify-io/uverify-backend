@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.uverify.backend.entity.UVerifyCertificateEntity;
 import io.uverify.backend.entity.UVerifyCredentialEntity;
 import io.uverify.backend.repository.CredentialRepository;
+import io.uverify.backend.util.TemplateIdResolver;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -95,7 +96,7 @@ public class IdentityIndexerService {
         Map<String, Object> fields = objectMapper.readValue(extra, new TypeReference<>() {
         });
 
-        if (!IDENTITY_AUTH_TEMPLATE_ID.equals(fields.get("uverify_template_id"))) {
+        if (!IDENTITY_AUTH_TEMPLATE_ID.equals(TemplateIdResolver.resolveTemplateId(fields))) {
             return;
         }
 

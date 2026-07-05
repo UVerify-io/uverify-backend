@@ -19,7 +19,6 @@
 package io.uverify.backend.service;
 
 import com.bloxbean.cardano.yaci.store.events.internal.CommitEvent;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.uverify.backend.dto.UsageStatistics;
 import io.uverify.backend.entity.StatisticEntity;
@@ -28,6 +27,7 @@ import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.StatisticRepository;
 import io.uverify.backend.repository.TransactionRepository;
+import io.uverify.backend.util.TemplateIdResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -120,11 +120,11 @@ public class StatisticsService {
             return UseCaseCategory.NOTARY;
         }
         try {
-            JsonNode templateId = mapper.readTree(extra).get("uverify_template_id");
-            if (templateId == null || templateId.isNull()) {
+            String templateId = TemplateIdResolver.resolveTemplateId(mapper.readTree(extra));
+            if (templateId == null) {
                 return UseCaseCategory.NOTARY;
             }
-            return switch (templateId.asText()) {
+            return switch (templateId) {
                 case "tadamon" -> UseCaseCategory.IDENTITY;
                 case "socialHub", "linktree", "productVerification" -> UseCaseCategory.CONNECTED_GOODS;
                 case "diploma" -> UseCaseCategory.STUDENT_CERTIFICATION;
