@@ -61,4 +61,30 @@ class StatisticsCategorizeTest {
         assertEquals(UseCaseCategory.NOTARY,
                 StatisticsService.categorize("{\"uverify_template_id\":\"somethingElse\"}", mapper));
     }
+
+    @Test
+    void shortTemplateIdKeyMapsToCategories() {
+        assertEquals(UseCaseCategory.IDENTITY,
+                StatisticsService.categorize("{\"uv_tid\":\"tadamon\"}", mapper));
+        assertEquals(UseCaseCategory.CONNECTED_GOODS,
+                StatisticsService.categorize("{\"uv_tid\":\"socialHub\"}", mapper));
+        assertEquals(UseCaseCategory.STUDENT_CERTIFICATION,
+                StatisticsService.categorize("{\"uv_tid\":\"diploma\"}", mapper));
+        assertEquals(UseCaseCategory.NOTARY,
+                StatisticsService.categorize("{\"uv_tid\":\"somethingElse\"}", mapper));
+    }
+
+    @Test
+    void shortTemplateIdKeyWinsOverLegacyKey() {
+        assertEquals(UseCaseCategory.STUDENT_CERTIFICATION,
+                StatisticsService.categorize(
+                        "{\"uv_tid\":\"diploma\",\"uverify_template_id\":\"tadamon\"}", mapper));
+    }
+
+    @Test
+    void nonTextualShortKeyFallsBackToLegacyKey() {
+        assertEquals(UseCaseCategory.STUDENT_CERTIFICATION,
+                StatisticsService.categorize(
+                        "{\"uv_tid\":42,\"uverify_template_id\":\"diploma\"}", mapper));
+    }
 }
