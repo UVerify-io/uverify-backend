@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.21.0](https://github.com/UVerify-io/uverify-backend/compare/v1.20.0...v1.21.0) (2026-07-05)
+
+
+### Features
+
+* resolve uv_tid alias for the certificate template id ([3559ea4](https://github.com/UVerify-io/uverify-backend/commit/3559ea4c3ee70d33ef599e149f1f913a174aedd9))
+* resolve uv_tid alias for the certificate template id ([cd24638](https://github.com/UVerify-io/uverify-backend/commit/cd2463800e6066c58a75f4a2c64779bbe3cf5fc8))
+
 ## [1.20.0](https://github.com/UVerify-io/uverify-backend/compare/v1.19.1...v1.20.0) (2026-07-04)
 
 
