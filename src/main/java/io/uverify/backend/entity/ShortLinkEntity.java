@@ -46,9 +46,11 @@ public class ShortLinkEntity {
     @Column(name = "certificate_hash", nullable = false, length = 100)
     private String certificateHash;
 
+    @Builder.Default
     @Column(name = "click_count", nullable = false)
-    private Long clickCount;
+    private Long clickCount = 0L;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false)
-    private Date createdAt;
+    private Date createdAt = new Date();
 }

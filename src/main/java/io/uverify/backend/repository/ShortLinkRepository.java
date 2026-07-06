@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public interface ShortLinkRepository extends JpaRepository<ShortLinkEntity, String> {
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Transactional
     @Query("UPDATE ShortLinkEntity s SET s.clickCount = s.clickCount + 1 WHERE s.shortCode = :code")
     void incrementClickCount(@Param("code") String code);
