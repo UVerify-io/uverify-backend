@@ -18,34 +18,19 @@
 
 package io.uverify.backend.repository;
 
-import io.uverify.backend.entity.UVerifyCertificateEntity;
-import jakarta.persistence.QueryHint;
+import io.uverify.backend.entity.ShortLinkEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.stream.Stream;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
-public interface CertificateRepository extends JpaRepository<UVerifyCertificateEntity, String> {
-    List<UVerifyCertificateEntity> findAllByHash(String hash);
-
-    @QueryHints(@QueryHint(name = "org.hibernate.fetchSize", value = "1000"))
-    @Query("SELECT c.extra FROM UVerifyCertificateEntity c")
-    Stream<String> streamAllExtra();
+public interface ShortLinkRepository extends JpaRepository<ShortLinkEntity, String> {
 
     @Modifying
-    @Query("DELETE FROM UVerifyCertificateEntity WHERE slot > :target")
-    void deleteAllAfterSlot(@Param("target") long target);
-
-    @Query("SELECT c FROM UVerifyCertificateEntity c WHERE c.transactionId = :transactionId AND c.hash = :dataHash")
-    UVerifyCertificateEntity findByTransactionHashAndDataHash(String transactionId, String dataHash);
-
-    List<UVerifyCertificateEntity> findByPaymentCredential(String credential);
-
-    List<UVerifyCertificateEntity> findByHashStartingWith(String hashPrefix);
+    @Transactional
+    @Query("UPDATE ShortLinkEntity s SET s.clickCount = s.clickCount + 1 WHERE s.shortCode = :code")
+    void incrementClickCount(@Param("code") String code);
 }
