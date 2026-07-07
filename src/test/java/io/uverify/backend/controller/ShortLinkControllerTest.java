@@ -29,7 +29,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Date;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 
@@ -117,6 +120,30 @@ class ShortLinkControllerTest {
         String html = controller.resolve(CODE, new MockHttpServletRequest()).getBody();
         assertFalse(html.contains("<script>alert(1)</script>"));
         assertTrue(html.contains("&lt;script&gt;"));
+    }
+
+    @Test
+    void ogUrlContainsFullSaltedParamNotCropped() throws Exception {
+        String saltedName = "Jane Doe~x7Rk2p";
+        String commitment = HexFormat.of().formatHex(
+                MessageDigest.getInstance("SHA-256").digest(saltedName.getBytes(StandardCharsets.UTF_8)));
+        given(shortLinkService.resolve(CODE)).willReturn(Optional.of(HASH));
+        given(certificateService.getCertificatesByHash(HASH)).willReturn(List.of(
+                certificate("{\"uv_url_name\":\"" + commitment + "\"}", 100)));
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setQueryString("name=Jane%20Doe~x7Rk2p");
+        request.setParameter("name", saltedName);
+
+        String html = controller.resolve(CODE, request).getBody();
+
+        // URLEncoder encodes space as + and tilde as %7E
+        assertTrue(html.contains("name=Jane+Doe%7Ex7Rk2p"),
+                "og:url must carry the full salted value so re-shared links remain verifiable");
+        assertFalse(html.contains("og:url") && html.contains("name=Jane+Doe&"),
+                "og:url must not drop the salt");
+        assertFalse(html.contains("og:url") && html.contains("name=Jane+Doe\""),
+                "og:url must not drop the salt");
     }
 
     @Test

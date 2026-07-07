@@ -62,7 +62,7 @@ public final class OgDataFactory {
         for (Map.Entry<String, String> param : queryParams.entrySet()) {
             Object commitment = metadata.get(URL_PARAM_KEY_PREFIX + param.getKey());
             if (commitment instanceof String expected && sha256Hex(param.getValue()).equalsIgnoreCase(expected)) {
-                verified.put(param.getKey(), cropSalt(param.getValue()));
+                verified.put(param.getKey(), param.getValue());
             }
         }
         return verified;
@@ -84,7 +84,7 @@ public final class OgDataFactory {
             if (value == null) {
                 return null;
             }
-            matcher.appendReplacement(result, Matcher.quoteReplacement(value));
+            matcher.appendReplacement(result, Matcher.quoteReplacement(cropSalt(value)));
         }
         matcher.appendTail(result);
         return result.toString();
@@ -96,7 +96,7 @@ public final class OgDataFactory {
             String certificateTitle = asText(metadata.get("title"));
             String recipientName = verifiedParams.get("name");
             if (certificateTitle != null && recipientName != null) {
-                return certificateTitle + " · " + recipientName;
+                return certificateTitle + " · " + cropSalt(recipientName);
             }
             if (certificateTitle != null) {
                 return certificateTitle;
