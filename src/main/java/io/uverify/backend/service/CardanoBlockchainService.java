@@ -700,6 +700,7 @@ public class CardanoBlockchainService {
         stateDatumService.undoInvalidationBeforeSlot(slot);
         stateDatumService.handleRollbackToSlot(slot);
         bootstrapDatumService.deleteAllAfterSlot(slot);
+        libraryService.rollbackToSlot(slot);
     }
 
     public Transaction invalidateStates(Address userAddress, List<String> transactionIds) throws ApiException {
@@ -1000,12 +1001,20 @@ public class CardanoBlockchainService {
             final PlutusScript uverifyProxyContract = getUverifyProxyContract(proxyTxHash, proxyOutputIndex);
             final String uverifyProxyScriptHash = ValidatorUtils.validatorToScriptHash(uverifyProxyContract);
 
-            String hexStateContractAddress = HexUtil.encodeHexString(new Address(validatorHelper.getStateContractAddress()).getBytes());
+            // Match against every state script version ever deployed to the
+            // library, not just the latest one, so certificates issued under
+            // previous versions are recognized when syncing from scratch.
+            Set<String> stateContractRewardAddresses = libraryService.getStateContractRewardAddresses();
+            Optional<String> matchedStateContractAddress = transaction.getBody().getWithdrawals() == null
+                    ? Optional.empty()
+                    : transaction.getBody().getWithdrawals().keySet().stream()
+                    .filter(rewardAddress -> stateContractRewardAddresses.contains(rewardAddress.toLowerCase()))
+                    .findFirst();
 
             List<com.bloxbean.cardano.yaci.core.model.Amount> mints = transaction.getBody().getMint();
 
             Optional<com.bloxbean.cardano.yaci.core.model.Amount> maybeMint = mints.stream().filter(amount -> amount.getPolicyId().equals(uverifyProxyScriptHash)).findFirst();
-            boolean hasStateContractInteraction = transaction.getBody().getWithdrawals() != null && transaction.getBody().getWithdrawals().containsKey(hexStateContractAddress);
+            boolean hasStateContractInteraction = matchedStateContractAddress.isPresent();
 
             Optional<byte[]> optionalUserPaymentCredential = serviceUserAddress.getPaymentCredentialHash();
 
@@ -1033,8 +1042,8 @@ public class CardanoBlockchainService {
 
                 Map<String, BigInteger> withdrawals = transaction.getBody().getWithdrawals();
                 List<Redeemer> rewardRedeemers = transaction.getWitnesses().getRedeemers().stream().filter(potentialRedeemer -> potentialRedeemer.getTag().equals(RedeemerTag.Reward)).toList();
-                String stateContractAddress = validatorHelper.getStateContractAddress();
-                Optional<StateRedeemer> stateRedeemer = findWithdrawalRedeemer(withdrawals, rewardRedeemers, new Address(stateContractAddress));
+                Optional<StateRedeemer> stateRedeemer = matchedStateContractAddress.flatMap(rewardAddress ->
+                        findWithdrawalRedeemer(withdrawals, rewardRedeemers, new Address(HexUtil.decodeHexString(rewardAddress))));
 
                 if (stateRedeemer.isEmpty()) {
                     log.warn("No StateRedeemer found for withdrawal in tx: {}", transaction.getTxHash());
@@ -1066,8 +1075,8 @@ public class CardanoBlockchainService {
                 Map<String, BigInteger> withdrawals = transaction.getBody().getWithdrawals();
                 List<Redeemer> rewardRedeemers = transaction.getWitnesses().getRedeemers().stream().filter(potentialRedeemer -> potentialRedeemer.getTag().equals(RedeemerTag.Reward)).toList();
 
-                String stateContractAddress = validatorHelper.getStateContractAddress();
-                Optional<StateRedeemer> stateRedeemer = findWithdrawalRedeemer(withdrawals, rewardRedeemers, new Address(stateContractAddress));
+                Optional<StateRedeemer> stateRedeemer = matchedStateContractAddress.flatMap(rewardAddress ->
+                        findWithdrawalRedeemer(withdrawals, rewardRedeemers, new Address(HexUtil.decodeHexString(rewardAddress))));
 
                 if (stateRedeemer.isEmpty()) {
                     log.warn("No StateRedeemer found for withdrawal in tx: {}", transaction.getTxHash());

@@ -184,7 +184,10 @@ public class CardanoBlockchainTest {
         certificateRepository.deleteAll();
         stateDatumRepository.deleteAll();
         bootstrapDatumRepository.deleteAll();
-        libraryRepository.deleteAll();
+        // Wipe through the service so its script and UTxO caches reset along
+        // with the table — the Spring context (and its singletons) is shared
+        // across test classes while each class runs its own devnet chain.
+        libraryService.rollbackToSlot(-1);
         this.validatorHelper.setProxy("", 0);
     }
 
