@@ -100,7 +100,14 @@ public class ValidatorHelper {
         String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
         String stateTokenUnit = proxyScriptHash + stateTokenName;
 
-        Result<List<Utxo>> stateUtxRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, 1, 1);
-        return stateUtxRequest.getValue().get(0);
+        // Some Blockfrost-compatible providers (e.g. yano) paginate the address
+        // UTxOs before applying the asset filter, so a count of 1 can return an
+        // empty page even though the state UTxO exists. Fetch a full page and
+        // select the UTxO holding the state token explicitly.
+        Result<List<Utxo>> stateUtxRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, 100, 1);
+        return stateUtxRequest.getValue().stream()
+                .filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> stateTokenUnit.equals(amount.getUnit())))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No proxy state UTxO found at " + proxyScriptAddress));
     }
 }
