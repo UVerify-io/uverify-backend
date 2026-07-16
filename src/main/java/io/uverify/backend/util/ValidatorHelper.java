@@ -119,13 +119,22 @@ public class ValidatorHelper {
         String stateTokenUnit = proxyScriptHash + stateTokenName;
 
         // Some Blockfrost-compatible providers (e.g. yano) paginate the address
-        // UTxOs before applying the asset filter, so a count of 1 can return an
-        // empty page even though the state UTxO exists. Fetch a full page and
-        // select the UTxO holding the state token explicitly.
-        Result<List<Utxo>> stateUtxRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, 100, 1);
-        return stateUtxRequest.getValue().stream()
-                .filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> stateTokenUnit.equals(amount.getUnit())))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No proxy state UTxO found at " + proxyScriptAddress));
+        // UTxOs before applying the asset filter, so a page can come back empty
+        // or without the state UTxO even though it exists. Page through the
+        // results and select the UTxO holding the state token explicitly.
+        int pageSize = 100;
+        for (int page = 1; ; page++) {
+            Result<List<Utxo>> stateUtxRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, pageSize, page);
+            List<Utxo> utxos = stateUtxRequest.getValue() == null ? List.of() : stateUtxRequest.getValue();
+            Optional<Utxo> stateUtxo = utxos.stream()
+                    .filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> stateTokenUnit.equals(amount.getUnit())))
+                    .findFirst();
+            if (stateUtxo.isPresent()) {
+                return stateUtxo.get();
+            }
+            if (utxos.size() < pageSize) {
+                throw new IllegalStateException("No proxy state UTxO found at " + proxyScriptAddress);
+            }
+        }
     }
 }
