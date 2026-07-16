@@ -22,6 +22,7 @@ import io.uverify.backend.entity.ShortLinkEntity;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.ShortLinkRepository;
 import io.uverify.backend.util.ShortCode;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -51,12 +52,19 @@ public class ShortLinkService {
                 .map(certificate -> certificate.getHash().toLowerCase())
                 .filter(hash -> ShortCode.fromHash(hash).equals(code))
                 .findFirst()
-                .map(hash -> shortLinkRepository.save(ShortLinkEntity.builder()
-                        .shortCode(code)
-                        .certificateHash(hash)
-                        .clickCount(0L)
-                        .createdAt(Date.from(Instant.now()))
-                        .build()).getCertificateHash());
+                .flatMap(hash -> {
+                    try {
+                        return Optional.of(shortLinkRepository.save(ShortLinkEntity.builder()
+                                .shortCode(code)
+                                .certificateHash(hash)
+                                .clickCount(0L)
+                                .createdAt(Date.from(Instant.now()))
+                                .build()).getCertificateHash());
+                    } catch (DataIntegrityViolationException ignored) {
+                        // Another request created the mapping concurrently.
+                        return shortLinkRepository.findById(code).map(ShortLinkEntity::getCertificateHash);
+                    }
+                });
     }
 
     public void registerClick(String code) {
