@@ -50,7 +50,7 @@ public class ShortLinkService {
         }
         return certificateRepository.findByHashStartingWith(ShortCode.hexPrefix(code)).stream()
                 .map(certificate -> certificate.getHash().toLowerCase())
-                .filter(hash -> ShortCode.fromHash(hash).equals(code))
+                .filter(hash -> matchesShortCode(hash, code))
                 .findFirst()
                 .flatMap(hash -> {
                     try {
@@ -69,5 +69,16 @@ public class ShortLinkService {
 
     public void registerClick(String code) {
         shortLinkRepository.incrementClickCount(code);
+    }
+
+    // Certificate hashes come from on-chain data and are not guaranteed to be
+    // long enough for the short code derivation. Treat non-decodable hashes as
+    // non-matches instead of failing the whole resolution.
+    private static boolean matchesShortCode(String certificateHash, String code) {
+        try {
+            return ShortCode.fromHash(certificateHash).equals(code);
+        } catch (RuntimeException malformedHash) {
+            return false;
+        }
     }
 }
