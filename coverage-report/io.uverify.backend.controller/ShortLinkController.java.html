@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ShortLinkController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.controller</a> &gt; <span class="el_source">ShortLinkController.java</span></div><h1>ShortLinkController.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.controller;
+
+import com.bloxbean.cardano.client.address.AddressProvider;
+import com.bloxbean.cardano.client.address.Credential;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.uverify.backend.entity.UVerifyCertificateEntity;
+import io.uverify.backend.enums.CardanoNetwork;
+import io.uverify.backend.service.ShortLinkService;
+import io.uverify.backend.service.UVerifyCertificateService;
+import io.uverify.backend.util.OgDataFactory;
+import io.uverify.backend.util.OgDataFactory.OgData;
+import io.uverify.backend.util.TemplateIdResolver;
+import io.uverify.backend.util.UpdatePolicyResolver;
+import io.uverify.backend.util.UpdatePolicyResolver.PolicyCertificate;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
+
+<span class="fc" id="L55">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/api/v1/resolve&quot;)
+public class ShortLinkController {
+
+    private final CardanoNetwork network;
+    private final String shortLinkDomain;
+    private final String frontendUrl;
+    private final ShortLinkService shortLinkService;
+    private final UVerifyCertificateService certificateService;
+<span class="fc" id="L65">    private final ObjectMapper objectMapper = new ObjectMapper();</span>
+
+    public ShortLinkController(@Value(&quot;${cardano.network}&quot;) String network,
+                               @Value(&quot;${shortlink.domain}&quot;) String shortLinkDomain,
+                               @Value(&quot;${shortlink.frontend-url}&quot;) String frontendUrl,
+                               ShortLinkService shortLinkService,
+<span class="fc" id="L71">                               UVerifyCertificateService certificateService) {</span>
+<span class="fc" id="L72">        this.network = CardanoNetwork.valueOf(network.toUpperCase());</span>
+<span class="fc" id="L73">        this.shortLinkDomain = shortLinkDomain;</span>
+<span class="fc" id="L74">        this.frontendUrl = frontendUrl;</span>
+<span class="fc" id="L75">        this.shortLinkService = shortLinkService;</span>
+<span class="fc" id="L76">        this.certificateService = certificateService;</span>
+<span class="fc" id="L77">    }</span>
+
+    @GetMapping(value = &quot;/{code}&quot;, produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity&lt;String&gt; resolve(@PathVariable String code, HttpServletRequest request) {
+<span class="fc" id="L81">        Optional&lt;String&gt; hash = shortLinkService.resolve(code);</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        if (hash.isEmpty()) {</span>
+<span class="fc" id="L83">            return ResponseEntity.status(404).contentType(MediaType.TEXT_HTML).body(notFoundPage());</span>
+        }
+
+<span class="fc" id="L86">        List&lt;PolicyCertificate&gt; submissions = certificateService.getCertificatesByHash(hash.get()).stream()</span>
+<span class="fc" id="L87">                .sorted(Comparator.comparing(UVerifyCertificateEntity::getSlot))</span>
+<span class="fc" id="L88">                .map(this::toPolicyCertificate)</span>
+<span class="fc" id="L89">                .toList();</span>
+<span class="fc" id="L90">        List&lt;PolicyCertificate&gt; displayed = UpdatePolicyResolver.applyPolicy(</span>
+<span class="fc" id="L91">                submissions, UpdatePolicyResolver.resolvePolicy(submissions));</span>
+<span class="pc bpc" id="L92" title="1 of 2 branches missed.">        Map&lt;String, Object&gt; metadata = displayed.isEmpty() ? Map.of() : displayed.get(0).metadata();</span>
+
+<span class="fc" id="L94">        Map&lt;String, String&gt; queryParams = firstValues(request.getParameterMap());</span>
+<span class="fc" id="L95">        String templateId = TemplateIdResolver.resolveTemplateId(metadata);</span>
+<span class="fc" id="L96">        OgData ogData = OgDataFactory.build(metadata, queryParams, templateId, frontendUrl);</span>
+
+<span class="fc" id="L98">        String redirectUrl = frontendUrl + &quot;/verify/&quot; + hash.get()</span>
+<span class="pc bpc" id="L99" title="1 of 4 branches missed.">                + (request.getQueryString() != null &amp;&amp; !request.getQueryString().isBlank()</span>
+<span class="fc" id="L100">                ? &quot;?&quot; + request.getQueryString() : &quot;&quot;);</span>
+<span class="fc" id="L101">        String ogUrl = buildOgUrl(code, OgDataFactory.verifyParams(metadata, queryParams));</span>
+
+<span class="fc" id="L103">        shortLinkService.registerClick(code);</span>
+
+<span class="fc" id="L105">        return ResponseEntity.ok()</span>
+<span class="fc" id="L106">                .header(&quot;Cache-Control&quot;, &quot;public, max-age=300&quot;)</span>
+<span class="fc" id="L107">                .contentType(MediaType.TEXT_HTML)</span>
+<span class="fc" id="L108">                .body(previewPage(ogData, ogUrl, redirectUrl));</span>
+    }
+
+    private PolicyCertificate toPolicyCertificate(UVerifyCertificateEntity entity) {
+        Map&lt;String, Object&gt; metadata;
+        try {
+<span class="fc" id="L114">            metadata = objectMapper.readValue(entity.getExtra(), new TypeReference&lt;&gt;() {</span>
+            });
+<span class="nc" id="L116">        } catch (Exception exception) {</span>
+<span class="nc" id="L117">            metadata = Map.of();</span>
+<span class="fc" id="L118">        }</span>
+        String issuer;
+        try {
+<span class="fc" id="L121">            issuer = AddressProvider.getEntAddress(</span>
+<span class="fc" id="L122">                    Credential.fromKey(entity.getPaymentCredential()), fromCardanoNetwork(network)).toBech32();</span>
+<span class="nc" id="L123">        } catch (Exception exception) {</span>
+<span class="nc" id="L124">            issuer = entity.getPaymentCredential();</span>
+<span class="fc" id="L125">        }</span>
+<span class="fc" id="L126">        return new PolicyCertificate(issuer, metadata);</span>
+    }
+
+    private static Map&lt;String, String&gt; firstValues(Map&lt;String, String[]&gt; parameterMap) {
+<span class="fc" id="L130">        return parameterMap.entrySet().stream()</span>
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">                .filter(entry -&gt; entry.getValue().length &gt; 0)</span>
+<span class="fc" id="L132">                .collect(Collectors.toMap(Map.Entry::getKey, entry -&gt; entry.getValue()[0],</span>
+<span class="nc" id="L133">                        (left, right) -&gt; left, LinkedHashMap::new));</span>
+    }
+
+    private String buildOgUrl(String code, Map&lt;String, String&gt; verifiedParams) {
+<span class="fc" id="L137">        String base = shortLinkDomain + &quot;/&quot; + code;</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">        if (verifiedParams.isEmpty()) {</span>
+<span class="fc" id="L139">            return base;</span>
+        }
+<span class="fc" id="L141">        String query = verifiedParams.entrySet().stream()</span>
+<span class="fc" id="L142">                .map(entry -&gt; encode(entry.getKey()) + &quot;=&quot; + encode(entry.getValue()))</span>
+<span class="fc" id="L143">                .collect(Collectors.joining(&quot;&amp;&quot;));</span>
+<span class="fc" id="L144">        return base + &quot;?&quot; + query;</span>
+    }
+
+    private static String encode(String value) {
+<span class="fc" id="L148">        return URLEncoder.encode(value, StandardCharsets.UTF_8);</span>
+    }
+
+    private static String previewPage(OgData ogData, String ogUrl, String redirectUrl) {
+<span class="fc" id="L152">        return &quot;&quot;&quot;</span>
+                &lt;!doctype html&gt;
+                &lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+                &lt;meta charset=&quot;utf-8&quot;&gt;
+                &lt;title&gt;%s&lt;/title&gt;
+                &lt;meta property=&quot;og:type&quot; content=&quot;website&quot;&gt;
+                &lt;meta property=&quot;og:title&quot; content=&quot;%s&quot;&gt;
+                &lt;meta property=&quot;og:description&quot; content=&quot;%s&quot;&gt;
+                &lt;meta property=&quot;og:image&quot; content=&quot;%s&quot;&gt;
+                &lt;meta property=&quot;og:url&quot; content=&quot;%s&quot;&gt;
+                &lt;meta name=&quot;twitter:card&quot; content=&quot;summary_large_image&quot;&gt;
+                &lt;meta name=&quot;twitter:image&quot; content=&quot;%s&quot;&gt;
+                &lt;meta http-equiv=&quot;refresh&quot; content=&quot;0; url=%s&quot;&gt;
+                &lt;/head&gt;&lt;body&gt;&lt;script&gt;location.replace(&quot;%s&quot;)&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;
+<span class="fc" id="L166">                &quot;&quot;&quot;.formatted(</span>
+<span class="fc" id="L167">                escapeHtml(ogData.title()),</span>
+<span class="fc" id="L168">                escapeHtml(ogData.title()),</span>
+<span class="fc" id="L169">                escapeHtml(ogData.description()),</span>
+<span class="fc" id="L170">                escapeHtml(ogData.imageUrl()),</span>
+<span class="fc" id="L171">                escapeHtml(ogUrl),</span>
+<span class="fc" id="L172">                escapeHtml(ogData.imageUrl()),</span>
+<span class="fc" id="L173">                escapeHtml(redirectUrl),</span>
+<span class="fc" id="L174">                escapeJs(redirectUrl));</span>
+    }
+
+    private static String notFoundPage() {
+<span class="fc" id="L178">        return &quot;&quot;&quot;</span>
+                &lt;!doctype html&gt;
+                &lt;html lang=&quot;en&quot;&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;title&gt;UVerify · Unknown link&lt;/title&gt;&lt;/head&gt;
+                &lt;body style=&quot;font-family:sans-serif;text-align:center;padding:4rem;background:#030812;color:#fff&quot;&gt;
+                &lt;h1&gt;Unknown link&lt;/h1&gt;
+                &lt;p&gt;This UVerify short link does not point to a certificate.&lt;/p&gt;
+                &lt;p&gt;&lt;a style=&quot;color:#8fc1fe&quot; href=&quot;https://uverify.io&quot;&gt;uverify.io&lt;/a&gt;&lt;/p&gt;
+                &lt;/body&gt;&lt;/html&gt;
+                &quot;&quot;&quot;;
+    }
+
+    private static String escapeHtml(String value) {
+<span class="pc bpc" id="L190" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L191">            return &quot;&quot;;</span>
+        }
+<span class="fc" id="L193">        return value.replace(&quot;&amp;&quot;, &quot;&amp;amp;&quot;)</span>
+<span class="fc" id="L194">                .replace(&quot;&lt;&quot;, &quot;&amp;lt;&quot;)</span>
+<span class="fc" id="L195">                .replace(&quot;&gt;&quot;, &quot;&amp;gt;&quot;)</span>
+<span class="fc" id="L196">                .replace(&quot;\&quot;&quot;, &quot;&amp;quot;&quot;)</span>
+<span class="fc" id="L197">                .replace(&quot;'&quot;, &quot;&amp;#39;&quot;);</span>
+    }
+
+    private static String escapeJs(String value) {
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L202">            return &quot;&quot;;</span>
+        }
+<span class="fc" id="L204">        return value.replace(&quot;\\&quot;, &quot;\\\\&quot;)</span>
+<span class="fc" id="L205">                .replace(&quot;\&quot;&quot;, &quot;\\\&quot;&quot;)</span>
+<span class="fc" id="L206">                .replace(&quot;&lt;&quot;, &quot;\\u003c&quot;)</span>
+<span class="fc" id="L207">                .replace(&quot;&gt;&quot;, &quot;\\u003e&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

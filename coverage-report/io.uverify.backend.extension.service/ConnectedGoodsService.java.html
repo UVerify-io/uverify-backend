@@ -249,14 +249,14 @@ public class ConnectedGoodsService implements UVerifyServiceExtension {
     public BigInteger addTransactionFees(BigInteger totalFees) {
         // registered batches are already included in the certificate transaction fee itself
 <span class="fc" id="L251">        List&lt;ConnectedGoodUpdateEntity&gt; claimedItems = connectedGoodUpdateRepository.findAll();</span>
-<span class="pc bpc" id="L252" title="1 of 2 branches missed.">        for (ConnectedGoodUpdateEntity claimedItem : claimedItems) {</span>
-<span class="nc" id="L253">            Optional&lt;TxnEntity&gt; transaction = transactionRepository.findById(claimedItem.getTransactionId());</span>
-<span class="nc bnc" id="L254" title="All 2 branches missed.">            if (transaction.isPresent()) {</span>
+<span class="fc bfc" id="L252" title="All 2 branches covered.">        for (ConnectedGoodUpdateEntity claimedItem : claimedItems) {</span>
+<span class="fc" id="L253">            Optional&lt;TxnEntity&gt; transaction = transactionRepository.findById(claimedItem.getTransactionId());</span>
+<span class="pc bpc" id="L254" title="1 of 2 branches missed.">            if (transaction.isPresent()) {</span>
 <span class="nc" id="L255">                totalFees = totalFees.add(transaction.get().getFee());</span>
             } else {
-<span class="nc" id="L257">                log.warn(&quot;Transaction not found for UTXO with hash: {}&quot;, claimedItem.getTransactionId());</span>
+<span class="fc" id="L257">                log.warn(&quot;Transaction not found for UTXO with hash: {}&quot;, claimedItem.getTransactionId());</span>
             }
-<span class="nc" id="L259">        }</span>
+<span class="fc" id="L259">        }</span>
 
 <span class="fc" id="L261">        return totalFees;</span>
     }

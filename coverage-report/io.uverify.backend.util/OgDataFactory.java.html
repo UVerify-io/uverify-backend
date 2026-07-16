@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OgDataFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.util</a> &gt; <span class="el_source">OgDataFactory.java</span></div><h1>OgDataFactory.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.util;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public final class OgDataFactory {
+
+<span class="fc" id="L32">    public record OgData(String title, String description, String imageUrl) {</span>
+    }
+
+<span class="fc" id="L35">    private static final Pattern PLACEHOLDER = Pattern.compile(&quot;\\{([A-Za-z0-9_]+)}&quot;);</span>
+    private static final String URL_PARAM_KEY_PREFIX = &quot;uv_url_&quot;;
+
+    private OgDataFactory() {
+    }
+
+    public static OgData build(Map&lt;String, Object&gt; metadata, Map&lt;String, String&gt; queryParams,
+                               String templateId, String frontendUrl) {
+<span class="fc" id="L43">        Map&lt;String, String&gt; verifiedParams = verifyParams(metadata, queryParams);</span>
+<span class="fc" id="L44">        String title = substituteOrNull(asText(metadata.get(&quot;uv_og_title&quot;)), verifiedParams);</span>
+<span class="fc" id="L45">        String description = substituteOrNull(asText(metadata.get(&quot;uv_og_desc&quot;)), verifiedParams);</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        if (title == null) {</span>
+<span class="fc" id="L47">            title = defaultTitle(metadata, templateId, verifiedParams);</span>
+        }
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        if (description == null) {</span>
+<span class="fc" id="L50">            description = defaultDescription(metadata, templateId);</span>
+        }
+<span class="fc" id="L52">        return new OgData(title, description, imageUrl(metadata, templateId, frontendUrl));</span>
+    }
+
+    /**
+     * Only values whose SHA-256 matches the on-chain uv_url_* commitment may
+     * appear in OG output. Anything else would let arbitrary URLs put false
+     * text on a real certificate's preview.
+     */
+    public static Map&lt;String, String&gt; verifyParams(Map&lt;String, Object&gt; metadata, Map&lt;String, String&gt; queryParams) {
+<span class="fc" id="L61">        Map&lt;String, String&gt; verified = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        for (Map.Entry&lt;String, String&gt; param : queryParams.entrySet()) {</span>
+<span class="fc" id="L63">            Object commitment = metadata.get(URL_PARAM_KEY_PREFIX + param.getKey());</span>
+<span class="fc bfc" id="L64" title="All 4 branches covered.">            if (commitment instanceof String expected &amp;&amp; sha256Hex(param.getValue()).equalsIgnoreCase(expected)) {</span>
+<span class="fc" id="L65">                verified.put(param.getKey(), param.getValue());</span>
+            }
+<span class="fc" id="L67">        }</span>
+<span class="fc" id="L68">        return verified;</span>
+    }
+
+    public static String cropSalt(String value) {
+<span class="fc" id="L72">        int index = value.lastIndexOf('~');</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">        return index &gt; 0 ? value.substring(0, index) : value;</span>
+    }
+
+    private static String substituteOrNull(String template, Map&lt;String, String&gt; verifiedParams) {
+<span class="pc bpc" id="L77" title="1 of 4 branches missed.">        if (template == null || template.isBlank()) {</span>
+<span class="fc" id="L78">            return null;</span>
+        }
+<span class="fc" id="L80">        Matcher matcher = PLACEHOLDER.matcher(template);</span>
+<span class="fc" id="L81">        StringBuilder result = new StringBuilder();</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        while (matcher.find()) {</span>
+<span class="fc" id="L83">            String value = verifiedParams.get(matcher.group(1));</span>
+<span class="fc bfc" id="L84" title="All 2 branches covered.">            if (value == null) {</span>
+<span class="fc" id="L85">                return null;</span>
+            }
+<span class="fc" id="L87">            matcher.appendReplacement(result, Matcher.quoteReplacement(cropSalt(value)));</span>
+<span class="fc" id="L88">        }</span>
+<span class="fc" id="L89">        matcher.appendTail(result);</span>
+<span class="fc" id="L90">        return result.toString();</span>
+    }
+
+    private static String defaultTitle(Map&lt;String, Object&gt; metadata, String templateId,
+                                       Map&lt;String, String&gt; verifiedParams) {
+<span class="fc bfc" id="L95" title="All 2 branches covered.">        if (&quot;diploma&quot;.equals(templateId)) {</span>
+<span class="fc" id="L96">            String certificateTitle = asText(metadata.get(&quot;title&quot;));</span>
+<span class="fc" id="L97">            String recipientName = verifiedParams.get(&quot;name&quot;);</span>
+<span class="fc bfc" id="L98" title="All 4 branches covered.">            if (certificateTitle != null &amp;&amp; recipientName != null) {</span>
+<span class="fc" id="L99">                return certificateTitle + &quot; · &quot; + cropSalt(recipientName);</span>
+            }
+<span class="fc bfc" id="L101" title="All 2 branches covered.">            if (certificateTitle != null) {</span>
+<span class="fc" id="L102">                return certificateTitle;</span>
+            }
+        }
+<span class="fc" id="L105">        return &quot;Blockchain-verified certificate&quot;;</span>
+    }
+
+    private static String defaultDescription(Map&lt;String, Object&gt; metadata, String templateId) {
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        if (&quot;diploma&quot;.equals(templateId)) {</span>
+<span class="fc" id="L110">            String issuer = asText(metadata.get(&quot;issuer&quot;));</span>
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">            if (issuer != null) {</span>
+<span class="nc" id="L112">                return &quot;Issued by &quot; + issuer + &quot;. Anchored on the Cardano blockchain.&quot;;</span>
+            }
+        }
+<span class="fc" id="L115">        return &quot;Anchored on the Cardano blockchain. Open the link to verify the original document.&quot;;</span>
+    }
+
+    private static String imageUrl(Map&lt;String, Object&gt; metadata, String templateId, String frontendUrl) {
+<span class="fc" id="L119">        String override = asText(metadata.get(&quot;uv_og_img&quot;));</span>
+<span class="pc bpc" id="L120" title="1 of 6 branches missed.">        if (override != null &amp;&amp; (override.startsWith(&quot;https://&quot;) || override.startsWith(&quot;http://&quot;))) {</span>
+<span class="fc" id="L121">            return override;</span>
+        }
+        // uv_tid is on-chain data: only path-safe ids may be interpolated
+<span class="fc bfc" id="L124" title="All 4 branches covered.">        String imageName = templateId != null &amp;&amp; templateId.matches(&quot;[A-Za-z0-9_-]+&quot;)</span>
+<span class="fc" id="L125">                ? templateId : &quot;default&quot;;</span>
+<span class="fc" id="L126">        return frontendUrl + &quot;/og/&quot; + imageName + &quot;.png&quot;;</span>
+    }
+
+    private static String asText(Object value) {
+<span class="pc bpc" id="L130" title="1 of 4 branches missed.">        return value instanceof String text &amp;&amp; !text.isBlank() ? text : null;</span>
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+<span class="fc" id="L135">            return HexFormat.of().formatHex(</span>
+<span class="fc" id="L136">                    MessageDigest.getInstance(&quot;SHA-256&quot;).digest(value.getBytes(StandardCharsets.UTF_8)));</span>
+<span class="nc" id="L137">        } catch (NoSuchAlgorithmException exception) {</span>
+<span class="nc" id="L138">            throw new IllegalStateException(exception);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

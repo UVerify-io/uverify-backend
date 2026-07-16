@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ShortLinkService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.service</a> &gt; <span class="el_source">ShortLinkService.java</span></div><h1>ShortLinkService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.service;
+
+import io.uverify.backend.entity.ShortLinkEntity;
+import io.uverify.backend.repository.CertificateRepository;
+import io.uverify.backend.repository.ShortLinkRepository;
+import io.uverify.backend.util.ShortCode;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Date;
+import java.util.Optional;
+
+@Service
+public class ShortLinkService {
+
+    private final ShortLinkRepository shortLinkRepository;
+    private final CertificateRepository certificateRepository;
+
+<span class="fc" id="L38">    public ShortLinkService(ShortLinkRepository shortLinkRepository, CertificateRepository certificateRepository) {</span>
+<span class="fc" id="L39">        this.shortLinkRepository = shortLinkRepository;</span>
+<span class="fc" id="L40">        this.certificateRepository = certificateRepository;</span>
+<span class="fc" id="L41">    }</span>
+
+    public Optional&lt;String&gt; resolve(String code) {
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (!ShortCode.isValid(code)) {</span>
+<span class="fc" id="L45">            return Optional.empty();</span>
+        }
+<span class="fc" id="L47">        Optional&lt;ShortLinkEntity&gt; existing = shortLinkRepository.findById(code);</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (existing.isPresent()) {</span>
+<span class="fc" id="L49">            return existing.map(ShortLinkEntity::getCertificateHash);</span>
+        }
+<span class="fc" id="L51">        return certificateRepository.findByHashStartingWith(ShortCode.hexPrefix(code)).stream()</span>
+<span class="fc" id="L52">                .map(certificate -&gt; certificate.getHash().toLowerCase())</span>
+<span class="fc" id="L53">                .filter(hash -&gt; matchesShortCode(hash, code))</span>
+<span class="fc" id="L54">                .findFirst()</span>
+<span class="fc" id="L55">                .flatMap(hash -&gt; {</span>
+                    try {
+<span class="fc" id="L57">                        return Optional.of(shortLinkRepository.save(ShortLinkEntity.builder()</span>
+<span class="fc" id="L58">                                .shortCode(code)</span>
+<span class="fc" id="L59">                                .certificateHash(hash)</span>
+<span class="fc" id="L60">                                .clickCount(0L)</span>
+<span class="fc" id="L61">                                .createdAt(Date.from(Instant.now()))</span>
+<span class="fc" id="L62">                                .build()).getCertificateHash());</span>
+<span class="nc" id="L63">                    } catch (DataIntegrityViolationException ignored) {</span>
+                        // Another request created the mapping concurrently.
+<span class="nc" id="L65">                        return shortLinkRepository.findById(code).map(ShortLinkEntity::getCertificateHash);</span>
+                    }
+                });
+    }
+
+    public void registerClick(String code) {
+<span class="fc" id="L71">        shortLinkRepository.incrementClickCount(code);</span>
+<span class="fc" id="L72">    }</span>
+
+    // Certificate hashes come from on-chain data and are not guaranteed to be
+    // long enough for the short code derivation. Treat non-decodable hashes as
+    // non-matches instead of failing the whole resolution.
+    private static boolean matchesShortCode(String certificateHash, String code) {
+        try {
+<span class="fc" id="L79">            return ShortCode.fromHash(certificateHash).equals(code);</span>
+<span class="nc" id="L80">        } catch (RuntimeException malformedHash) {</span>
+<span class="nc" id="L81">            return false;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UpdatePolicyResolver.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.util</a> &gt; <span class="el_source">UpdatePolicyResolver.java</span></div><h1>UpdatePolicyResolver.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.util;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * Java port of uverify-ui/src/utils/updatePolicy.ts. The TypeScript file is
+ * the reference implementation. Behavioral changes must land there first and
+ * be mirrored here.
+ */
+public final class UpdatePolicyResolver {
+
+<span class="fc" id="L35">    public record PolicyCertificate(String issuer, Map&lt;String, Object&gt; metadata) {</span>
+    }
+
+<span class="fc" id="L38">    public record ResolvedPolicy(PolicyMode mode, String owner, List&lt;String&gt; whitelist) {</span>
+    }
+
+<span class="fc" id="L41">    public enum PolicyMode {</span>
+<span class="fc" id="L42">        APPEND, FIRST, OVERRIDE, RESTRICTED, WHITELIST, ACCUMULATE, FROZEN;</span>
+
+        static PolicyMode fromMetadataValue(Object value) {
+<span class="fc bfc" id="L45" title="All 2 branches covered.">            if (value instanceof String text) {</span>
+                try {
+<span class="fc" id="L47">                    return PolicyMode.valueOf(text.toUpperCase());</span>
+<span class="nc" id="L48">                } catch (IllegalArgumentException ignored) {</span>
+                }
+            }
+<span class="fc" id="L51">            return APPEND;</span>
+        }
+    }
+
+    private UpdatePolicyResolver() {
+    }
+
+    public static boolean isReservedKey(String key) {
+<span class="fc bfc" id="L59" title="All 6 branches covered.">        return key.startsWith(&quot;uverify_&quot;) || key.startsWith(&quot;uv_og_&quot;) || key.equals(&quot;uv_tid&quot;);</span>
+    }
+
+    public static ResolvedPolicy resolvePolicy(List&lt;PolicyCertificate&gt; certificates) {
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">        if (certificates.isEmpty()) {</span>
+<span class="nc" id="L64">            return new ResolvedPolicy(PolicyMode.APPEND, &quot;&quot;, List.of());</span>
+        }
+<span class="fc" id="L66">        Map&lt;String, Object&gt; firstMetadata = certificates.get(0).metadata();</span>
+<span class="fc" id="L67">        PolicyMode mode = PolicyMode.fromMetadataValue(firstMetadata.get(&quot;uverify_update_policy&quot;));</span>
+<span class="fc" id="L68">        String owner = String.valueOf(firstMetadata.getOrDefault(&quot;uverify_owner&quot;, certificates.get(0).issuer()));</span>
+<span class="fc" id="L69">        List&lt;String&gt; whitelist = parseAddressList(firstMetadata.get(&quot;uverify_update_whitelist&quot;));</span>
+
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        for (PolicyCertificate certificate : certificates.subList(1, certificates.size())) {</span>
+<span class="fc" id="L72">            Map&lt;String, Object&gt; metadata = certificate.metadata();</span>
+<span class="fc" id="L73">            boolean isOwner = certificate.issuer().equals(owner);</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">            if (isOwner) {</span>
+<span class="fc" id="L75">                Object requestedMode = firstNonNull(metadata.get(&quot;uverify_update_policy&quot;), metadata.get(&quot;uverify_policy&quot;));</span>
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">                if (requestedMode != null) {</span>
+<span class="nc" id="L77">                    mode = PolicyMode.fromMetadataValue(requestedMode);</span>
+                }
+<span class="fc bfc" id="L79" title="All 2 branches covered.">                if (metadata.get(&quot;uverify_transfer_ownership&quot;) != null) {</span>
+<span class="fc" id="L80">                    owner = String.valueOf(metadata.get(&quot;uverify_transfer_ownership&quot;));</span>
+                }
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">                if (metadata.get(&quot;uverify_whitelist_add&quot;) != null) {</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">                    for (String address : parseAddressList(metadata.get(&quot;uverify_whitelist_add&quot;))) {</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">                        if (!whitelist.contains(address)) {</span>
+<span class="nc" id="L85">                            whitelist.add(address);</span>
+                        }
+<span class="nc" id="L87">                    }</span>
+                }
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">                if (metadata.get(&quot;uverify_whitelist_remove&quot;) != null) {</span>
+<span class="nc" id="L90">                    whitelist.removeAll(parseAddressList(metadata.get(&quot;uverify_whitelist_remove&quot;)));</span>
+                }
+<span class="fc" id="L92">                Object freeze = metadata.get(&quot;uverify_freeze&quot;);</span>
+<span class="pc bpc" id="L93" title="1 of 4 branches missed.">                if (Boolean.TRUE.equals(freeze) || &quot;true&quot;.equals(freeze)) {</span>
+<span class="fc" id="L94">                    mode = PolicyMode.FROZEN;</span>
+                }
+<span class="fc bfc" id="L96" title="All 2 branches covered.">            } else if (whitelist.contains(certificate.issuer())) {</span>
+<span class="fc" id="L97">                Object requestedMode = firstNonNull(metadata.get(&quot;uverify_update_policy&quot;), metadata.get(&quot;uverify_policy&quot;));</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">                if (requestedMode != null) {</span>
+<span class="nc" id="L99">                    mode = PolicyMode.fromMetadataValue(requestedMode);</span>
+                }
+            }
+<span class="fc" id="L102">        }</span>
+<span class="fc" id="L103">        return new ResolvedPolicy(mode, owner, List.copyOf(whitelist));</span>
+    }
+
+    public static List&lt;PolicyCertificate&gt; applyPolicy(List&lt;PolicyCertificate&gt; certificates, ResolvedPolicy policy) {
+<span class="fc bfc" id="L107" title="All 2 branches covered.">        if (certificates.size() &lt;= 1) {</span>
+<span class="fc" id="L108">            return certificates;</span>
+        }
+<span class="pc bpc" id="L110" title="1 of 6 branches missed.">        switch (policy.mode()) {</span>
+            case FIRST, FROZEN -&gt; {
+<span class="fc" id="L112">                return List.of(certificates.get(0));</span>
+            }
+            case OVERRIDE -&gt; {
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">                for (int i = certificates.size() - 1; i &gt;= 0; i--) {</span>
+<span class="fc" id="L116">                    boolean hasContent = certificates.get(i).metadata().keySet().stream()</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">                            .anyMatch(key -&gt; !isReservedKey(key));</span>
+<span class="pc bpc" id="L118" title="1 of 4 branches missed.">                    if (hasContent || i == 0) {</span>
+<span class="fc" id="L119">                        return List.of(certificates.get(i));</span>
+                    }
+                }
+<span class="nc" id="L122">                return List.of(certificates.get(0));</span>
+            }
+            case RESTRICTED -&gt; {
+<span class="fc" id="L125">                List&lt;PolicyCertificate&gt; displayed = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">                for (int i = 0; i &lt; certificates.size(); i++) {</span>
+<span class="fc bfc" id="L127" title="All 4 branches covered.">                    if (i == 0 || certificates.get(i).issuer().equals(policy.owner())) {</span>
+<span class="fc" id="L128">                        displayed.add(certificates.get(i));</span>
+                    }
+                }
+<span class="fc" id="L131">                return displayed;</span>
+            }
+            case WHITELIST -&gt; {
+<span class="fc" id="L134">                List&lt;String&gt; currentWhitelist =</span>
+<span class="fc" id="L135">                        parseAddressList(certificates.get(0).metadata().get(&quot;uverify_update_whitelist&quot;));</span>
+<span class="fc" id="L136">                List&lt;PolicyCertificate&gt; displayed = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L137">                displayed.add(certificates.get(0));</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">                for (int i = 1; i &lt; certificates.size(); i++) {</span>
+<span class="fc" id="L139">                    PolicyCertificate certificate = certificates.get(i);</span>
+<span class="pc bpc" id="L140" title="1 of 2 branches missed.">                    if (certificate.issuer().equals(policy.owner())) {</span>
+<span class="nc" id="L141">                        Map&lt;String, Object&gt; metadata = certificate.metadata();</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">                        if (metadata.get(&quot;uverify_whitelist_add&quot;) != null) {</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">                            for (String address : parseAddressList(metadata.get(&quot;uverify_whitelist_add&quot;))) {</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">                                if (!currentWhitelist.contains(address)) {</span>
+<span class="nc" id="L145">                                    currentWhitelist.add(address);</span>
+                                }
+<span class="nc" id="L147">                            }</span>
+                        }
+<span class="nc bnc" id="L149" title="All 2 branches missed.">                        if (metadata.get(&quot;uverify_whitelist_remove&quot;) != null) {</span>
+<span class="nc" id="L150">                            currentWhitelist.removeAll(parseAddressList(metadata.get(&quot;uverify_whitelist_remove&quot;)));</span>
+                        }
+<span class="nc" id="L152">                        displayed.add(certificate);</span>
+<span class="pc bfc" id="L153" title="All 2 branches covered.">                    } else if (currentWhitelist.contains(certificate.issuer())) {</span>
+<span class="fc" id="L154">                        displayed.add(certificate);</span>
+                    }
+                }
+<span class="fc" id="L157">                return displayed;</span>
+            }
+            case ACCUMULATE -&gt; {
+<span class="fc" id="L160">                Map&lt;String, Object&gt; merged = new LinkedHashMap&lt;&gt;(certificates.get(0).metadata());</span>
+<span class="fc bfc" id="L161" title="All 2 branches covered.">                for (PolicyCertificate certificate : certificates.subList(1, certificates.size())) {</span>
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">                    boolean authorised = certificate.issuer().equals(policy.owner())</span>
+<span class="pc bnc" id="L163" title="All 2 branches missed.">                            || policy.whitelist().contains(certificate.issuer());</span>
+<span class="pc bpc" id="L164" title="1 of 2 branches missed.">                    if (!authorised) {</span>
+<span class="nc" id="L165">                        continue;</span>
+                    }
+<span class="fc bfc" id="L167" title="All 2 branches covered.">                    for (Map.Entry&lt;String, Object&gt; entry : certificate.metadata().entrySet()) {</span>
+<span class="fc bfc" id="L168" title="All 4 branches covered.">                        if (!isReservedKey(entry.getKey()) &amp;&amp; !merged.containsKey(entry.getKey())) {</span>
+<span class="fc" id="L169">                            merged.put(entry.getKey(), entry.getValue());</span>
+                        }
+<span class="fc" id="L171">                    }</span>
+<span class="fc" id="L172">                }</span>
+<span class="fc" id="L173">                return List.of(new PolicyCertificate(certificates.get(0).issuer(), merged));</span>
+            }
+            default -&gt; {
+<span class="nc" id="L176">                return certificates;</span>
+            }
+        }
+    }
+
+    private static Object firstNonNull(Object first, Object second) {
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">        return first != null ? first : second;</span>
+    }
+
+    private static List&lt;String&gt; parseAddressList(Object value) {
+<span class="fc bfc" id="L186" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L187">            return new ArrayList&lt;&gt;();</span>
+        }
+<span class="fc" id="L189">        return Arrays.stream(String.valueOf(value).split(&quot;,&quot;))</span>
+<span class="fc" id="L190">                .map(String::trim)</span>
+<span class="pc bpc" id="L191" title="1 of 2 branches missed.">                .filter(entry -&gt; !entry.isEmpty())</span>
+<span class="fc" id="L192">                .collect(Collectors.toCollection(ArrayList::new));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

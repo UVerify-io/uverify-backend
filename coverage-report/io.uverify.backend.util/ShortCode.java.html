@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ShortCode.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.util</a> &gt; <span class="el_source">ShortCode.java</span></div><h1>ShortCode.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.util;
+
+public final class ShortCode {
+
+<span class="fc" id="L23">    private static final char[] BASE62 =</span>
+<span class="fc" id="L24">            &quot;0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz&quot;.toCharArray();</span>
+
+    public static final int CODE_LENGTH = 10;
+
+    private ShortCode() {
+    }
+
+    public static String fromHash(String hexHash) {
+        // Top 59 bits of the hash: 64 bits parsed, 5 shifted out. 59 bits fit
+        // 10 base62 chars without modular wrap, so a code decodes back to a
+        // hash prefix (see hexPrefix).
+<span class="fc" id="L35">        long value = Long.parseUnsignedLong(hexHash.substring(0, 16), 16) &gt;&gt;&gt; 5;</span>
+<span class="fc" id="L36">        char[] code = new char[CODE_LENGTH];</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">        for (int i = CODE_LENGTH - 1; i &gt;= 0; i--) {</span>
+<span class="fc" id="L38">            code[i] = BASE62[(int) (value % 62)];</span>
+<span class="fc" id="L39">            value /= 62;</span>
+        }
+<span class="fc" id="L41">        return new String(code);</span>
+    }
+
+    public static boolean isValid(String code) {
+<span class="fc bfc" id="L45" title="All 6 branches covered.">        return code != null &amp;&amp; code.length() == CODE_LENGTH &amp;&amp; code.chars().allMatch(ShortCode::isBase62);</span>
+    }
+
+    public static String hexPrefix(String code) {
+<span class="fc" id="L49">        long value = 0;</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        for (char character : code.toCharArray()) {</span>
+<span class="fc" id="L51">            value = value * 62 + digitValue(character);</span>
+        }
+        // 59 decoded bits cover 14 full hex chars (56 bits) plus 3 spare bits.
+<span class="fc" id="L54">        return String.format(&quot;%014x&quot;, value &gt;&gt;&gt; 3);</span>
+    }
+
+    private static boolean isBase62(int character) {
+<span class="pc bpc" id="L58" title="2 of 12 branches missed.">        return (character &gt;= '0' &amp;&amp; character &lt;= '9')</span>
+                || (character &gt;= 'A' &amp;&amp; character &lt;= 'Z')
+                || (character &gt;= 'a' &amp;&amp; character &lt;= 'z');
+    }
+
+    private static long digitValue(char character) {
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (character &lt;= '9') return character - '0';</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">        if (character &lt;= 'Z') return character - 'A' + 10;</span>
+<span class="fc" id="L66">        return character - 'a' + 36;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

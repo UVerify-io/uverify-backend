@@ -25,7 +25,10 @@ import com.bloxbean.cardano.client.api.model.Utxo;
 import com.bloxbean.cardano.client.backend.api.BackendService;
 import com.bloxbean.cardano.client.common.model.Networks;
 import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
+import com.bloxbean.cardano.client.plutus.spec.PlutusV3Script;
+import io.uverify.backend.entity.LibraryEntity;
 import io.uverify.backend.enums.CardanoNetwork;
+import io.uverify.backend.repository.LibraryRepository;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,75 +36,122 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 
 import static io.uverify.backend.util.ValidatorUtils.getProxyStateTokenName;
 
 @Component
 @Getter
-<span class="fc" id="L41">@Slf4j</span>
+<span class="fc" id="L45">@Slf4j</span>
 public class ValidatorHelper {
-<span class="nc" id="L43">    private final CardanoNetwork network;</span>
-<span class="fc" id="L44">    private String proxyTransactionHash;</span>
-<span class="fc" id="L45">    private Integer proxyOutputIndex;</span>
+<span class="nc" id="L47">    private final CardanoNetwork network;</span>
+<span class="nc" id="L48">    private final LibraryRepository libraryRepository;</span>
+<span class="fc" id="L49">    private String proxyTransactionHash;</span>
+<span class="fc" id="L50">    private Integer proxyOutputIndex;</span>
 
     @Autowired
     public ValidatorHelper(@Value(&quot;${proxy.transaction-hash}&quot;) String proxyTransactionHash,
                            @Value(&quot;${proxy.output-index}&quot;) Integer proxyOutputIndex,
-<span class="fc" id="L50">                           @Value(&quot;${cardano.network}&quot;) String network) {</span>
-<span class="fc" id="L51">        this.proxyTransactionHash = proxyTransactionHash;</span>
-<span class="fc" id="L52">        this.proxyOutputIndex = proxyOutputIndex;</span>
-<span class="fc" id="L53">        this.network = CardanoNetwork.valueOf(network);</span>
-<span class="fc" id="L54">    }</span>
+                           @Value(&quot;${cardano.network}&quot;) String network,
+<span class="fc" id="L56">                           LibraryRepository libraryRepository) {</span>
+<span class="fc" id="L57">        this.proxyTransactionHash = proxyTransactionHash;</span>
+<span class="fc" id="L58">        this.proxyOutputIndex = proxyOutputIndex;</span>
+<span class="fc" id="L59">        this.network = CardanoNetwork.valueOf(network);</span>
+<span class="fc" id="L60">        this.libraryRepository = libraryRepository;</span>
+<span class="fc" id="L61">    }</span>
 
+    /**
+     * Resolves the state contract for new transactions from the latest script
+     * deployed to the on-chain library. The bundled contract in ValidatorUtils
+     * is only the artifact for the very first deployment, before any library
+     * entry exists.
+     */
     public PlutusScript getParameterizedUVerifyStateContract() {
-<span class="fc" id="L57">        return ValidatorUtils.getUVerifyStateContract(proxyTransactionHash, proxyOutputIndex);</span>
+<span class="fc" id="L70">        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(getParameterizedProxyContract());</span>
+<span class="fc" id="L71">        Optional&lt;LibraryEntity&gt; latestScript = libraryRepository.getLatestScript(proxyScriptHash);</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">        if (latestScript.isPresent()) {</span>
+<span class="fc" id="L73">            return PlutusV3Script.builder().cborHex(latestScript.get().getCompiledCode()).build();</span>
+        }
+<span class="fc" id="L75">        return ValidatorUtils.getUVerifyStateContract(proxyTransactionHash, proxyOutputIndex);</span>
     }
 
     public PlutusScript getParameterizedProxyContract() {
-<span class="fc" id="L61">        return ValidatorUtils.getUverifyProxyContract(proxyTransactionHash, proxyOutputIndex);</span>
+<span class="fc" id="L79">        return ValidatorUtils.getUverifyProxyContract(proxyTransactionHash, proxyOutputIndex);</span>
     }
 
     public void setProxy(String proxyTransactionHash, Integer proxyOutputIndex) {
-<span class="fc" id="L65">        this.proxyTransactionHash = proxyTransactionHash;</span>
-<span class="fc" id="L66">        this.proxyOutputIndex = proxyOutputIndex;</span>
-<span class="fc" id="L67">    }</span>
+<span class="fc" id="L83">        this.proxyTransactionHash = proxyTransactionHash;</span>
+<span class="fc" id="L84">        this.proxyOutputIndex = proxyOutputIndex;</span>
+<span class="fc" id="L85">    }</span>
 
     public String getProxyContractAddress() {
-<span class="fc" id="L70">        PlutusScript uverifyProxyContract = ValidatorUtils.getUverifyProxyContract(proxyTransactionHash, proxyOutputIndex);</span>
+<span class="fc" id="L88">        PlutusScript uverifyProxyContract = ValidatorUtils.getUverifyProxyContract(proxyTransactionHash, proxyOutputIndex);</span>
 
-<span class="pc bpc" id="L72" title="1 of 2 branches missed.">        if (network.equals(CardanoNetwork.MAINNET)) {</span>
-<span class="nc" id="L73">            return AddressProvider.getEntAddress(uverifyProxyContract, Networks.mainnet()).toBech32();</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">        if (network.equals(CardanoNetwork.MAINNET)) {</span>
+<span class="nc" id="L91">            return AddressProvider.getEntAddress(uverifyProxyContract, Networks.mainnet()).toBech32();</span>
         }
 
-<span class="fc" id="L76">        return AddressProvider.getEntAddress(uverifyProxyContract, Networks.preprod()).toBech32();</span>
+<span class="fc" id="L94">        return AddressProvider.getEntAddress(uverifyProxyContract, Networks.preprod()).toBech32();</span>
     }
 
     public String getStateContractAddress() {
-<span class="fc" id="L80">        PlutusScript stateContract = getParameterizedUVerifyStateContract();</span>
+<span class="fc" id="L98">        PlutusScript stateContract = getParameterizedUVerifyStateContract();</span>
 
-<span class="pc bpc" id="L82" title="1 of 2 branches missed.">        if (network.equals(CardanoNetwork.MAINNET)) {</span>
-<span class="nc" id="L83">            return AddressProvider.getRewardAddress(stateContract, Networks.mainnet()).toBech32();</span>
+<span class="pc bpc" id="L100" title="1 of 2 branches missed.">        if (network.equals(CardanoNetwork.MAINNET)) {</span>
+<span class="nc" id="L101">            return AddressProvider.getRewardAddress(stateContract, Networks.mainnet()).toBech32();</span>
         }
 
-<span class="fc" id="L86">        return AddressProvider.getRewardAddress(stateContract, Networks.preprod()).toBech32();</span>
+<span class="fc" id="L104">        return AddressProvider.getRewardAddress(stateContract, Networks.preprod()).toBech32();</span>
     }
 
     public Utxo resolveProxyStateUtxo(BackendService backendService) throws ApiException {
-<span class="fc" id="L90">        String stateTokenName = getProxyStateTokenName(proxyTransactionHash, proxyOutputIndex);</span>
-<span class="fc" id="L91">        PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(proxyTransactionHash, proxyOutputIndex);</span>
+<span class="fc" id="L108">        String stateTokenName = getProxyStateTokenName(proxyTransactionHash, proxyOutputIndex);</span>
+<span class="fc" id="L109">        PlutusScript proxyContract = ValidatorUtils.getUverifyProxyContract(proxyTransactionHash, proxyOutputIndex);</span>
 
         String proxyScriptAddress;
-<span class="pc bpc" id="L94" title="1 of 2 branches missed.">        if (network.equals(CardanoNetwork.MAINNET)) {</span>
-<span class="nc" id="L95">            proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, Networks.mainnet()).toBech32();</span>
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">        if (network.equals(CardanoNetwork.MAINNET)) {</span>
+<span class="nc" id="L113">            proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, Networks.mainnet()).toBech32();</span>
         } else {
-<span class="fc" id="L97">            proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, Networks.preprod()).toBech32();</span>
+<span class="fc" id="L115">            proxyScriptAddress = AddressProvider.getEntAddress(proxyContract, Networks.preprod()).toBech32();</span>
         }
 
-<span class="fc" id="L100">        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);</span>
-<span class="fc" id="L101">        String stateTokenUnit = proxyScriptHash + stateTokenName;</span>
+<span class="fc" id="L118">        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);</span>
+<span class="fc" id="L119">        String stateTokenUnit = proxyScriptHash + stateTokenName;</span>
 
-<span class="fc" id="L103">        Result&lt;List&lt;Utxo&gt;&gt; stateUtxRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, 1, 1);</span>
-<span class="fc" id="L104">        return stateUtxRequest.getValue().get(0);</span>
+        // Providers that filter by asset before paginating (e.g. Blockfrost)
+        // return the state UTxO on the first filtered page. Providers that
+        // paginate the address UTxOs before filtering (e.g. yano) can return
+        // sparse or empty pages even though the state UTxO exists, with no way
+        // to tell a sparse page from the end of the results. Try the cheap
+        // filtered query first, then fall back to paging through all address
+        // UTxOs and filtering here, where a short page reliably marks the end.
+<span class="fc" id="L128">        int pageSize = 100;</span>
+<span class="fc" id="L129">        Result&lt;List&lt;Utxo&gt;&gt; filteredRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, pageSize, 1);</span>
+<span class="fc" id="L130">        Optional&lt;Utxo&gt; stateUtxo = firstUtxoHoldingToken(filteredRequest.getValue(), stateTokenUnit);</span>
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">        if (stateUtxo.isPresent()) {</span>
+<span class="fc" id="L132">            return stateUtxo.get();</span>
+        }
+
+<span class="nc" id="L135">        for (int page = 1; ; page++) {</span>
+<span class="nc" id="L136">            Result&lt;List&lt;Utxo&gt;&gt; pageRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, pageSize, page);</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">            List&lt;Utxo&gt; utxos = pageRequest.getValue() == null ? List.of() : pageRequest.getValue();</span>
+<span class="nc" id="L138">            Optional&lt;Utxo&gt; match = firstUtxoHoldingToken(utxos, stateTokenUnit);</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">            if (match.isPresent()) {</span>
+<span class="nc" id="L140">                return match.get();</span>
+            }
+<span class="nc bnc" id="L142" title="All 2 branches missed.">            if (utxos.size() &lt; pageSize) {</span>
+<span class="nc" id="L143">                throw new IllegalStateException(&quot;No proxy state UTxO found at &quot; + proxyScriptAddress);</span>
+            }
+        }
+    }
+
+    private static Optional&lt;Utxo&gt; firstUtxoHoldingToken(List&lt;Utxo&gt; utxos, String unit) {
+<span class="pc bpc" id="L149" title="1 of 2 branches missed.">        if (utxos == null) {</span>
+<span class="nc" id="L150">            return Optional.empty();</span>
+        }
+<span class="fc" id="L152">        return utxos.stream()</span>
+<span class="fc" id="L153">                .filter(utxo -&gt; utxo.getAmount().stream().anyMatch(amount -&gt; unit.equals(amount.getUnit())))</span>
+<span class="fc" id="L154">                .findFirst();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
