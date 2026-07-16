@@ -25,7 +25,10 @@ import com.bloxbean.cardano.client.api.model.Utxo;
 import com.bloxbean.cardano.client.backend.api.BackendService;
 import com.bloxbean.cardano.client.common.model.Networks;
 import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
+import com.bloxbean.cardano.client.plutus.spec.PlutusV3Script;
+import io.uverify.backend.entity.LibraryEntity;
 import io.uverify.backend.enums.CardanoNetwork;
+import io.uverify.backend.repository.LibraryRepository;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +36,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 
 import static io.uverify.backend.util.ValidatorUtils.getProxyStateTokenName;
 
@@ -41,19 +45,33 @@ import static io.uverify.backend.util.ValidatorUtils.getProxyStateTokenName;
 @Slf4j
 public class ValidatorHelper {
     private final CardanoNetwork network;
+    private final LibraryRepository libraryRepository;
     private String proxyTransactionHash;
     private Integer proxyOutputIndex;
 
     @Autowired
     public ValidatorHelper(@Value("${proxy.transaction-hash}") String proxyTransactionHash,
                            @Value("${proxy.output-index}") Integer proxyOutputIndex,
-                           @Value("${cardano.network}") String network) {
+                           @Value("${cardano.network}") String network,
+                           LibraryRepository libraryRepository) {
         this.proxyTransactionHash = proxyTransactionHash;
         this.proxyOutputIndex = proxyOutputIndex;
         this.network = CardanoNetwork.valueOf(network);
+        this.libraryRepository = libraryRepository;
     }
 
+    /**
+     * Resolves the state contract for new transactions from the latest script
+     * deployed to the on-chain library. The bundled contract in ValidatorUtils
+     * is only the artifact for the very first deployment, before any library
+     * entry exists.
+     */
     public PlutusScript getParameterizedUVerifyStateContract() {
+        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(getParameterizedProxyContract());
+        Optional<LibraryEntity> latestScript = libraryRepository.getLatestScript(proxyScriptHash);
+        if (latestScript.isPresent()) {
+            return PlutusV3Script.builder().cborHex(latestScript.get().getCompiledCode()).build();
+        }
         return ValidatorUtils.getUVerifyStateContract(proxyTransactionHash, proxyOutputIndex);
     }
 
@@ -100,7 +118,39 @@ public class ValidatorHelper {
         String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
         String stateTokenUnit = proxyScriptHash + stateTokenName;
 
-        Result<List<Utxo>> stateUtxRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, 1, 1);
-        return stateUtxRequest.getValue().get(0);
+        // Providers that filter by asset before paginating (e.g. Blockfrost)
+        // return the state UTxO on the first filtered page. Providers that
+        // paginate the address UTxOs before filtering (e.g. yano) can return
+        // sparse or empty pages even though the state UTxO exists, with no way
+        // to tell a sparse page from the end of the results. Try the cheap
+        // filtered query first, then fall back to paging through all address
+        // UTxOs and filtering here, where a short page reliably marks the end.
+        int pageSize = 100;
+        Result<List<Utxo>> filteredRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, pageSize, 1);
+        Optional<Utxo> stateUtxo = firstUtxoHoldingToken(filteredRequest.getValue(), stateTokenUnit);
+        if (stateUtxo.isPresent()) {
+            return stateUtxo.get();
+        }
+
+        for (int page = 1; ; page++) {
+            Result<List<Utxo>> pageRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, pageSize, page);
+            List<Utxo> utxos = pageRequest.getValue() == null ? List.of() : pageRequest.getValue();
+            Optional<Utxo> match = firstUtxoHoldingToken(utxos, stateTokenUnit);
+            if (match.isPresent()) {
+                return match.get();
+            }
+            if (utxos.size() < pageSize) {
+                throw new IllegalStateException("No proxy state UTxO found at " + proxyScriptAddress);
+            }
+        }
+    }
+
+    private static Optional<Utxo> firstUtxoHoldingToken(List<Utxo> utxos, String unit) {
+        if (utxos == null) {
+            return Optional.empty();
+        }
+        return utxos.stream()
+                .filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> unit.equals(amount.getUnit())))
+                .findFirst();
     }
 }

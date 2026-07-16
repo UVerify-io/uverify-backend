@@ -26,6 +26,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -36,6 +37,11 @@ public interface LibraryRepository extends JpaRepository<LibraryEntity, Long> {
     @Query("DELETE FROM LibraryEntity WHERE slot > :target")
     void deleteAllAfterSlot(@Param("target") long target);
 
-    @Query("SELECT entry FROM LibraryEntity entry WHERE version > 0 ORDER BY version DESC LIMIT 1")
-    Optional<LibraryEntity> getLatestScript();
+    @Query("SELECT entry FROM LibraryEntity entry WHERE entry.hash <> :proxyScriptHash ORDER BY entry.version DESC LIMIT 1")
+    Optional<LibraryEntity> getLatestScript(@Param("proxyScriptHash") String proxyScriptHash);
+
+    @Query("SELECT entry FROM LibraryEntity entry WHERE entry.hash <> :proxyScriptHash ORDER BY entry.version ASC")
+    List<LibraryEntity> getAllScriptVersions(@Param("proxyScriptHash") String proxyScriptHash);
+
+    Optional<LibraryEntity> findFirstByHash(String hash);
 }

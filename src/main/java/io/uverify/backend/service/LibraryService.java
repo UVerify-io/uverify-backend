@@ -34,6 +34,7 @@ import com.bloxbean.cardano.client.plutus.blueprint.PlutusBlueprintUtil;
 import com.bloxbean.cardano.client.plutus.blueprint.model.PlutusVersion;
 import com.bloxbean.cardano.client.plutus.spec.PlutusData;
 import com.bloxbean.cardano.client.plutus.spec.PlutusScript;
+import com.bloxbean.cardano.client.plutus.spec.PlutusV3Script;
 import com.bloxbean.cardano.client.quicktx.QuickTxBuilder;
 import com.bloxbean.cardano.client.quicktx.ScriptTx;
 import com.bloxbean.cardano.client.quicktx.Tx;
@@ -59,8 +60,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static io.uverify.backend.util.ValidatorUtils.*;
@@ -79,6 +82,7 @@ public class LibraryService {
     private final Network network;
     private Utxo proxyLibraryUtxo;
     private Utxo stateLibraryUtxo;
+    private Set<String> stateContractRewardAddressCache;
     private BackendService backendService;
 
     @Autowired
@@ -134,6 +138,41 @@ public class LibraryService {
             reloadLibraryCache();
         }
         return stateLibraryUtxo;
+    }
+
+    /**
+     * Hex-encoded reward address bytes of every state script version ever
+     * deployed to the library, in deployment order. The block processor matches
+     * withdrawals against all of them so certificates issued under previous
+     * script versions are still recognized when syncing from scratch.
+     */
+    public synchronized Set<String> getStateContractRewardAddresses() {
+        if (stateContractRewardAddressCache == null) {
+            String proxyScriptHash = ValidatorUtils.validatorToScriptHash(validatorHelper.getParameterizedProxyContract());
+            LinkedHashSet<String> rewardAddresses = new LinkedHashSet<>();
+            for (LibraryEntity entry : libraryRepository.getAllScriptVersions(proxyScriptHash)) {
+                PlutusScript script = PlutusV3Script.builder().cborHex(entry.getCompiledCode()).build();
+                rewardAddresses.add(HexUtil.encodeHexString(
+                        AddressProvider.getRewardAddress(script, network).getBytes()));
+            }
+            if (rewardAddresses.isEmpty()) {
+                rewardAddresses.add(HexUtil.encodeHexString(
+                        new Address(validatorHelper.getStateContractAddress()).getBytes()));
+            }
+            stateContractRewardAddressCache = rewardAddresses;
+        }
+        return stateContractRewardAddressCache;
+    }
+
+    private synchronized void invalidateScriptCaches() {
+        stateContractRewardAddressCache = null;
+        proxyLibraryUtxo = null;
+        stateLibraryUtxo = null;
+    }
+
+    public void rollbackToSlot(long slot) {
+        libraryRepository.deleteAllAfterSlot(slot);
+        invalidateScriptCaches();
     }
 
     public Transaction deployUVerifyContracts() {
@@ -247,8 +286,9 @@ public class LibraryService {
     }
 
     private void reloadLibraryCache() {
-        Optional<LibraryEntity> proxyEntry = libraryRepository.findById(0L);
-        Optional<LibraryEntity> stateEntry = libraryRepository.getLatestScript();
+        String proxyScriptHash = ValidatorUtils.validatorToScriptHash(validatorHelper.getParameterizedProxyContract());
+        Optional<LibraryEntity> proxyEntry = libraryRepository.findFirstByHash(proxyScriptHash);
+        Optional<LibraryEntity> stateEntry = libraryRepository.getLatestScript(proxyScriptHash);
 
         if (proxyEntry.isPresent() && stateEntry.isPresent()) {
             try {
@@ -492,6 +532,7 @@ public class LibraryService {
                     .compiledCode(script.getCborHex())
                     .hash(script.getPolicyId()).build();
             libraryRepository.save(libraryEntity);
+            invalidateScriptCaches();
         } catch (Exception e) {
             log.error("Potential script deployment skipped. Failed to deserialize inline datum for library UTXO: {}", e.getMessage());
         }
