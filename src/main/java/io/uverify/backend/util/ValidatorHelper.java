@@ -118,23 +118,39 @@ public class ValidatorHelper {
         String proxyScriptHash = ValidatorUtils.validatorToScriptHash(proxyContract);
         String stateTokenUnit = proxyScriptHash + stateTokenName;
 
-        // Some Blockfrost-compatible providers (e.g. yano) paginate the address
-        // UTxOs before applying the asset filter, so a page can come back empty
-        // or without the state UTxO even though it exists. Page through the
-        // results and select the UTxO holding the state token explicitly.
+        // Providers that filter by asset before paginating (e.g. Blockfrost)
+        // return the state UTxO on the first filtered page. Providers that
+        // paginate the address UTxOs before filtering (e.g. yano) can return
+        // sparse or empty pages even though the state UTxO exists, with no way
+        // to tell a sparse page from the end of the results. Try the cheap
+        // filtered query first, then fall back to paging through all address
+        // UTxOs and filtering here, where a short page reliably marks the end.
         int pageSize = 100;
+        Result<List<Utxo>> filteredRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, pageSize, 1);
+        Optional<Utxo> stateUtxo = firstUtxoHoldingToken(filteredRequest.getValue(), stateTokenUnit);
+        if (stateUtxo.isPresent()) {
+            return stateUtxo.get();
+        }
+
         for (int page = 1; ; page++) {
-            Result<List<Utxo>> stateUtxRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, stateTokenUnit, pageSize, page);
-            List<Utxo> utxos = stateUtxRequest.getValue() == null ? List.of() : stateUtxRequest.getValue();
-            Optional<Utxo> stateUtxo = utxos.stream()
-                    .filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> stateTokenUnit.equals(amount.getUnit())))
-                    .findFirst();
-            if (stateUtxo.isPresent()) {
-                return stateUtxo.get();
+            Result<List<Utxo>> pageRequest = backendService.getUtxoService().getUtxos(proxyScriptAddress, pageSize, page);
+            List<Utxo> utxos = pageRequest.getValue() == null ? List.of() : pageRequest.getValue();
+            Optional<Utxo> match = firstUtxoHoldingToken(utxos, stateTokenUnit);
+            if (match.isPresent()) {
+                return match.get();
             }
             if (utxos.size() < pageSize) {
                 throw new IllegalStateException("No proxy state UTxO found at " + proxyScriptAddress);
             }
         }
+    }
+
+    private static Optional<Utxo> firstUtxoHoldingToken(List<Utxo> utxos, String unit) {
+        if (utxos == null) {
+            return Optional.empty();
+        }
+        return utxos.stream()
+                .filter(utxo -> utxo.getAmount().stream().anyMatch(amount -> unit.equals(amount.getUnit())))
+                .findFirst();
     }
 }
