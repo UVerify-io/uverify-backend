@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.22.0](https://github.com/UVerify-io/uverify-backend/compare/v1.21.0...v1.22.0) (2026-07-16)
+
+
+### Features
+
+* add short_link table, entity and repositories ([0c7d2eb](https://github.com/UVerify-io/uverify-backend/commit/0c7d2ebd0706d0a5e1ccac031010b6372bdaabea))
+* derive deterministic base62 short codes from certificate hashes ([b363824](https://github.com/UVerify-io/uverify-backend/commit/b363824c4f033517b139491e9f49a852a18b8564))
+* derive open graph data from certificate metadata with verified placeholders ([102d96d](https://github.com/UVerify-io/uverify-backend/commit/102d96ddc93990cf0a0df48b0062d4024242c7b5))
+* port update policy resolution from the UI reference implementation ([1589940](https://github.com/UVerify-io/uverify-backend/commit/1589940d41e38020f4c400f3689a3b605ea84931))
+* resolve short codes to certificate hashes with lazy mapping ([9f6474c](https://github.com/UVerify-io/uverify-backend/commit/9f6474c9adb1d8b6208a66036cc093b7770e81b9))
+* resolve state script versions dynamically from the on-chain library ([6b9d757](https://github.com/UVerify-io/uverify-backend/commit/6b9d75794aff3fc178f14fe83e92286479f0b3d1))
+* serve short link previews with open graph tags and redirect ([ec15acf](https://github.com/UVerify-io/uverify-backend/commit/ec15acff545eb3b19f1f230d21cdab020956b676))
+
+
+### Bug Fixes
+
+* fall back to unfiltered utxo paging when resolving the state utxo ([ad0ab82](https://github.com/UVerify-io/uverify-backend/commit/ad0ab827da2edd8c142caf17edc6e81fec8b967f))
+* handle concurrent short link creation on first resolve ([2e9169c](https://github.com/UVerify-io/uverify-backend/commit/2e9169c4e5c05ffc754120f2938f48cf4fef528a))
+* ignore malformed certificate hashes during short link resolution ([7498f0b](https://github.com/UVerify-io/uverify-backend/commit/7498f0b2afd3c17534fb9c207d43ca6133ada9fc))
+* initialize short link builder defaults and clear persistence context on click updates ([755dbd2](https://github.com/UVerify-io/uverify-backend/commit/755dbd2e9266002bbbf71c67ef89e73b1d207b37))
+* keep salted param values in og:url so re-shared links stay verifiable ([fc2f570](https://github.com/UVerify-io/uverify-backend/commit/fc2f5702ff45a080ee4a9e1b4f67e86c8f5d52e5))
+* page through proxy address utxos when resolving the state utxo ([47c3b97](https://github.com/UVerify-io/uverify-backend/commit/47c3b972753c90f242678de992e407b21f3b4bb6))
+* resolve proxy state utxo from a full page of address utxos ([c88f237](https://github.com/UVerify-io/uverify-backend/commit/c88f237a42f0c456b703d6ec74a789b9aa7a692e))
+
 ## [1.21.0](https://github.com/UVerify-io/uverify-backend/compare/v1.20.0...v1.21.0) (2026-07-05)
 
 
