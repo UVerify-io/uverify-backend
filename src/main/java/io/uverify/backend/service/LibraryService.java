@@ -272,7 +272,7 @@ public class LibraryService {
                 .build();
 
         ScriptTx scriptTx = new ScriptTx()
-                .readFrom(proxyLibraryUtxo)
+                .readFrom(getProxyLibraryUtxo())
                 .payToContract(libraryContractAddress, Amount.ada(1L), PlutusData.unit(), script)
                 .collectFrom(proxyStateUtxo, PlutusData.unit())
                 .payToContract(proxyScriptAddress, proxyStateUtxo.getAmount(), proxyDatum.toPlutusData());
