@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.22.1](https://github.com/UVerify-io/uverify-backend/compare/v1.22.0...v1.22.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* upgrade yaci-store 0.1.6 to 2.0.2.1 for post-PV11 preprod sync ([57ddd42](https://github.com/UVerify-io/uverify-backend/commit/57ddd4246ec93476812d923f83a5ca9a04b2881c))
+* upgrade yaci-store 0.1.6 to 2.0.2.1 for post-PV11 preprod sync ([2e08450](https://github.com/UVerify-io/uverify-backend/commit/2e08450651b24f77d54c4d89f2586563c6eea524))
+
 ## [1.22.0](https://github.com/UVerify-io/uverify-backend/compare/v1.21.0...v1.22.0) (2026-07-16)
 
 
