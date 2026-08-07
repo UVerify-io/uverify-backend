@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.22.2](https://github.com/UVerify-io/uverify-backend/compare/v1.22.1...v1.22.2) (2026-08-07)
+
+
+### Bug Fixes
+
+* reload the proxy library utxo lazily when building the upgrade tx ([2565f30](https://github.com/UVerify-io/uverify-backend/commit/2565f309db708b8c6d848ff535a31053b5b3815c))
+* reload the proxy library utxo lazily when building the upgrade tx ([f07f744](https://github.com/UVerify-io/uverify-backend/commit/f07f744511c4141596d0130c3610d6c227d857fb))
+
 ## [1.22.1](https://github.com/UVerify-io/uverify-backend/compare/v1.22.0...v1.22.1) (2026-08-01)
 
 
