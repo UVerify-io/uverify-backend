@@ -266,6 +266,21 @@
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
         </dependency>
+
+        <!-- AYM Vision Extension dependencies -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.78.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>25.10.0</version>
+        </dependency>
+
+        <!-- MPF dependencies added in B5 once preview artifacts are available -->
     </dependencies>
 
     <build>
