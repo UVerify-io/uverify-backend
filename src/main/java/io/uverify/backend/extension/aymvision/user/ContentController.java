@@ -20,9 +20,9 @@ import java.util.List;
 @RequestMapping("/api/v1/aym")
 public class ContentController {
 
-    static final String HEADER_PUBLIC_KEY = "X-AYM-PublicKey";
-    static final String HEADER_NONCE = "X-AYM-Nonce";
-    static final String HEADER_SIGNATURE = "X-AYM-Signature";
+    static final String HEADER_PUBLIC_KEY = "X-Aym-Public-Key";
+    static final String HEADER_NONCE = "X-Aym-Nonce";
+    static final String HEADER_SIGNATURE = "X-Aym-Signature";
 
     private final HandshakeService handshakeService;
     private final ContentService contentService;

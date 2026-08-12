@@ -20,9 +20,9 @@ import java.util.UUID;
 @RequestMapping("/api/v1/aym/voucher")
 public class VoucherController {
 
-    private static final String HEADER_PUBLIC_KEY = "X-AYM-PublicKey";
-    private static final String HEADER_NONCE = "X-AYM-Nonce";
-    private static final String HEADER_SIGNATURE = "X-AYM-Signature";
+    private static final String HEADER_PUBLIC_KEY = "X-Aym-Public-Key";
+    private static final String HEADER_NONCE = "X-Aym-Nonce";
+    private static final String HEADER_SIGNATURE = "X-Aym-Signature";
 
     private final HandshakeService handshakeService;
     private final VoucherService voucherService;
