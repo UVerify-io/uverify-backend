@@ -131,7 +131,7 @@ class StripePurchaseServiceTest {
                 .thenReturn(new CheckoutInfo(SESSION_ID, "paid", validProfileHash, PRODUCT_ID));
         when(purchaseRepo.existsById(SESSION_ID)).thenReturn(false);
         when(profileRepo.existsById(any())).thenReturn(false); // first ownership
-        AymUserProfileEntity profile = new AymUserProfileEntity(PUB_KEY, PROFILE_ID, "dd".repeat(32));
+        AymUserProfileEntity profile = new AymUserProfileEntity(PUB_KEY, PROFILE_ID, "dd".repeat(32), "bb".repeat(28));
         when(profileRepo.findById(any())).thenReturn(Optional.of(profile));
         AymUserContentEntity content = new AymUserContentEntity(PUB_KEY, PROFILE_ID, CONTENT_ID, "STRIPE");
         when(contentService.grantContent(any(), any(), any(), any())).thenReturn(content);

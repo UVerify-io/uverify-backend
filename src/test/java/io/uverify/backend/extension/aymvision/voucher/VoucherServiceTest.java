@@ -156,7 +156,7 @@ class VoucherServiceTest {
         when(voucherRepo.findById(vid)).thenReturn(Optional.of(voucher));
         when(profileRepo.existsById(any())).thenReturn(false); // first ownership
 
-        AymUserProfileEntity profile = new AymUserProfileEntity(PUB_KEY, PROFILE_A, "cc".repeat(32));
+        AymUserProfileEntity profile = new AymUserProfileEntity(PUB_KEY, PROFILE_A, "cc".repeat(32), "aa".repeat(28));
         when(profileRepo.findById(any())).thenReturn(Optional.of(profile));
 
         AymUserContentEntity contentEntity = new AymUserContentEntity(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");

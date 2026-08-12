@@ -24,12 +24,16 @@ public class AymUserProfileEntity {
     @Column(name = "salt", length = 64, nullable = false)
     private String salt;
 
+    @Column(name = "profile_hash", length = 56)
+    private String profileHash;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
-    public AymUserProfileEntity(String publicKey, String profileId, String salt) {
+    public AymUserProfileEntity(String publicKey, String profileId, String salt, String profileHash) {
         this.publicKey = publicKey;
         this.profileId = profileId;
         this.salt = salt;
+        this.profileHash = profileHash;
     }
 }

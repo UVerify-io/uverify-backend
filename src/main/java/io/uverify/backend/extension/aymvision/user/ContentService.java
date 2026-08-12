@@ -1,9 +1,11 @@
 package io.uverify.backend.extension.aymvision.user;
 
 import io.uverify.backend.extension.aymvision.exception.ProfileNotFoundException;
+import org.bouncycastle.crypto.digests.Blake2bDigest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.HexFormat;
@@ -63,7 +65,16 @@ public class ContentService {
             byte[] saltBytes = new byte[32];
             secureRandom.nextBytes(saltBytes);
             String salt = HexFormat.of().formatHex(saltBytes);
-            profileRepo.save(new AymUserProfileEntity(publicKeyHex, profileId, salt));
+            String hash = blake2b224Hex((publicKeyHex + profileId).getBytes(StandardCharsets.UTF_8));
+            profileRepo.save(new AymUserProfileEntity(publicKeyHex, profileId, salt, hash));
         }
+    }
+
+    static String blake2b224Hex(byte[] data) {
+        Blake2bDigest digest = new Blake2bDigest(224);
+        digest.update(data, 0, data.length);
+        byte[] result = new byte[28];
+        digest.doFinal(result, 0);
+        return HexFormat.of().formatHex(result);
     }
 }
