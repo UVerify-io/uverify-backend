@@ -169,6 +169,22 @@ proxy:
   transaction-hash: ${PROXY_TX_HASH:e87045afe5247ef3912b37be23ba7b0df193849f463ad4ddd89216c512613af2}
   output-index: ${PROXY_OUTPUT_INDEX:1}
 
+aym:
+  master-public-key: ${AYM_MASTER_PUBLIC_KEY:}
+  ui-base-url: ${AYM_UI_BASE_URL:}
+  stripe:
+    api-key: ${AYM_STRIPE_API_KEY:}
+    products: {}
+  content-repo:
+    url: ${AYM_CONTENT_REPO_URL:}
+    token: ${AYM_CONTENT_REPO_TOKEN:}
+    cache-ttl: ${AYM_CONTENT_REPO_CACHE_TTL:PT6H}
+  mpf:
+    db-path: ${AYM_MPF_DB_PATH:./data/mpf}
+  anchor:
+    interval-ms: ${AYM_ANCHOR_INTERVAL_MS:172800000}
+    wallet-mnemonic: ${AYM_ANCHOR_WALLET_MNEMONIC:}
+
 ---
 spring:
   config:
