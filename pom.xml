@@ -280,7 +280,42 @@
             <version>25.10.0</version>
         </dependency>
 
-        <!-- MPF dependencies added in B5 once preview artifacts are available -->
+        <!-- B5: MPF — built from source (bloxbean/cardano-client-lib v0.8.0-pre5), installed to local Maven -->
+        <dependency>
+            <groupId>com.bloxbean.cardano</groupId>
+            <artifactId>cardano-client-verified-structures-core</artifactId>
+            <version>0.8.0-pre5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.bloxbean.cardano</groupId>
+            <artifactId>cardano-client-merkle-patricia-forestry</artifactId>
+            <version>0.8.0-pre5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.bloxbean.cardano</groupId>
+            <artifactId>cardano-client-rocksdb-core</artifactId>
+            <version>0.8.0-pre5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.bloxbean.cardano</groupId>
+            <artifactId>cardano-client-merkle-patricia-forestry-rocksdb</artifactId>
+            <version>0.8.0-pre5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.rocksdb</groupId>
+            <artifactId>rocksdbjni</artifactId>
+            <version>9.11.2</version>
+        </dependency>
+        <dependency>
+            <groupId>co.nstant.in</groupId>
+            <artifactId>cbor</artifactId>
+            <version>0.9</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.5.0-jre</version>
+        </dependency>
     </dependencies>
 
     <build>
