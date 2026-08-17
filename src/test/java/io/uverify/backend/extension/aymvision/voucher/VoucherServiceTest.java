@@ -1,6 +1,6 @@
 package io.uverify.backend.extension.aymvision.voucher;
 
-import io.uverify.backend.extension.aymvision.config.AymVisionProperties;
+import io.uverify.backend.extension.aymvision.anchor.RegistrationCertificateService;
 import io.uverify.backend.extension.aymvision.exception.VoucherNotFoundException;
 import io.uverify.backend.extension.aymvision.user.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,14 +31,13 @@ class VoucherServiceTest {
     @Mock RedeemedVoucherRepository redeemedRepo;
     @Mock ContentService contentService;
     @Mock AymUserProfileRepository profileRepo;
+    @Mock RegistrationCertificateService certService;
 
     private VoucherService service;
 
     @BeforeEach
     void setUp() {
-        AymVisionProperties props = new AymVisionProperties();
-        props.setUiBaseUrl("https://app.example.com");
-        service = new VoucherService(voucherRepo, redeemedRepo, contentService, profileRepo, props);
+        service = new VoucherService(voucherRepo, redeemedRepo, contentService, profileRepo, certService);
     }
 
     // ── create ────────────────────────────────────────────────────────────────
@@ -156,13 +155,14 @@ class VoucherServiceTest {
         when(voucherRepo.findById(vid)).thenReturn(Optional.of(voucher));
         when(profileRepo.existsById(any())).thenReturn(false); // first ownership
 
-        AymUserProfileEntity profile = new AymUserProfileEntity(PUB_KEY, PROFILE_A, "cc".repeat(32), "aa".repeat(28));
-        when(profileRepo.findById(any())).thenReturn(Optional.of(profile));
-
         AymUserContentEntity contentEntity = new AymUserContentEntity(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");
         when(contentService.grantContent(any(), any(), any(), any())).thenReturn(contentEntity);
         when(contentService.getContent(PUB_KEY, PROFILE_A)).thenReturn(List.of(contentEntity));
         when(redeemedRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RegistrationCertificate fakeCert = new RegistrationCertificate("a".repeat(64), "cc".repeat(32),
+                "https://app.example.com/verify/" + "a".repeat(64));
+        when(certService.register(PUB_KEY, PROFILE_A)).thenReturn(fakeCert);
 
         RedeemResult result = service.redeem(PUB_KEY, PROFILE_A, vid);
 

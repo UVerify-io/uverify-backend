@@ -1,10 +1,12 @@
 package io.uverify.backend.extension.aymvision.stripe;
 
+import io.uverify.backend.extension.aymvision.anchor.RegistrationCertificateService;
 import io.uverify.backend.extension.aymvision.config.AymVisionProperties;
 import io.uverify.backend.extension.aymvision.exception.KeyMismatchException;
 import io.uverify.backend.extension.aymvision.exception.PaymentRequiredException;
 import io.uverify.backend.extension.aymvision.exception.SessionAlreadyUsedException;
 import io.uverify.backend.extension.aymvision.user.*;
+import io.uverify.backend.extension.aymvision.voucher.RegistrationCertificate;
 import io.uverify.backend.extension.aymvision.voucher.RedeemResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,6 +35,7 @@ class StripePurchaseServiceTest {
     @Mock StripePurchaseRepository purchaseRepo;
     @Mock ContentService contentService;
     @Mock AymUserProfileRepository profileRepo;
+    @Mock RegistrationCertificateService certService;
 
     private StripePurchaseService service;
     private String validProfileHash;
@@ -43,7 +45,7 @@ class StripePurchaseServiceTest {
         AymVisionProperties props = new AymVisionProperties();
         props.setUiBaseUrl("https://app.example.com");
         props.getStripe().setProducts(Map.of(PRODUCT_ID, CONTENT_ID));
-        service = new StripePurchaseService(stripeGateway, purchaseRepo, contentService, profileRepo, props);
+        service = new StripePurchaseService(stripeGateway, purchaseRepo, contentService, profileRepo, props, certService);
         validProfileHash = StripePurchaseService.profileHash(PUB_KEY, PROFILE_ID);
     }
 
@@ -131,12 +133,14 @@ class StripePurchaseServiceTest {
                 .thenReturn(new CheckoutInfo(SESSION_ID, "paid", validProfileHash, PRODUCT_ID));
         when(purchaseRepo.existsById(SESSION_ID)).thenReturn(false);
         when(profileRepo.existsById(any())).thenReturn(false); // first ownership
-        AymUserProfileEntity profile = new AymUserProfileEntity(PUB_KEY, PROFILE_ID, "dd".repeat(32), "bb".repeat(28));
-        when(profileRepo.findById(any())).thenReturn(Optional.of(profile));
         AymUserContentEntity content = new AymUserContentEntity(PUB_KEY, PROFILE_ID, CONTENT_ID, "STRIPE");
         when(contentService.grantContent(any(), any(), any(), any())).thenReturn(content);
         when(contentService.getContent(PUB_KEY, PROFILE_ID)).thenReturn(List.of(content));
         when(purchaseRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RegistrationCertificate fakeCert = new RegistrationCertificate("a".repeat(64), "dd".repeat(32),
+                "https://app.example.com/verify/" + "a".repeat(64));
+        when(certService.register(PUB_KEY, PROFILE_ID)).thenReturn(fakeCert);
 
         RedeemResult result = service.verifyAndGrant(PUB_KEY, PROFILE_ID, SESSION_ID);
 

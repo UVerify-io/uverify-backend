@@ -1,16 +1,11 @@
 package io.uverify.backend.extension.aymvision.voucher;
 
-import io.uverify.backend.extension.aymvision.auth.HandshakeService;
-import io.uverify.backend.extension.aymvision.config.AymVisionProperties;
+import io.uverify.backend.extension.aymvision.anchor.RegistrationCertificateService;
 import io.uverify.backend.extension.aymvision.exception.VoucherNotFoundException;
 import io.uverify.backend.extension.aymvision.user.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -22,18 +17,18 @@ public class VoucherService {
     private final RedeemedVoucherRepository redeemedRepo;
     private final ContentService contentService;
     private final AymUserProfileRepository profileRepo;
-    private final AymVisionProperties properties;
+    private final RegistrationCertificateService certService;
 
     public VoucherService(VoucherRepository voucherRepo,
                           RedeemedVoucherRepository redeemedRepo,
                           ContentService contentService,
                           AymUserProfileRepository profileRepo,
-                          AymVisionProperties properties) {
+                          RegistrationCertificateService certService) {
         this.voucherRepo = voucherRepo;
         this.redeemedRepo = redeemedRepo;
         this.contentService = contentService;
         this.profileRepo = profileRepo;
-        this.properties = properties;
+        this.certService = certService;
     }
 
     public List<VoucherEntity> create(String contentId, int count) {
@@ -61,30 +56,9 @@ public class VoucherService {
 
         RegistrationCertificate regCert = null;
         if (isFirstOwnership) {
-            profileRepo.findById(new AymUserProfileId(publicKeyHex, profileId))
-                    .ifPresent(p -> {});  // ensure profile is loaded
-            var profile = profileRepo.findById(new AymUserProfileId(publicKeyHex, profileId)).orElseThrow();
-            regCert = buildRegistrationCertificate(publicKeyHex, profileId, profile.getSalt());
+            regCert = certService.register(publicKeyHex, profileId);
         }
 
         return new RedeemResult(voucher.getContentId(), ownedContent, regCert);
-    }
-
-    private RegistrationCertificate buildRegistrationCertificate(String publicKeyHex,
-                                                                  String profileId,
-                                                                  String saltHex) {
-        String raw = publicKeyHex + profileId + saltHex;
-        String hash = sha256Hex(raw.getBytes(StandardCharsets.UTF_8));
-        String verifyUrl = properties.getUiBaseUrl() + "/verify/" + hash
-                + "?pk=" + publicKeyHex + "&profileId=" + profileId + "&salt=" + saltHex;
-        return new RegistrationCertificate(hash, saltHex, verifyUrl);
-    }
-
-    static String sha256Hex(byte[] data) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
     }
 }

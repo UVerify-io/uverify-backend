@@ -1,5 +1,6 @@
 package io.uverify.backend.extension.aymvision.stripe;
 
+import io.uverify.backend.extension.aymvision.anchor.RegistrationCertificateService;
 import io.uverify.backend.extension.aymvision.config.AymVisionProperties;
 import io.uverify.backend.extension.aymvision.exception.KeyMismatchException;
 import io.uverify.backend.extension.aymvision.exception.PaymentRequiredException;
@@ -25,17 +26,20 @@ public class StripePurchaseService {
     private final ContentService contentService;
     private final AymUserProfileRepository profileRepo;
     private final AymVisionProperties properties;
+    private final RegistrationCertificateService certService;
 
     public StripePurchaseService(StripeGateway stripeGateway,
                                  StripePurchaseRepository purchaseRepo,
                                  ContentService contentService,
                                  AymUserProfileRepository profileRepo,
-                                 AymVisionProperties properties) {
+                                 AymVisionProperties properties,
+                                 RegistrationCertificateService certService) {
         this.stripeGateway = stripeGateway;
         this.purchaseRepo = purchaseRepo;
         this.contentService = contentService;
         this.profileRepo = profileRepo;
         this.properties = properties;
+        this.certService = certService;
     }
 
     @Transactional
@@ -72,8 +76,7 @@ public class StripePurchaseService {
 
         RegistrationCertificate regCert = null;
         if (isFirstOwnership) {
-            var profile = profileRepo.findById(new AymUserProfileId(publicKeyHex, profileId)).orElseThrow();
-            regCert = buildRegistrationCertificate(publicKeyHex, profileId, profile.getSalt());
+            regCert = certService.register(publicKeyHex, profileId);
         }
 
         return new RedeemResult(contentId, ownedContent, regCert);
@@ -94,14 +97,5 @@ public class StripePurchaseService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }
-    }
-
-    private RegistrationCertificate buildRegistrationCertificate(String publicKeyHex,
-                                                                  String profileId,
-                                                                  String saltHex) {
-        String hash = sha256Hex((publicKeyHex + profileId + saltHex).getBytes(StandardCharsets.UTF_8));
-        String verifyUrl = properties.getUiBaseUrl() + "/verify/" + hash
-                + "?pk=" + publicKeyHex + "&profileId=" + profileId + "&salt=" + saltHex;
-        return new RegistrationCertificate(hash, saltHex, verifyUrl);
     }
 }
