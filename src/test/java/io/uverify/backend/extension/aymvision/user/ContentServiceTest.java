@@ -1,6 +1,7 @@
 package io.uverify.backend.extension.aymvision.user;
 
 import io.uverify.backend.extension.aymvision.exception.ProfileNotFoundException;
+import io.uverify.backend.extension.aymvision.mpf.MpfService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,12 +29,13 @@ class ContentServiceTest {
     @Mock AymUserProfileRepository profileRepo;
     @Mock AymUserContentRepository contentRepo;
     @Mock AymUserCourseStateRepository courseStateRepo;
+    @Mock MpfService mpfService;
 
     private ContentService service;
 
     @BeforeEach
     void setUp() {
-        service = new ContentService(profileRepo, contentRepo, courseStateRepo);
+        service = new ContentService(profileRepo, contentRepo, courseStateRepo, mpfService);
     }
 
     // ── getContent ────────────────────────────────────────────────────────────
