@@ -1,6 +1,7 @@
 package io.uverify.backend.extension.aymvision.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.uverify.backend.extension.aymvision.anchor.CompletionCertificate;
 import io.uverify.backend.extension.aymvision.auth.HandshakeService;
 import io.uverify.backend.extension.aymvision.dto.content.ContentItemDto;
 import io.uverify.backend.extension.aymvision.dto.content.ContentOwnershipDto;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -70,7 +72,12 @@ public class ContentController {
             byte[] rawBody = request.getInputStream().readAllBytes();
             HandshakeService.HandshakeResult auth = verifyHandshake(request, rawBody);
             CourseStateRequest body = objectMapper.readValue(rawBody, CourseStateRequest.class);
-            contentService.reportCourseState(auth.publicKeyHex(), body.profileId(), body.courseId(), body.status());
+            CompletionCertificate cert = contentService.reportCourseState(
+                    auth.publicKeyHex(), body.profileId(), body.courseId(), body.status());
+            if (cert != null) {
+                return ResponseEntity.ok(Map.of(
+                        "completionCertificate", Map.of("hash", cert.hash(), "verifyUrl", cert.verifyUrl())));
+            }
             return ResponseEntity.ok().build();
         } catch (InvalidHandshakeException e) {
             return ResponseEntity.status(401).body(e.getMessage());
@@ -85,6 +92,10 @@ public class ContentController {
         String signature = request.getHeader(HEADER_SIGNATURE);
         String method = request.getMethod();
         String path = request.getRequestURI();
+        String query = request.getQueryString();
+        if (query != null && !query.isEmpty()) {
+            path = path + "?" + query;
+        }
         return handshakeService.verify(publicKey, nonce, signature, method, path, body);
     }
 }

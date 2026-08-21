@@ -1,20 +1,16 @@
 package io.uverify.backend.extension.aymvision.stripe;
 
-import io.uverify.backend.extension.aymvision.anchor.RegistrationCertificateService;
 import io.uverify.backend.extension.aymvision.config.AymVisionProperties;
 import io.uverify.backend.extension.aymvision.exception.KeyMismatchException;
 import io.uverify.backend.extension.aymvision.exception.PaymentRequiredException;
 import io.uverify.backend.extension.aymvision.exception.SessionAlreadyUsedException;
 import io.uverify.backend.extension.aymvision.user.*;
-import io.uverify.backend.extension.aymvision.voucher.RegistrationCertificate;
 import io.uverify.backend.extension.aymvision.voucher.RedeemResult;
 import org.bouncycastle.crypto.digests.Blake2bDigest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 
@@ -24,22 +20,16 @@ public class StripePurchaseService {
     private final StripeGateway stripeGateway;
     private final StripePurchaseRepository purchaseRepo;
     private final ContentService contentService;
-    private final AymUserProfileRepository profileRepo;
     private final AymVisionProperties properties;
-    private final RegistrationCertificateService certService;
 
     public StripePurchaseService(StripeGateway stripeGateway,
                                  StripePurchaseRepository purchaseRepo,
                                  ContentService contentService,
-                                 AymUserProfileRepository profileRepo,
-                                 AymVisionProperties properties,
-                                 RegistrationCertificateService certService) {
+                                 AymVisionProperties properties) {
         this.stripeGateway = stripeGateway;
         this.purchaseRepo = purchaseRepo;
         this.contentService = contentService;
-        this.profileRepo = profileRepo;
         this.properties = properties;
-        this.certService = certService;
     }
 
     @Transactional
@@ -65,8 +55,6 @@ public class StripePurchaseService {
             throw new KeyMismatchException("Unmapped Stripe product: " + info.productId());
         }
 
-        boolean isFirstOwnership = !profileRepo.existsById(new AymUserProfileId(publicKeyHex, profileId));
-
         contentService.grantContent(publicKeyHex, profileId, contentId, "STRIPE");
 
         purchaseRepo.save(new StripePurchaseEntity(sessionId, publicKeyHex, profileId, contentId));
@@ -74,28 +62,19 @@ public class StripePurchaseService {
         List<String> ownedContent = contentService.getContent(publicKeyHex, profileId)
                 .stream().map(AymUserContentEntity::getContentId).toList();
 
-        RegistrationCertificate regCert = null;
-        if (isFirstOwnership) {
-            regCert = certService.register(publicKeyHex, profileId);
-        }
-
-        return new RedeemResult(contentId, ownedContent, regCert);
+        return new RedeemResult(contentId, ownedContent);
     }
 
     static String profileHash(String publicKeyHex, String profileId) {
-        byte[] input = (publicKeyHex + profileId).getBytes(StandardCharsets.UTF_8);
+        byte[] pubKeyBytes = HexFormat.of().parseHex(publicKeyHex.toLowerCase());
+        byte[] profileBytes = profileId.getBytes(StandardCharsets.UTF_8);
+        byte[] input = new byte[pubKeyBytes.length + profileBytes.length];
+        System.arraycopy(pubKeyBytes, 0, input, 0, pubKeyBytes.length);
+        System.arraycopy(profileBytes, 0, input, pubKeyBytes.length, profileBytes.length);
         Blake2bDigest digest = new Blake2bDigest(224);
         digest.update(input, 0, input.length);
         byte[] result = new byte[28];
         digest.doFinal(result, 0);
         return HexFormat.of().formatHex(result);
-    }
-
-    static String sha256Hex(byte[] data) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
     }
 }

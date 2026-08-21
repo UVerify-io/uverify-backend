@@ -1,0 +1,1 @@
+ALTER TABLE aym_voucher ADD COLUMN note VARCHAR(500);

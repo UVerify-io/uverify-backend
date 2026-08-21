@@ -48,12 +48,37 @@ public class VoucherController {
             Map<String, Object> body = objectMapper.readValue(rawBody, Map.class);
             String contentId = (String) body.get("contentId");
             int count = body.containsKey("count") ? ((Number) body.get("count")).intValue() : 1;
+            String note = body.containsKey("note") ? (String) body.get("note") : null;
 
-            List<VoucherEntity> vouchers = voucherService.create(contentId, count);
+            List<VoucherEntity> vouchers = voucherService.create(contentId, count, note);
             List<Map<String, String>> result = vouchers.stream()
-                    .map(v -> Map.of("id", v.getId().toString(), "contentId", v.getContentId()))
+                    .map(v -> {
+                        Map<String, String> m = new java.util.HashMap<>();
+                        m.put("id", v.getId().toString());
+                        m.put("contentId", v.getContentId());
+                        m.put("note", v.getNote() != null ? v.getNote() : "");
+                        return m;
+                    })
                     .toList();
             return ResponseEntity.ok(Map.of("vouchers", result));
+        } catch (InvalidHandshakeException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body("Could not read request body");
+        }
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<?> list(HttpServletRequest request) {
+        try {
+            byte[] rawBody = request.getInputStream().readAllBytes();
+            HandshakeService.HandshakeResult auth = verifyHandshake(request, rawBody);
+            if (!handshakeService.isMasterKey(auth.publicKeyHex())) {
+                return ResponseEntity.status(403).body("Master key required");
+            }
+            return ResponseEntity.ok(Map.of(
+                    "active", voucherService.listActive(),
+                    "redeemed", voucherService.listRedeemed()));
         } catch (InvalidHandshakeException e) {
             return ResponseEntity.status(401).body(e.getMessage());
         } catch (IOException e) {

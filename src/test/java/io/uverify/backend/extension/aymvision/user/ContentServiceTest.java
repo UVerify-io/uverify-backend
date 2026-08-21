@@ -1,7 +1,8 @@
 package io.uverify.backend.extension.aymvision.user;
 
+import io.uverify.backend.extension.aymvision.anchor.CompletionCertificate;
+import io.uverify.backend.extension.aymvision.anchor.CompletionCertificateService;
 import io.uverify.backend.extension.aymvision.exception.ProfileNotFoundException;
-import io.uverify.backend.extension.aymvision.mpf.MpfService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,13 +30,13 @@ class ContentServiceTest {
     @Mock AymUserProfileRepository profileRepo;
     @Mock AymUserContentRepository contentRepo;
     @Mock AymUserCourseStateRepository courseStateRepo;
-    @Mock MpfService mpfService;
+    @Mock CompletionCertificateService completionCertService;
 
     private ContentService service;
 
     @BeforeEach
     void setUp() {
-        service = new ContentService(profileRepo, contentRepo, courseStateRepo, mpfService);
+        service = new ContentService(profileRepo, contentRepo, courseStateRepo, completionCertService);
     }
 
     // ── getContent ────────────────────────────────────────────────────────────
@@ -122,7 +123,6 @@ class ContentServiceTest {
 
     @Test
     void grantContent_twoProfilesUnderSameKey_areIndependent() {
-        // profile-a owns content, profile-b does not
         when(contentRepo.existsByPublicKeyAndProfileIdAndContentId(PUB_KEY, PROFILE_A, CONTENT_ID))
                 .thenReturn(false);
         when(contentRepo.existsByPublicKeyAndProfileIdAndContentId(PUB_KEY, PROFILE_B, CONTENT_ID))
@@ -133,7 +133,6 @@ class ContentServiceTest {
 
         service.grantContent(PUB_KEY, PROFILE_A, CONTENT_ID, SOURCE);
 
-        // profile-b NOT granted
         when(contentRepo.existsByPublicKeyAndProfileIdAndContentId(PUB_KEY, PROFILE_A, CONTENT_ID))
                 .thenReturn(true);
         when(contentRepo.existsByPublicKeyAndProfileIdAndContentId(PUB_KEY, PROFILE_B, CONTENT_ID))
@@ -150,22 +149,40 @@ class ContentServiceTest {
         when(courseStateRepo.findByPublicKeyAndProfileIdAndCourseId(any(), any(), any()))
                 .thenReturn(Optional.empty());
         when(courseStateRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(completionCertService.checkAndIssue(PUB_KEY, PROFILE_A)).thenReturn(null);
 
-        AymUserCourseStateEntity result = service.reportCourseState(PUB_KEY, PROFILE_A, "course-1", "completed");
+        CompletionCertificate result = service.reportCourseState(PUB_KEY, PROFILE_A, "course-1", "FINISHED");
 
-        assertThat(result.getStatus()).isEqualTo("completed");
+        assertThat(result).isNull();
         verify(courseStateRepo).save(any());
     }
 
     @Test
     void reportCourseState_updatesExistingRecord() {
-        AymUserCourseStateEntity existing = new AymUserCourseStateEntity(PUB_KEY, PROFILE_A, "course-1", "started");
+        AymUserCourseStateEntity existing = new AymUserCourseStateEntity(PUB_KEY, PROFILE_A, "course-1", "STARTED");
         when(courseStateRepo.findByPublicKeyAndProfileIdAndCourseId(PUB_KEY, PROFILE_A, "course-1"))
                 .thenReturn(Optional.of(existing));
         when(courseStateRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(completionCertService.checkAndIssue(PUB_KEY, PROFILE_A)).thenReturn(null);
 
-        AymUserCourseStateEntity result = service.reportCourseState(PUB_KEY, PROFILE_A, "course-1", "completed");
+        service.reportCourseState(PUB_KEY, PROFILE_A, "course-1", "FINISHED");
 
-        assertThat(result.getStatus()).isEqualTo("completed");
+        assertThat(existing.getStatus()).isEqualTo("FINISHED");
+    }
+
+    @Test
+    void reportCourseState_returnsCompletionCert_whenAllEpisodesFinished() {
+        when(courseStateRepo.findByPublicKeyAndProfileIdAndCourseId(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(courseStateRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CompletionCertificate cert = new CompletionCertificate("abc123", "https://example.com/verify/abc123");
+        when(completionCertService.checkAndIssue(PUB_KEY, PROFILE_A)).thenReturn(cert);
+
+        CompletionCertificate result = service.reportCourseState(PUB_KEY, PROFILE_A, "s1e05", "FINISHED");
+
+        assertThat(result).isNotNull();
+        assertThat(result.hash()).isEqualTo("abc123");
+        assertThat(result.verifyUrl()).contains("https://example.com/verify/");
     }
 }

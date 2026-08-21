@@ -174,16 +174,12 @@ aym:
   ui-base-url: ${AYM_UI_BASE_URL:}
   stripe:
     api-key: ${AYM_STRIPE_API_KEY:}
-    products: {}
+    products:
+      "[prod_V6FldNKCmtN0JL]": s1
   content-repo:
     url: ${AYM_CONTENT_REPO_URL:}
     token: ${AYM_CONTENT_REPO_TOKEN:}
     cache-ttl: ${AYM_CONTENT_REPO_CACHE_TTL:PT6H}
-  mpf:
-    db-path: ${AYM_MPF_DB_PATH:./data/mpf}
-  anchor:
-    interval-ms: ${AYM_ANCHOR_INTERVAL_MS:172800000}
-    wallet-mnemonic: ${AYM_ANCHOR_WALLET_MNEMONIC:}
 
 ---
 spring:

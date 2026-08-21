@@ -1,15 +1,8 @@
 package io.uverify.backend.extension.aymvision.profile;
 
-import io.uverify.backend.extension.aymvision.mpf.AymMpfAnchorEntity;
-import io.uverify.backend.extension.aymvision.mpf.AymMpfAnchorRepository;
-import io.uverify.backend.extension.aymvision.mpf.MpfProof;
-import io.uverify.backend.extension.aymvision.mpf.MpfService;
-import io.uverify.backend.extension.aymvision.user.AymUserContentEntity;
-import io.uverify.backend.extension.aymvision.user.AymUserCourseStateEntity;
-import io.uverify.backend.extension.aymvision.user.AymUserProfileEntity;
-import io.uverify.backend.extension.aymvision.user.AymUserProfileRepository;
-import io.uverify.backend.extension.aymvision.user.AymUserContentRepository;
-import io.uverify.backend.extension.aymvision.user.AymUserCourseStateRepository;
+import io.uverify.backend.extension.aymvision.anchor.AymCompletionCertEntity;
+import io.uverify.backend.extension.aymvision.anchor.AymCompletionCertRepository;
+import io.uverify.backend.extension.aymvision.user.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -26,37 +20,23 @@ public class ProfileController {
     private final AymUserProfileRepository profileRepo;
     private final AymUserContentRepository contentRepo;
     private final AymUserCourseStateRepository courseStateRepo;
-    private final MpfService mpfService;
-    private final AymMpfAnchorRepository anchorRepo;
+    private final AymCompletionCertRepository completionCertRepo;
 
     public ProfileController(AymUserProfileRepository profileRepo,
                              AymUserContentRepository contentRepo,
                              AymUserCourseStateRepository courseStateRepo,
-                             MpfService mpfService,
-                             AymMpfAnchorRepository anchorRepo) {
+                             AymCompletionCertRepository completionCertRepo) {
         this.profileRepo = profileRepo;
         this.contentRepo = contentRepo;
         this.courseStateRepo = courseStateRepo;
-        this.mpfService = mpfService;
-        this.anchorRepo = anchorRepo;
+        this.completionCertRepo = completionCertRepo;
     }
 
     @GetMapping("/profile/{profileHash}")
     public ResponseEntity<?> getProfile(@PathVariable String profileHash) {
         return profileRepo.findByProfileHash(profileHash)
-                .map(profile -> buildResponse(profile))
+                .map(this::buildResponse)
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/mpf/root")
-    public ResponseEntity<?> getMpfRoot() {
-        AymMpfAnchorEntity lastAnchor = anchorRepo.findTopByOrderByTreeVersionDesc().orElse(null);
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("root", mpfService.currentRoot());
-        response.put("treeVersion", mpfService.currentTreeVersion());
-        response.put("anchorTxHash", lastAnchor != null ? lastAnchor.getUverifyTxHash() : null);
-        response.put("anchoredAt", lastAnchor != null ? lastAnchor.getAnchoredAt() : null);
-        return ResponseEntity.ok(response);
     }
 
     private ResponseEntity<?> buildResponse(AymUserProfileEntity profile) {
@@ -76,24 +56,16 @@ public class ProfileController {
                 "badgeCount", finishedCourses.size()
         );
 
-        MpfProof proof = mpfService.proofFor(profile.getProfileHash());
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("profile", profileData);
 
-        // anchorTxHash is null when the tree has advanced beyond the last anchored version
-        AymMpfAnchorEntity lastAnchor = anchorRepo.findTopByOrderByTreeVersionDesc().orElse(null);
-        String anchorTxHash = null;
-        Object anchoredAt = null;
-        if (lastAnchor != null && lastAnchor.getTreeVersion() >= proof.treeVersion()) {
-            anchorTxHash = lastAnchor.getUverifyTxHash();
-            anchoredAt = lastAnchor.getAnchoredAt();
-        }
+        Optional<AymCompletionCertEntity> cert = completionCertRepo.findById(
+                new AymUserProfileId(profile.getPublicKey(), profile.getProfileId()));
+        cert.ifPresent(c -> response.put("completionCertificate", Map.of(
+                "hash", c.getCertHash(),
+                "verifyUrl", c.getVerifyUrl(),
+                "issuedAt", c.getIssuedAt())));
 
-        Map<String, Object> mpf = new LinkedHashMap<>();
-        mpf.put("proof", proof.proofHex());
-        mpf.put("root", proof.root());
-        mpf.put("treeVersion", proof.treeVersion());
-        mpf.put("anchorTxHash", anchorTxHash);
-        mpf.put("anchoredAt", anchoredAt);
-
-        return ResponseEntity.ok(Map.of("profile", profileData, "mpf", mpf));
+        return ResponseEntity.ok(response);
     }
 }

@@ -1,7 +1,8 @@
 package io.uverify.backend.extension.aymvision.user;
 
+import io.uverify.backend.extension.aymvision.anchor.CompletionCertificate;
+import io.uverify.backend.extension.aymvision.anchor.CompletionCertificateService;
 import io.uverify.backend.extension.aymvision.exception.ProfileNotFoundException;
-import io.uverify.backend.extension.aymvision.mpf.MpfService;
 import org.bouncycastle.crypto.digests.Blake2bDigest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,17 +20,17 @@ public class ContentService {
     private final AymUserProfileRepository profileRepo;
     private final AymUserContentRepository contentRepo;
     private final AymUserCourseStateRepository courseStateRepo;
-    private final MpfService mpfService;
+    private final CompletionCertificateService completionCertService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public ContentService(AymUserProfileRepository profileRepo,
                           AymUserContentRepository contentRepo,
                           AymUserCourseStateRepository courseStateRepo,
-                          MpfService mpfService) {
+                          CompletionCertificateService completionCertService) {
         this.profileRepo = profileRepo;
         this.contentRepo = contentRepo;
         this.courseStateRepo = courseStateRepo;
-        this.mpfService = mpfService;
+        this.completionCertService = completionCertService;
     }
 
     public List<AymUserContentEntity> getContent(String publicKeyHex, String profileId) {
@@ -49,33 +50,20 @@ public class ContentService {
             throw new AlreadyOwnedException(contentId, profileId);
         }
         ensureProfile(publicKeyHex, profileId);
-        AymUserContentEntity saved = contentRepo.save(new AymUserContentEntity(publicKeyHex, profileId, contentId, source));
-        updateMpfLeaf(publicKeyHex, profileId);
-        return saved;
+        return contentRepo.save(new AymUserContentEntity(publicKeyHex, profileId, contentId, source));
     }
 
     @Transactional
-    public AymUserCourseStateEntity reportCourseState(String publicKeyHex, String profileId,
-                                                      String courseId, String status) {
+    public CompletionCertificate reportCourseState(String publicKeyHex, String profileId,
+                                                    String courseId, String status) {
         Optional<AymUserCourseStateEntity> existing =
                 courseStateRepo.findByPublicKeyAndProfileIdAndCourseId(publicKeyHex, profileId, courseId);
         AymUserCourseStateEntity entity = existing
                 .orElse(new AymUserCourseStateEntity(publicKeyHex, profileId, courseId, status));
         entity.setStatus(status);
         entity.setReportedAt(Instant.now());
-        AymUserCourseStateEntity saved = courseStateRepo.save(entity);
-        updateMpfLeaf(publicKeyHex, profileId);
-        return saved;
-    }
-
-    private void updateMpfLeaf(String publicKeyHex, String profileId) {
-        List<String> owned = contentRepo.findByPublicKeyAndProfileId(publicKeyHex, profileId)
-                .stream().map(AymUserContentEntity::getContentId).sorted().toList();
-        List<String> finished = courseStateRepo.findByPublicKeyAndProfileId(publicKeyHex, profileId)
-                .stream()
-                .filter(s -> "FINISHED".equalsIgnoreCase(s.getStatus()))
-                .map(AymUserCourseStateEntity::getCourseId).sorted().toList();
-        mpfService.upsertLeaf(publicKeyHex, profileId, owned, finished);
+        courseStateRepo.save(entity);
+        return completionCertService.checkAndIssue(publicKeyHex, profileId);
     }
 
     private void ensureProfile(String publicKeyHex, String profileId) {

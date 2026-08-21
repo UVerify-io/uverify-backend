@@ -23,8 +23,12 @@ public class VoucherEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
-    public VoucherEntity(String contentId) {
+    @Column(name = "note", length = 500)
+    private String note;
+
+    public VoucherEntity(String contentId, String note) {
         this.id = UUID.randomUUID();
         this.contentId = contentId;
+        this.note = note;
     }
 }

@@ -1,6 +1,5 @@
 package io.uverify.backend.extension.aymvision.voucher;
 
-import io.uverify.backend.extension.aymvision.anchor.RegistrationCertificateService;
 import io.uverify.backend.extension.aymvision.exception.VoucherNotFoundException;
 import io.uverify.backend.extension.aymvision.user.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,14 +29,12 @@ class VoucherServiceTest {
     @Mock VoucherRepository voucherRepo;
     @Mock RedeemedVoucherRepository redeemedRepo;
     @Mock ContentService contentService;
-    @Mock AymUserProfileRepository profileRepo;
-    @Mock RegistrationCertificateService certService;
 
     private VoucherService service;
 
     @BeforeEach
     void setUp() {
-        service = new VoucherService(voucherRepo, redeemedRepo, contentService, profileRepo, certService);
+        service = new VoucherService(voucherRepo, redeemedRepo, contentService);
     }
 
     // ── create ────────────────────────────────────────────────────────────────
@@ -46,7 +43,7 @@ class VoucherServiceTest {
     void create_persistsRequestedCountWithContentId() {
         when(voucherRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<VoucherEntity> vouchers = service.create(CONTENT_ID, 3);
+        List<VoucherEntity> vouchers = service.create(CONTENT_ID, 3, null);
 
         assertThat(vouchers).hasSize(3);
         assertThat(vouchers).allMatch(v -> CONTENT_ID.equals(v.getContentId()));
@@ -54,23 +51,13 @@ class VoucherServiceTest {
         verify(voucherRepo, times(3)).save(any());
     }
 
-    @Test
-    void create_defaultsToOneVoucher() {
-        when(voucherRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        List<VoucherEntity> vouchers = service.create(CONTENT_ID, 1);
-
-        assertThat(vouchers).hasSize(1);
-    }
-
     // ── redeem — happy path ───────────────────────────────────────────────────
 
     @Test
     void redeem_movesRowAndGrantsContent() {
         UUID vid = UUID.randomUUID();
-        VoucherEntity voucher = new VoucherEntity(CONTENT_ID);
+        VoucherEntity voucher = new VoucherEntity(CONTENT_ID, null);
         when(voucherRepo.findById(vid)).thenReturn(Optional.of(voucher));
-        when(profileRepo.existsById(any())).thenReturn(true); // not first ownership
         AymUserContentEntity contentEntity = new AymUserContentEntity(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");
         when(contentService.getContent(PUB_KEY, PROFILE_A)).thenReturn(List.of(contentEntity));
         when(contentService.grantContent(any(), any(), any(), any())).thenReturn(contentEntity);
@@ -99,16 +86,14 @@ class VoucherServiceTest {
     @Test
     void redeem_throwsAlreadyOwned_andVoucherSurvives() {
         UUID vid = UUID.randomUUID();
-        VoucherEntity voucher = new VoucherEntity(CONTENT_ID);
+        VoucherEntity voucher = new VoucherEntity(CONTENT_ID, null);
         when(voucherRepo.findById(vid)).thenReturn(Optional.of(voucher));
-        when(profileRepo.existsById(any())).thenReturn(true);
         doThrow(new AlreadyOwnedException(CONTENT_ID, PROFILE_A))
                 .when(contentService).grantContent(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");
 
         assertThatThrownBy(() -> service.redeem(PUB_KEY, PROFILE_A, vid))
                 .isInstanceOf(AlreadyOwnedException.class);
 
-        // voucher was NOT deleted
         verify(voucherRepo, never()).delete(any());
         verify(redeemedRepo, never()).save(any());
     }
@@ -119,13 +104,11 @@ class VoucherServiceTest {
     void redeem_twoVouchersForSameContent_siblingProfiles_bothSucceed() {
         UUID vidA = UUID.randomUUID();
         UUID vidB = UUID.randomUUID();
-        VoucherEntity vA = new VoucherEntity(CONTENT_ID);
-        VoucherEntity vB = new VoucherEntity(CONTENT_ID);
+        VoucherEntity vA = new VoucherEntity(CONTENT_ID, null);
+        VoucherEntity vB = new VoucherEntity(CONTENT_ID, null);
 
         when(voucherRepo.findById(vidA)).thenReturn(Optional.of(vA));
         when(voucherRepo.findById(vidB)).thenReturn(Optional.of(vB));
-        when(profileRepo.existsById(new AymUserProfileId(PUB_KEY, PROFILE_A))).thenReturn(true);
-        when(profileRepo.existsById(new AymUserProfileId(PUB_KEY, PROFILE_B))).thenReturn(true);
 
         AymUserContentEntity contentA = new AymUserContentEntity(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");
         AymUserContentEntity contentB = new AymUserContentEntity(PUB_KEY, PROFILE_B, CONTENT_ID, "VOUCHER");
@@ -144,47 +127,5 @@ class VoucherServiceTest {
         assertThat(resultB.contentId()).isEqualTo(CONTENT_ID);
         verify(voucherRepo).delete(vA);
         verify(voucherRepo).delete(vB);
-    }
-
-    // ── registrationCertificate ───────────────────────────────────────────────
-
-    @Test
-    void redeem_returnsRegistrationCertificate_onFirstOwnership() {
-        UUID vid = UUID.randomUUID();
-        VoucherEntity voucher = new VoucherEntity(CONTENT_ID);
-        when(voucherRepo.findById(vid)).thenReturn(Optional.of(voucher));
-        when(profileRepo.existsById(any())).thenReturn(false); // first ownership
-
-        AymUserContentEntity contentEntity = new AymUserContentEntity(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");
-        when(contentService.grantContent(any(), any(), any(), any())).thenReturn(contentEntity);
-        when(contentService.getContent(PUB_KEY, PROFILE_A)).thenReturn(List.of(contentEntity));
-        when(redeemedRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        RegistrationCertificate fakeCert = new RegistrationCertificate("a".repeat(64), "cc".repeat(32),
-                "https://app.example.com/verify/" + "a".repeat(64));
-        when(certService.register(PUB_KEY, PROFILE_A)).thenReturn(fakeCert);
-
-        RedeemResult result = service.redeem(PUB_KEY, PROFILE_A, vid);
-
-        assertThat(result.registrationCertificate()).isNotNull();
-        assertThat(result.registrationCertificate().hash()).matches("[0-9a-f]{64}");
-        assertThat(result.registrationCertificate().verifyUrl()).contains("https://app.example.com/verify/");
-    }
-
-    @Test
-    void redeem_noRegistrationCertificate_whenNotFirstOwnership() {
-        UUID vid = UUID.randomUUID();
-        VoucherEntity voucher = new VoucherEntity(CONTENT_ID);
-        when(voucherRepo.findById(vid)).thenReturn(Optional.of(voucher));
-        when(profileRepo.existsById(any())).thenReturn(true); // not first ownership
-
-        AymUserContentEntity contentEntity = new AymUserContentEntity(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");
-        when(contentService.grantContent(any(), any(), any(), any())).thenReturn(contentEntity);
-        when(contentService.getContent(PUB_KEY, PROFILE_A)).thenReturn(List.of(contentEntity));
-        when(redeemedRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        RedeemResult result = service.redeem(PUB_KEY, PROFILE_A, vid);
-
-        assertThat(result.registrationCertificate()).isNull();
     }
 }

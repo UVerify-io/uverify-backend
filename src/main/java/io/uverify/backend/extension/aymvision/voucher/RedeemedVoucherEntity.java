@@ -20,19 +20,15 @@ public class RedeemedVoucherEntity {
     @Column(name = "content_id", nullable = false)
     private String contentId;
 
-    @Column(name = "redeemed_by_public_key", length = 64, nullable = false)
-    private String redeemedByPublicKey;
-
-    @Column(name = "redeemed_by_profile_id", nullable = false)
-    private String redeemedByProfileId;
-
     @Column(name = "redeemed_at", nullable = false)
     private Instant redeemedAt = Instant.now();
 
-    public RedeemedVoucherEntity(UUID id, String contentId, String publicKey, String profileId) {
+    @Column(name = "note", length = 500)
+    private String note;
+
+    public RedeemedVoucherEntity(UUID id, String contentId, String note) {
         this.id = id;
         this.contentId = contentId;
-        this.redeemedByPublicKey = publicKey;
-        this.redeemedByProfileId = profileId;
+        this.note = note;
     }
 }

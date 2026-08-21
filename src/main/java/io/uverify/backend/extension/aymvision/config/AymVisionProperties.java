@@ -20,13 +20,11 @@ public class AymVisionProperties {
 
     private Stripe stripe = new Stripe();
     private ContentRepo contentRepo = new ContentRepo();
-    private Mpf mpf = new Mpf();
-    private Anchor anchor = new Anchor();
 
     @Data
     public static class Stripe {
         private String apiKey = "";
-        /** contentId → Stripe Payment Link base URL */
+        /** productId → contentId mapping */
         private Map<String, String> products = new HashMap<>();
     }
 
@@ -36,17 +34,5 @@ public class AymVisionProperties {
         private String token = "";
         /** Cache TTL as ISO-8601 duration, e.g. PT6H */
         private String cacheTtl = "PT6H";
-    }
-
-    @Data
-    public static class Mpf {
-        private String dbPath = "./data/mpf";
-    }
-
-    @Data
-    public static class Anchor {
-        /** Anchor interval in milliseconds, default 48h */
-        private long intervalMs = 172_800_000L;
-        private String walletMnemonic = "";
     }
 }
