@@ -4,6 +4,7 @@ import io.uverify.backend.extension.aymvision.anchor.CompletionCertificate;
 import io.uverify.backend.extension.aymvision.anchor.CompletionCertificateService;
 import io.uverify.backend.extension.aymvision.exception.ProfileNotFoundException;
 import org.bouncycastle.crypto.digests.Blake2bDigest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@ConditionalOnProperty(value = "extensions.aym-vision.enabled", havingValue = "true")
 public class ContentService {
 
     private final AymUserProfileRepository profileRepo;

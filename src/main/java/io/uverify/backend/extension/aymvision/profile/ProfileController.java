@@ -4,6 +4,7 @@ import io.uverify.backend.extension.aymvision.anchor.AymCompletionCertEntity;
 import io.uverify.backend.extension.aymvision.anchor.AymCompletionCertRepository;
 import io.uverify.backend.extension.aymvision.user.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +16,7 @@ import java.util.Optional;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/aym")
+@ConditionalOnProperty(value = "extensions.aym-vision.enabled", havingValue = "true")
 public class ProfileController {
 
     private final AymUserProfileRepository profileRepo;

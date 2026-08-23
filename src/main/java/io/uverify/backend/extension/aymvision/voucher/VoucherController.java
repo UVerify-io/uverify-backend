@@ -6,6 +6,7 @@ import io.uverify.backend.extension.aymvision.exception.InvalidHandshakeExceptio
 import io.uverify.backend.extension.aymvision.user.AlreadyOwnedException;
 import io.uverify.backend.extension.aymvision.exception.VoucherNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/aym/voucher")
+@ConditionalOnProperty(value = "extensions.aym-vision.enabled", havingValue = "true")
 public class VoucherController {
 
     private static final String HEADER_PUBLIC_KEY = "X-Aym-Public-Key";

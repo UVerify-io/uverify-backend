@@ -2,6 +2,7 @@ package io.uverify.backend.extension.aymvision.voucher;
 
 import io.uverify.backend.extension.aymvision.exception.VoucherNotFoundException;
 import io.uverify.backend.extension.aymvision.user.*;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +13,7 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 
 @Service
+@ConditionalOnProperty(value = "extensions.aym-vision.enabled", havingValue = "true")
 public class VoucherService {
 
     private final VoucherRepository voucherRepo;

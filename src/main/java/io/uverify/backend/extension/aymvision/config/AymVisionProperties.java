@@ -9,8 +9,10 @@ import java.util.Map;
 
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "aym")
+@ConfigurationProperties(prefix = "extensions.aym-vision")
 public class AymVisionProperties {
+
+    private boolean enabled = false;
 
     /** Master public key (Ed25519, hex) — used to authenticate voucher creation. */
     private String masterPublicKey = "";

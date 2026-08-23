@@ -5,6 +5,7 @@ import io.uverify.backend.extension.aymvision.user.AymUserCourseStateEntity;
 import io.uverify.backend.extension.aymvision.user.AymUserCourseStateRepository;
 import io.uverify.backend.extension.aymvision.user.AymUserProfileId;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@ConditionalOnProperty(value = "extensions.aym-vision.enabled", havingValue = "true")
 public class CompletionCertificateService {
 
     private static final List<String> S1_EPISODES = List.of("s1e01", "s1e02", "s1e03", "s1e04", "s1e05");

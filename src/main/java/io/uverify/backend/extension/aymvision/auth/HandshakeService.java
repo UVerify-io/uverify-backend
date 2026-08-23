@@ -7,6 +7,7 @@ import io.uverify.backend.extension.aymvision.exception.InvalidHandshakeExceptio
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
 import org.bouncycastle.crypto.signers.Ed25519Signer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
+@ConditionalOnProperty(value = "extensions.aym-vision.enabled", havingValue = "true")
 public class HandshakeService {
 
     private static final int NONCE_TTL_SECONDS = 120;

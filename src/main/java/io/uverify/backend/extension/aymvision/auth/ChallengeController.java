@@ -4,6 +4,7 @@ import io.uverify.backend.extension.aymvision.dto.ChallengeRequest;
 import io.uverify.backend.extension.aymvision.dto.ChallengeResponse;
 import io.uverify.backend.extension.aymvision.exception.InvalidHandshakeException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,6 +17,7 @@ import java.time.temporal.ChronoUnit;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/aym")
+@ConditionalOnProperty(value = "extensions.aym-vision.enabled", havingValue = "true")
 public class ChallengeController {
 
     private final HandshakeService handshakeService;

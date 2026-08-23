@@ -7,6 +7,7 @@ import io.uverify.backend.extension.aymvision.exception.SessionAlreadyUsedExcept
 import io.uverify.backend.extension.aymvision.user.*;
 import io.uverify.backend.extension.aymvision.voucher.RedeemResult;
 import org.bouncycastle.crypto.digests.Blake2bDigest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import java.util.HexFormat;
 import java.util.List;
 
 @Service
+@ConditionalOnProperty(value = "extensions.aym-vision.enabled", havingValue = "true")
 public class StripePurchaseService {
 
     private final StripeGateway stripeGateway;

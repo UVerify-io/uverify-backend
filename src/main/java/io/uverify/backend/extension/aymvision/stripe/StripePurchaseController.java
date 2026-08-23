@@ -5,6 +5,7 @@ import io.uverify.backend.extension.aymvision.auth.HandshakeService;
 import io.uverify.backend.extension.aymvision.exception.*;
 import io.uverify.backend.extension.aymvision.user.AlreadyOwnedException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/aym/purchase")
+@ConditionalOnProperty(value = "extensions.aym-vision.enabled", havingValue = "true")
 public class StripePurchaseController {
 
     private static final String HEADER_PUBLIC_KEY = "X-Aym-Public-Key";
