@@ -61,10 +61,16 @@ public class ExtensionController {
                     schema = @Schema(example = "{\"fractionized-certificate\":true,\"tokenizable-certificate\":false}")))
     public ResponseEntity<Map<String, Boolean>> list() {
         Map<String, Boolean> result = new LinkedHashMap<>();
+        result.put("connected-goods",
+                environment.getProperty("extensions.connected-goods.enabled", Boolean.class, false));
         result.put("fractionized-certificate",
                 environment.getProperty("extensions.fractionized-certificate.enabled", Boolean.class, false));
         result.put("tokenizable-certificate",
                 environment.getProperty("extensions.tokenizable-certificate.enabled", Boolean.class, false));
+        result.put("tadamon",
+                environment.getProperty("extensions.tadamon.enabled", Boolean.class, false));
+        result.put("aym-vision",
+                environment.getProperty("extensions.aym-vision.enabled", Boolean.class, false));
         return ResponseEntity.ok(result);
     }
 }
