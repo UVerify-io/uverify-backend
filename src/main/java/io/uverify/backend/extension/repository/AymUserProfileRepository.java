@@ -16,24 +16,14 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend;
+package io.uverify.backend.extension.repository;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import io.uverify.backend.extension.entity.AymUserProfileEntity;
+import io.uverify.backend.extension.entity.AymUserProfileId;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@SpringBootApplication
-@EnableJpaRepositories
-@EntityScan
-@EnableCaching
-@EnableScheduling
-public class UverifyApplication {
+public interface AymUserProfileRepository
+        extends JpaRepository<AymUserProfileEntity, AymUserProfileId> {
 
-    public static void main(String[] args) {
-        SpringApplication.run(UverifyApplication.class, args);
-    }
-
+    java.util.Optional<AymUserProfileEntity> findByProfileHash(String profileHash);
 }

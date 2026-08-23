@@ -16,24 +16,24 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.uverify.backend;
+package io.uverify.backend.extension.entity;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import java.io.Serializable;
+import java.util.Objects;
 
-@SpringBootApplication
-@EnableJpaRepositories
-@EntityScan
-@EnableCaching
-@EnableScheduling
-public class UverifyApplication {
+public class AymUserContentId implements Serializable {
+    private String publicKey;
+    private String profileId;
+    private String contentId;
 
-    public static void main(String[] args) {
-        SpringApplication.run(UverifyApplication.class, args);
+    public AymUserContentId() {}
+
+    @Override public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof AymUserContentId that)) return false;
+        return Objects.equals(publicKey, that.publicKey) &&
+               Objects.equals(profileId, that.profileId) &&
+               Objects.equals(contentId, that.contentId);
     }
-
+    @Override public int hashCode() { return Objects.hash(publicKey, profileId, contentId); }
 }

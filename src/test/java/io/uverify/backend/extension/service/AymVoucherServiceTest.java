@@ -1,0 +1,163 @@
+/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package io.uverify.backend.extension.service;
+
+import io.uverify.backend.extension.exception.AlreadyOwnedException;
+import io.uverify.backend.extension.entity.AymRedeemedVoucherEntity;
+import io.uverify.backend.extension.repository.AymRedeemedVoucherRepository;
+import io.uverify.backend.extension.entity.AymUserContentEntity;
+import io.uverify.backend.extension.entity.AymVoucherEntity;
+import io.uverify.backend.extension.repository.AymVoucherRepository;
+import io.uverify.backend.extension.dto.aymvision.RedeemResult;
+import io.uverify.backend.extension.exception.VoucherNotFoundException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit.jupiter.EnabledIf;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@SpringBootTest
+@EnabledIf(
+        expression = "${extensions.aym-vision.enabled}",
+        loadContext = true,
+        reason = "AYM Vision extension must be enabled for this test"
+)
+class AymVoucherServiceTest {
+
+    private static final String PUB_KEY = "bb".repeat(32);
+    private static final String PROFILE_A = "profile-a";
+    private static final String PROFILE_B = "profile-b";
+    private static final String CONTENT_ID = "s1e01";
+
+    @Mock AymVoucherRepository voucherRepo;
+    @Mock AymRedeemedVoucherRepository redeemedRepo;
+    @Mock AymContentService contentService;
+
+    private AymVoucherService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new AymVoucherService(voucherRepo, redeemedRepo, contentService);
+    }
+
+    // ── create ────────────────────────────────────────────────────────────────
+
+    @Test
+    void create_persistsRequestedCountWithContentId() {
+        when(voucherRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<AymVoucherEntity> vouchers = service.create(CONTENT_ID, 3, null);
+
+        assertThat(vouchers).hasSize(3);
+        assertThat(vouchers).allMatch(v -> CONTENT_ID.equals(v.getContentId()));
+        assertThat(vouchers).allMatch(v -> v.getId() != null);
+        verify(voucherRepo, times(3)).save(any());
+    }
+
+    // ── redeem — happy path ───────────────────────────────────────────────────
+
+    @Test
+    void redeem_movesRowAndGrantsContent() {
+        UUID vid = UUID.randomUUID();
+        AymVoucherEntity voucher = new AymVoucherEntity(CONTENT_ID, null);
+        when(voucherRepo.findById(vid)).thenReturn(Optional.of(voucher));
+        AymUserContentEntity contentEntity = new AymUserContentEntity(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");
+        when(contentService.getContent(PUB_KEY, PROFILE_A)).thenReturn(List.of(contentEntity));
+        when(contentService.grantContent(any(), any(), any(), any())).thenReturn(contentEntity);
+        when(redeemedRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RedeemResult result = service.redeem(PUB_KEY, PROFILE_A, vid);
+
+        verify(voucherRepo).delete(voucher);
+        verify(redeemedRepo).save(any(AymRedeemedVoucherEntity.class));
+        assertThat(result.contentId()).isEqualTo(CONTENT_ID);
+        assertThat(result.ownedContent()).contains(CONTENT_ID);
+    }
+
+    @Test
+    void redeem_throwsVoucherNotFound_whenMissing() {
+        UUID vid = UUID.randomUUID();
+        when(voucherRepo.findById(vid)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.redeem(PUB_KEY, PROFILE_A, vid))
+                .isInstanceOf(VoucherNotFoundException.class);
+
+        verify(voucherRepo, never()).delete(any());
+        verify(contentService, never()).grantContent(any(), any(), any(), any());
+    }
+
+    @Test
+    void redeem_throwsAlreadyOwned_andVoucherSurvives() {
+        UUID vid = UUID.randomUUID();
+        AymVoucherEntity voucher = new AymVoucherEntity(CONTENT_ID, null);
+        when(voucherRepo.findById(vid)).thenReturn(Optional.of(voucher));
+        doThrow(new AlreadyOwnedException(CONTENT_ID, PROFILE_A))
+                .when(contentService).grantContent(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");
+
+        assertThatThrownBy(() -> service.redeem(PUB_KEY, PROFILE_A, vid))
+                .isInstanceOf(AlreadyOwnedException.class);
+
+        verify(voucherRepo, never()).delete(any());
+        verify(redeemedRepo, never()).save(any());
+    }
+
+    // ── sibling profiles ──────────────────────────────────────────────────────
+
+    @Test
+    void redeem_twoVouchersForSameContent_siblingProfiles_bothSucceed() {
+        UUID vidA = UUID.randomUUID();
+        UUID vidB = UUID.randomUUID();
+        AymVoucherEntity vA = new AymVoucherEntity(CONTENT_ID, null);
+        AymVoucherEntity vB = new AymVoucherEntity(CONTENT_ID, null);
+
+        when(voucherRepo.findById(vidA)).thenReturn(Optional.of(vA));
+        when(voucherRepo.findById(vidB)).thenReturn(Optional.of(vB));
+
+        AymUserContentEntity contentA = new AymUserContentEntity(PUB_KEY, PROFILE_A, CONTENT_ID, "VOUCHER");
+        AymUserContentEntity contentB = new AymUserContentEntity(PUB_KEY, PROFILE_B, CONTENT_ID, "VOUCHER");
+        when(contentService.grantContent(eq(PUB_KEY), eq(PROFILE_A), eq(CONTENT_ID), any()))
+                .thenReturn(contentA);
+        when(contentService.grantContent(eq(PUB_KEY), eq(PROFILE_B), eq(CONTENT_ID), any()))
+                .thenReturn(contentB);
+        when(contentService.getContent(PUB_KEY, PROFILE_A)).thenReturn(List.of(contentA));
+        when(contentService.getContent(PUB_KEY, PROFILE_B)).thenReturn(List.of(contentB));
+        when(redeemedRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RedeemResult resultA = service.redeem(PUB_KEY, PROFILE_A, vidA);
+        RedeemResult resultB = service.redeem(PUB_KEY, PROFILE_B, vidB);
+
+        assertThat(resultA.contentId()).isEqualTo(CONTENT_ID);
+        assertThat(resultB.contentId()).isEqualTo(CONTENT_ID);
+        verify(voucherRepo).delete(vA);
+        verify(voucherRepo).delete(vB);
+    }
+}

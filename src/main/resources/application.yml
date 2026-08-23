@@ -149,6 +149,18 @@ extensions:
         id: ${TADAMON_GOOGLE_SHEETS_ID:}
         private-key: ${TADAMON_GOOGLE_SHEETS_PRIVATE_KEY:}
         service-account: ${TADAMON_GOOGLE_SHEETS_SERVICE_ACCOUNT:}
+  aym-vision:
+    enabled: ${AYM_VISION_ENABLED:false}
+    master-public-key: ${AYM_MASTER_PUBLIC_KEY:}
+    ui-base-url: ${AYM_UI_BASE_URL:}
+    stripe:
+      api-key: ${AYM_STRIPE_API_KEY:}
+      products:
+        "[prod_V6FldNKCmtN0JL]": s1
+    content-repo:
+      url: ${AYM_CONTENT_REPO_URL:}
+      token: ${AYM_CONTENT_REPO_TOKEN:}
+      cache-ttl: ${AYM_CONTENT_REPO_CACHE_TTL:PT6H}
 
 shortlink:
   domain: ${SHORT_LINK_DOMAIN:https://go.uverify.io}
