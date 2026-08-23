@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.23.0](https://github.com/UVerify-io/uverify-backend/compare/v1.22.2...v1.23.0) (2026-08-23)
+
+
+### Features
+
+* **aym:** 48h MPF root anchoring and registration certificates ([27a3ba7](https://github.com/UVerify-io/uverify-backend/commit/27a3ba78af0e4c43d94b613792b8ab171a44e6eb))
+* **aym:** AYM Vision extension — Phase B (B1–B7) ([091461b](https://github.com/UVerify-io/uverify-backend/commit/091461bfd2fa6665552a75743ba9c7e088fd6187))
+* **aym:** B2 user registry + content endpoints ([06927d7](https://github.com/UVerify-io/uverify-backend/commit/06927d74bdf4d38442cd70a3d5b2324190d669bb))
+* **aym:** B3 voucher creation (master) and atomic redemption ([8a70ba8](https://github.com/UVerify-io/uverify-backend/commit/8a70ba834aead7a95edbcc2f954787cfd9616ac6))
+* **aym:** B4 Stripe checkout session verification and content grant ([2e95bc0](https://github.com/UVerify-io/uverify-backend/commit/2e95bc05fb177f45da66203a5a17ee6e09f588be))
+* **aym:** B7 public profile endpoint and cached course material proxy ([4498a9e](https://github.com/UVerify-io/uverify-backend/commit/4498a9e59f232b94b364d12b93ee3a2d220af845))
+* **aym:** keep MPF in sync with ownership changes ([c663231](https://github.com/UVerify-io/uverify-backend/commit/c663231b07d42a9a42f537d8ca11f8da14597dee))
+* **aym:** MPF over user content state with proofs ([7411931](https://github.com/UVerify-io/uverify-backend/commit/7411931c63b0453ef34cdcb008a7d43ed3d06351))
+* **aym:** nonce challenge + Ed25519 handshake verification ([fe78e44](https://github.com/UVerify-io/uverify-backend/commit/fe78e44d1a6200110914bbabaa9f1872d7fa83b4))
+* **aym:** public profile endpoint and cached course material proxy ([fef6e51](https://github.com/UVerify-io/uverify-backend/commit/fef6e511f1f0dc5fa02ae361b988e05e5ce19e9b))
+* **aym:** voucher notes, Stripe hash fix, content signature fix ([4469679](https://github.com/UVerify-io/uverify-backend/commit/4469679ae35e74b6aa9053a7205f1daea184dc77))
+
+
+### Bug Fixes
+
+* **aym:** align HTTP header names with frontend (X-Aym-Public-Key) ([e112622](https://github.com/UVerify-io/uverify-backend/commit/e112622b948701a146f7c5689035baa4c6d7b2bc))
+
 ## [1.22.2](https://github.com/UVerify-io/uverify-backend/compare/v1.22.1...v1.22.2) (2026-08-07)
 
 
