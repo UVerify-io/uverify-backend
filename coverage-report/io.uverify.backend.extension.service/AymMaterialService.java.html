@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AymMaterialService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.service</a> &gt; <span class="el_source">AymMaterialService.java</span></div><h1>AymMaterialService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.service;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import io.uverify.backend.extension.config.AymVisionProperties;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
+import java.util.Map;
+
+<span class="nc" id="L36">@Slf4j</span>
+@Service
+@ConditionalOnProperty(value = &quot;extensions.aym-vision.enabled&quot;, havingValue = &quot;true&quot;)
+public class AymMaterialService {
+
+    private final AymVisionProperties properties;
+    private final RestTemplate restTemplate;
+    private final Cache&lt;String, CachedBundle&gt; bundleCache;
+
+<span class="nc" id="L45">    public AymMaterialService(AymVisionProperties properties) {</span>
+<span class="nc" id="L46">        this.properties = properties;</span>
+<span class="nc" id="L47">        this.restTemplate = new RestTemplate();</span>
+
+<span class="nc" id="L49">        Duration ttl = Duration.parse(properties.getContentRepo().getCacheTtl());</span>
+<span class="nc" id="L50">        this.bundleCache = Caffeine.newBuilder()</span>
+<span class="nc" id="L51">                .expireAfterWrite(ttl)</span>
+<span class="nc" id="L52">                .maximumSize(200)</span>
+<span class="nc" id="L53">                .build();</span>
+<span class="nc" id="L54">    }</span>
+
+    public CachedBundle getBundle(String courseId) {
+<span class="nc" id="L57">        return bundleCache.get(courseId, this::fetchFromRepo);</span>
+    }
+
+    public String getVersion(String courseId) {
+<span class="nc" id="L61">        CachedBundle bundle = bundleCache.getIfPresent(courseId);</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (bundle != null) return bundle.version();</span>
+<span class="nc" id="L63">        return fetchFromRepo(courseId).version();</span>
+    }
+
+    private CachedBundle fetchFromRepo(String courseId) {
+<span class="nc" id="L67">        String url = properties.getContentRepo().getUrl().replaceAll(&quot;/$&quot;, &quot;&quot;)</span>
+                + &quot;/&quot; + courseId + &quot;/bundle.json&quot;;
+<span class="nc" id="L69">        HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L70">        String token = properties.getContentRepo().getToken();</span>
+<span class="nc bnc" id="L71" title="All 4 branches missed.">        if (token != null &amp;&amp; !token.isBlank()) {</span>
+<span class="nc" id="L72">            headers.setBearerAuth(token);</span>
+        }
+<span class="nc" id="L74">        ResponseEntity&lt;Map&gt; response = restTemplate.exchange(</span>
+                url, HttpMethod.GET, new HttpEntity&lt;&gt;(headers), Map.class);
+<span class="nc" id="L76">        Map&lt;?, ?&gt; body = response.getBody();</span>
+<span class="nc bnc" id="L77" title="All 4 branches missed.">        String version = body != null &amp;&amp; body.containsKey(&quot;version&quot;)</span>
+<span class="nc" id="L78">                ? String.valueOf(body.get(&quot;version&quot;)) : &quot;unknown&quot;;</span>
+<span class="nc bnc" id="L79" title="All 4 branches missed.">        String payload = body != null &amp;&amp; body.containsKey(&quot;payload&quot;)</span>
+<span class="nc" id="L80">                ? String.valueOf(body.get(&quot;payload&quot;)) : &quot;&quot;;</span>
+<span class="nc" id="L81">        return new CachedBundle(courseId, version, payload);</span>
+    }
+
+<span class="nc" id="L84">    public record CachedBundle(String courseId, String version, String payload) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -61,11 +61,17 @@ public class ExtensionController {
                     schema = @Schema(example = &quot;{\&quot;fractionized-certificate\&quot;:true,\&quot;tokenizable-certificate\&quot;:false}&quot;)))
     public ResponseEntity&lt;Map&lt;String, Boolean&gt;&gt; list() {
 <span class="nc" id="L63">        Map&lt;String, Boolean&gt; result = new LinkedHashMap&lt;&gt;();</span>
-<span class="nc" id="L64">        result.put(&quot;fractionized-certificate&quot;,</span>
-<span class="nc" id="L65">                environment.getProperty(&quot;extensions.fractionized-certificate.enabled&quot;, Boolean.class, false));</span>
-<span class="nc" id="L66">        result.put(&quot;tokenizable-certificate&quot;,</span>
-<span class="nc" id="L67">                environment.getProperty(&quot;extensions.tokenizable-certificate.enabled&quot;, Boolean.class, false));</span>
-<span class="nc" id="L68">        return ResponseEntity.ok(result);</span>
+<span class="nc" id="L64">        result.put(&quot;connected-goods&quot;,</span>
+<span class="nc" id="L65">                environment.getProperty(&quot;extensions.connected-goods.enabled&quot;, Boolean.class, false));</span>
+<span class="nc" id="L66">        result.put(&quot;fractionized-certificate&quot;,</span>
+<span class="nc" id="L67">                environment.getProperty(&quot;extensions.fractionized-certificate.enabled&quot;, Boolean.class, false));</span>
+<span class="nc" id="L68">        result.put(&quot;tokenizable-certificate&quot;,</span>
+<span class="nc" id="L69">                environment.getProperty(&quot;extensions.tokenizable-certificate.enabled&quot;, Boolean.class, false));</span>
+<span class="nc" id="L70">        result.put(&quot;tadamon&quot;,</span>
+<span class="nc" id="L71">                environment.getProperty(&quot;extensions.tadamon.enabled&quot;, Boolean.class, false));</span>
+<span class="nc" id="L72">        result.put(&quot;aym-vision&quot;,</span>
+<span class="nc" id="L73">                environment.getProperty(&quot;extensions.aym-vision.enabled&quot;, Boolean.class, false));</span>
+<span class="nc" id="L74">        return ResponseEntity.ok(result);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AymHandshakeService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.service</a> &gt; <span class="el_source">AymHandshakeService.java</span></div><h1>AymHandshakeService.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.service;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import io.uverify.backend.extension.config.AymVisionProperties;
+import io.uverify.backend.extension.exception.InvalidHandshakeException;
+import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
+import org.bouncycastle.crypto.signers.Ed25519Signer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.HexFormat;
+import java.util.concurrent.TimeUnit;
+
+<span class="nc" id="L39">@Slf4j</span>
+@Service
+@ConditionalOnProperty(value = &quot;extensions.aym-vision.enabled&quot;, havingValue = &quot;true&quot;)
+public class AymHandshakeService {
+
+    private static final int NONCE_TTL_SECONDS = 120;
+    private static final int PUBLIC_KEY_BYTES = 32;
+    private static final int SIGNATURE_BYTES = 64;
+
+    /** key=nonce hex, value=publicKeyHex — auto-expires after 120s */
+<span class="nc" id="L49">    private final Cache&lt;String, String&gt; nonceCache = Caffeine.newBuilder()</span>
+<span class="nc" id="L50">            .expireAfterWrite(NONCE_TTL_SECONDS, TimeUnit.SECONDS)</span>
+<span class="nc" id="L51">            .maximumSize(10_000)</span>
+<span class="nc" id="L52">            .build();</span>
+
+    /** Tracks used nonces briefly to prevent replay within TTL window */
+<span class="nc" id="L55">    private final Cache&lt;String, Boolean&gt; usedNonces = Caffeine.newBuilder()</span>
+<span class="nc" id="L56">            .expireAfterWrite(NONCE_TTL_SECONDS, TimeUnit.SECONDS)</span>
+<span class="nc" id="L57">            .maximumSize(10_000)</span>
+<span class="nc" id="L58">            .build();</span>
+
+    private final AymVisionProperties properties;
+<span class="nc" id="L61">    private final SecureRandom secureRandom = new SecureRandom();</span>
+
+<span class="nc" id="L63">    public AymHandshakeService(AymVisionProperties properties) {</span>
+<span class="nc" id="L64">        this.properties = properties;</span>
+<span class="nc" id="L65">    }</span>
+
+    /**
+     * Issues a single-use nonce bound to the given public key.
+     * @return 32-byte nonce as lower-case hex
+     */
+    public String issueNonce(String publicKeyHex) {
+<span class="nc" id="L72">        validatePublicKeyFormat(publicKeyHex);</span>
+<span class="nc" id="L73">        byte[] nonceBytes = new byte[32];</span>
+<span class="nc" id="L74">        secureRandom.nextBytes(nonceBytes);</span>
+<span class="nc" id="L75">        String nonce = HexFormat.of().formatHex(nonceBytes);</span>
+<span class="nc" id="L76">        nonceCache.put(nonce, publicKeyHex.toLowerCase());</span>
+<span class="nc" id="L77">        return nonce;</span>
+    }
+
+    /**
+     * Verifies the Ed25519 handshake signature.
+     * Canonical payload: &quot;AYM1|{method}|{path}|{nonce}|{sha256Hex(body)}&quot;
+     *
+     * @throws InvalidHandshakeException on any verification failure
+     */
+    public HandshakeResult verify(String publicKeyHex, String nonce, String signatureHex,
+                                  String method, String path, byte[] body) {
+<span class="nc bnc" id="L88" title="All 6 branches missed.">        if (publicKeyHex == null || nonce == null || signatureHex == null) {</span>
+<span class="nc" id="L89">            throw new InvalidHandshakeException(&quot;Missing handshake headers&quot;);</span>
+        }
+
+<span class="nc" id="L92">        String pubKeyLower = publicKeyHex.toLowerCase();</span>
+
+        // 1. Check nonce exists and belongs to this public key
+<span class="nc" id="L95">        String boundPublicKey = nonceCache.getIfPresent(nonce);</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        if (boundPublicKey == null) {</span>
+<span class="nc" id="L97">            throw new InvalidHandshakeException(&quot;Nonce expired or unknown&quot;);</span>
+        }
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        if (!boundPublicKey.equals(pubKeyLower)) {</span>
+<span class="nc" id="L100">            throw new InvalidHandshakeException(&quot;Nonce bound to different public key&quot;);</span>
+        }
+
+        // 2. Check nonce not already used (replay protection)
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        if (Boolean.TRUE.equals(usedNonces.getIfPresent(nonce))) {</span>
+<span class="nc" id="L105">            throw new InvalidHandshakeException(&quot;Nonce already used&quot;);</span>
+        }
+
+        // 3. Build canonical payload and verify signature
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        String bodyHash = sha256Hex(body != null ? body : new byte[0]);</span>
+<span class="nc" id="L110">        String canonicalPayload = &quot;AYM1|&quot; + method.toUpperCase() + &quot;|&quot; + path + &quot;|&quot; + nonce + &quot;|&quot; + bodyHash;</span>
+<span class="nc" id="L111">        byte[] payloadBytes = canonicalPayload.getBytes(StandardCharsets.UTF_8);</span>
+
+        boolean valid;
+        try {
+<span class="nc" id="L115">            byte[] pubKeyBytes = HexFormat.of().parseHex(pubKeyLower);</span>
+<span class="nc" id="L116">            byte[] sigBytes = HexFormat.of().parseHex(signatureHex.toLowerCase());</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">            if (pubKeyBytes.length != PUBLIC_KEY_BYTES) {</span>
+<span class="nc" id="L118">                throw new InvalidHandshakeException(&quot;Invalid public key length&quot;);</span>
+            }
+<span class="nc bnc" id="L120" title="All 2 branches missed.">            if (sigBytes.length != SIGNATURE_BYTES) {</span>
+<span class="nc" id="L121">                throw new InvalidHandshakeException(&quot;Invalid signature length&quot;);</span>
+            }
+<span class="nc" id="L123">            valid = verifyEd25519(pubKeyBytes, payloadBytes, sigBytes);</span>
+<span class="nc" id="L124">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L125">            throw new InvalidHandshakeException(&quot;Malformed hex in handshake: &quot; + e.getMessage());</span>
+<span class="nc" id="L126">        }</span>
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        if (!valid) {</span>
+<span class="nc" id="L129">            throw new InvalidHandshakeException(&quot;Signature verification failed&quot;);</span>
+        }
+
+        // 4. Mark nonce as used (invalidate from active store)
+<span class="nc" id="L133">        nonceCache.invalidate(nonce);</span>
+<span class="nc" id="L134">        usedNonces.put(nonce, Boolean.TRUE);</span>
+
+<span class="nc" id="L136">        return new HandshakeResult(pubKeyLower);</span>
+    }
+
+    /** Returns true if the given public key matches the configured master key. */
+    public boolean isMasterKey(String publicKeyHex) {
+<span class="nc bnc" id="L141" title="All 4 branches missed.">        if (publicKeyHex == null || properties.getMasterPublicKey() == null) return false;</span>
+<span class="nc" id="L142">        return properties.getMasterPublicKey().equalsIgnoreCase(publicKeyHex);</span>
+    }
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    private boolean verifyEd25519(byte[] publicKey, byte[] payload, byte[] signature) {
+<span class="nc" id="L148">        var verifier = new Ed25519Signer();</span>
+<span class="nc" id="L149">        verifier.init(false, new Ed25519PublicKeyParameters(publicKey, 0));</span>
+<span class="nc" id="L150">        verifier.update(payload, 0, payload.length);</span>
+<span class="nc" id="L151">        return verifier.verifySignature(signature);</span>
+    }
+
+    static String sha256Hex(byte[] data) {
+        try {
+<span class="nc" id="L156">            byte[] hash = MessageDigest.getInstance(&quot;SHA-256&quot;).digest(data);</span>
+<span class="nc" id="L157">            return HexFormat.of().formatHex(hash);</span>
+<span class="nc" id="L158">        } catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L159">            throw new IllegalStateException(&quot;SHA-256 not available&quot;, e);</span>
+        }
+    }
+
+    private void validatePublicKeyFormat(String publicKeyHex) {
+<span class="nc bnc" id="L164" title="All 4 branches missed.">        if (publicKeyHex == null || !publicKeyHex.matches(&quot;[0-9a-fA-F]{64}&quot;)) {</span>
+<span class="nc" id="L165">            throw new InvalidHandshakeException(&quot;publicKey must be 32 bytes (64 hex chars)&quot;);</span>
+        }
+<span class="nc" id="L167">    }</span>
+
+<span class="nc" id="L169">    public record HandshakeResult(String publicKeyHex) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

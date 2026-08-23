@@ -23,16 +23,18 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableJpaRepositories
 @EntityScan
 @EnableCaching
-<span class="fc" id="L31">public class UverifyApplication {</span>
+@EnableScheduling
+<span class="fc" id="L33">public class UverifyApplication {</span>
 
     public static void main(String[] args) {
-<span class="nc" id="L34">        SpringApplication.run(UverifyApplication.class, args);</span>
-<span class="nc" id="L35">    }</span>
+<span class="nc" id="L36">        SpringApplication.run(UverifyApplication.class, args);</span>
+<span class="nc" id="L37">    }</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

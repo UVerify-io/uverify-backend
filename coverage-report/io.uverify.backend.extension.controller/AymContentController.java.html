@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AymContentController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Uverify Backend</a> &gt; <a href="index.source.html" class="el_package">io.uverify.backend.extension.controller</a> &gt; <span class="el_source">AymContentController.java</span></div><h1>AymContentController.java</h1><pre class="source lang-java linenums">/*
+ * UVerify Backend
+ * Copyright (C) 2025 Fabian Bormann
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package io.uverify.backend.extension.controller;
+
+import io.uverify.backend.extension.service.AymContentService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.uverify.backend.extension.dto.aymvision.CompletionCertificate;
+import io.uverify.backend.extension.service.AymHandshakeService;
+import io.uverify.backend.extension.dto.aymvision.ContentItemDto;
+import io.uverify.backend.extension.dto.aymvision.ContentOwnershipDto;
+import io.uverify.backend.extension.dto.aymvision.CourseStateRequest;
+import io.uverify.backend.extension.exception.InvalidHandshakeException;
+import io.uverify.backend.extension.exception.ProfileNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+<span class="nc" id="L40">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/api/v1/extension/aym-vision&quot;)
+@ConditionalOnProperty(value = &quot;extensions.aym-vision.enabled&quot;, havingValue = &quot;true&quot;)
+public class AymContentController {
+
+    static final String HEADER_PUBLIC_KEY = &quot;X-Aym-Public-Key&quot;;
+    static final String HEADER_NONCE = &quot;X-Aym-Nonce&quot;;
+    static final String HEADER_SIGNATURE = &quot;X-Aym-Signature&quot;;
+
+    private final AymHandshakeService handshakeService;
+    private final AymContentService contentService;
+    private final ObjectMapper objectMapper;
+
+    public AymContentController(AymHandshakeService handshakeService,
+                             AymContentService contentService,
+<span class="nc" id="L56">                             ObjectMapper objectMapper) {</span>
+<span class="nc" id="L57">        this.handshakeService = handshakeService;</span>
+<span class="nc" id="L58">        this.contentService = contentService;</span>
+<span class="nc" id="L59">        this.objectMapper = objectMapper;</span>
+<span class="nc" id="L60">    }</span>
+
+    @GetMapping(&quot;/content&quot;)
+    public ResponseEntity&lt;?&gt; listContent(@RequestParam String profileId,
+                                         HttpServletRequest request) {
+        try {
+<span class="nc" id="L66">            AymHandshakeService.HandshakeResult auth = verifyHandshake(request, new byte[0]);</span>
+<span class="nc" id="L67">            List&lt;ContentItemDto&gt; items = contentService.getContent(auth.publicKeyHex(), profileId)</span>
+<span class="nc" id="L68">                    .stream().map(ContentItemDto::from).toList();</span>
+<span class="nc" id="L69">            return ResponseEntity.ok(items);</span>
+<span class="nc" id="L70">        } catch (InvalidHandshakeException e) {</span>
+<span class="nc" id="L71">            return ResponseEntity.status(401).body(e.getMessage());</span>
+<span class="nc" id="L72">        } catch (ProfileNotFoundException e) {</span>
+<span class="nc" id="L73">            return ResponseEntity.notFound().build();</span>
+        }
+    }
+
+    @GetMapping(&quot;/content/{contentId}&quot;)
+    public ResponseEntity&lt;ContentOwnershipDto&gt; checkOwnership(@PathVariable String contentId,
+                                                              @RequestParam String profileId,
+                                                              HttpServletRequest request) {
+        try {
+<span class="nc" id="L82">            AymHandshakeService.HandshakeResult auth = verifyHandshake(request, new byte[0]);</span>
+<span class="nc" id="L83">            boolean owned = contentService.owns(auth.publicKeyHex(), profileId, contentId);</span>
+<span class="nc" id="L84">            return ResponseEntity.ok(new ContentOwnershipDto(owned));</span>
+<span class="nc" id="L85">        } catch (InvalidHandshakeException e) {</span>
+<span class="nc" id="L86">            return ResponseEntity.status(401).build();</span>
+        }
+    }
+
+    @PostMapping(&quot;/course-state&quot;)
+    public ResponseEntity&lt;?&gt; reportCourseState(HttpServletRequest request) {
+        try {
+<span class="nc" id="L93">            byte[] rawBody = request.getInputStream().readAllBytes();</span>
+<span class="nc" id="L94">            AymHandshakeService.HandshakeResult auth = verifyHandshake(request, rawBody);</span>
+<span class="nc" id="L95">            CourseStateRequest body = objectMapper.readValue(rawBody, CourseStateRequest.class);</span>
+<span class="nc" id="L96">            CompletionCertificate cert = contentService.reportCourseState(</span>
+<span class="nc" id="L97">                    auth.publicKeyHex(), body.profileId(), body.courseId(), body.status());</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">            if (cert != null) {</span>
+<span class="nc" id="L99">                return ResponseEntity.ok(Map.of(</span>
+<span class="nc" id="L100">                        &quot;completionCertificate&quot;, Map.of(&quot;hash&quot;, cert.hash(), &quot;verifyUrl&quot;, cert.verifyUrl())));</span>
+            }
+<span class="nc" id="L102">            return ResponseEntity.ok().build();</span>
+<span class="nc" id="L103">        } catch (InvalidHandshakeException e) {</span>
+<span class="nc" id="L104">            return ResponseEntity.status(401).body(e.getMessage());</span>
+<span class="nc" id="L105">        } catch (IOException e) {</span>
+<span class="nc" id="L106">            return ResponseEntity.badRequest().body(&quot;Could not read request body&quot;);</span>
+        }
+    }
+
+    private AymHandshakeService.HandshakeResult verifyHandshake(HttpServletRequest request, byte[] body) {
+<span class="nc" id="L111">        String publicKey = request.getHeader(HEADER_PUBLIC_KEY);</span>
+<span class="nc" id="L112">        String nonce = request.getHeader(HEADER_NONCE);</span>
+<span class="nc" id="L113">        String signature = request.getHeader(HEADER_SIGNATURE);</span>
+<span class="nc" id="L114">        String method = request.getMethod();</span>
+<span class="nc" id="L115">        String path = request.getRequestURI();</span>
+<span class="nc" id="L116">        String query = request.getQueryString();</span>
+<span class="nc bnc" id="L117" title="All 4 branches missed.">        if (query != null &amp;&amp; !query.isEmpty()) {</span>
+<span class="nc" id="L118">            path = path + &quot;?&quot; + query;</span>
+        }
+<span class="nc" id="L120">        return handshakeService.verify(publicKey, nonce, signature, method, path, body);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
