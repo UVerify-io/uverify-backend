@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.24.0](https://github.com/UVerify-io/uverify-backend/compare/v1.23.0...v1.24.0) (2026-09-18)
+
+
+### Features
+
+* reject oversized batches and transactions at build time ([8df3c2d](https://github.com/UVerify-io/uverify-backend/commit/8df3c2d05ac6499aa034a1e734542fd3c20826e4))
+
+
+### Bug Fixes
+
+* count cardano academy badges as student certification ([00d60f8](https://github.com/UVerify-io/uverify-backend/commit/00d60f8a6ab749c3c3e02088d12488d32778200c))
+
 ## [1.23.0](https://github.com/UVerify-io/uverify-backend/compare/v1.22.2...v1.23.0) (2026-08-23)
 
 
