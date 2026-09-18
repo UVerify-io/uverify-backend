@@ -127,7 +127,7 @@ public class StatisticsService {
             return switch (templateId) {
                 case "tadamon" -> UseCaseCategory.IDENTITY;
                 case "socialHub", "linktree", "productVerification" -> UseCaseCategory.CONNECTED_GOODS;
-                case "diploma" -> UseCaseCategory.STUDENT_CERTIFICATION;
+                case "diploma", "cardanoAcademyCertificate" -> UseCaseCategory.STUDENT_CERTIFICATION;
                 case "blockforce" -> UseCaseCategory.CROSS_CHAIN_ATTESTATION;
                 default -> UseCaseCategory.NOTARY;
             };

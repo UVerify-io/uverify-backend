@@ -308,6 +308,7 @@ public class CardanoBlockchainService {
             if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
             throw new RuntimeException(exception);
         }
+        requireWithinMaxTransactionSize(captured.get() != null ? captured.get() : transaction);
         pendingTransactionCache.populate(
                 captured.get() != null ? captured.get() : transaction,
                 proxyContractAddress, proxyScriptHash);
@@ -346,6 +347,7 @@ public class CardanoBlockchainService {
             if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
             throw new RuntimeException(exception);
         }
+        requireWithinMaxTransactionSize(captured.get() != null ? captured.get() : transaction);
         pendingTransactionCache.populate(
                 captured.get() != null ? captured.get() : transaction,
                 proxyContractAddress, proxyScriptHash);
@@ -422,6 +424,7 @@ public class CardanoBlockchainService {
     }
 
     public ScriptTx buildUpdateStateDatumScriptTx(String address, StateDatumEntity stateDatum, List<UVerifyCertificate> uVerifyCertificates) throws ApiException {
+        requireBatchWithinLimit(uVerifyCertificates, stateDatum.getBootstrapDatum());
         PlutusScript uverifyProxyContract = validatorHelper.getParameterizedProxyContract();
         String proxyScriptHash = validatorToScriptHash(uverifyProxyContract);
         PlutusScript uverifyStateContract = validatorHelper.getParameterizedUVerifyStateContract();
@@ -522,6 +525,7 @@ public class CardanoBlockchainService {
             if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
             throw new RuntimeException(exception);
         }
+        requireWithinMaxTransactionSize(captured.get() != null ? captured.get() : transaction);
         pendingTransactionCache.populate(
                 captured.get() != null ? captured.get() : transaction,
                 proxyContractAddress, proxyScriptHash);
@@ -800,6 +804,44 @@ public class CardanoBlockchainService {
                 .build();
     }
 
+    private static final int FALLBACK_MAX_TRANSACTION_SIZE = 16384;
+
+    // A transaction over the protocol limit is rejected by the node at submit time, after
+    // the build has already locked the wallet UTxOs for the pending-transaction TTL.
+    // Rejecting it here keeps the wallet usable and names the cause.
+    private void requireWithinMaxTransactionSize(Transaction transaction) throws CborSerializationException {
+        int maxTransactionSize = FALLBACK_MAX_TRANSACTION_SIZE;
+        try {
+            Integer protocolMaxTransactionSize = backendService.getEpochService().getProtocolParameters().getValue().getMaxTxSize();
+            if (protocolMaxTransactionSize != null) {
+                maxTransactionSize = protocolMaxTransactionSize;
+            }
+        } catch (Exception exception) {
+            log.debug("Could not read maxTxSize from protocol parameters, using {}: {}", FALLBACK_MAX_TRANSACTION_SIZE, exception.getMessage());
+        }
+        int transactionSize = transaction.serialize().length;
+        if (transactionSize > maxTransactionSize) {
+            throw new UVerifyTransactionException(BuildStatusCode.TRANSACTION_TOO_LARGE,
+                    String.format("The transaction would be %d bytes, the protocol allows %d. Submit fewer certificates per transaction.",
+                            transactionSize, maxTransactionSize));
+        }
+    }
+
+    // The validator enforces the batch size copied from the bootstrap datum. Checking it
+    // here turns an opaque script evaluation failure into an actionable response.
+    private static void requireBatchWithinLimit(List<UVerifyCertificate> uVerifyCertificates, BootstrapDatumEntity bootstrapDatum) {
+        if (bootstrapDatum == null || bootstrapDatum.getBatchSize() == null) {
+            return;
+        }
+        int batchSize = bootstrapDatum.getBatchSize();
+        if (uVerifyCertificates.size() > batchSize) {
+            throw new UVerifyTransactionException(BuildStatusCode.BATCH_SIZE_EXCEEDED,
+                    String.format("The bootstrap datum \"%s\" allows at most %d certificate(s) per transaction, %d were provided. "
+                                    + "Submit smaller batches or fork from a bootstrap datum with a larger batch size.",
+                            bootstrapDatum.getTokenName(), batchSize, uVerifyCertificates.size()));
+        }
+    }
+
     public ScriptTx buildForkProxyStateDatumScriptTx(String address, List<UVerifyCertificate> uVerifyCertificates, String bootstrapTokenName) throws ApiException, CborSerializationException {
         Optional<BootstrapDatumEntity> optionalBootstrapDatumEntity = bootstrapDatumService.getBootstrapDatum(bootstrapTokenName, 2);
 
@@ -808,6 +850,7 @@ public class CardanoBlockchainService {
         }
 
         BootstrapDatumEntity bootstrapDatumEntity = optionalBootstrapDatumEntity.get();
+        requireBatchWithinLimit(uVerifyCertificates, bootstrapDatumEntity);
 
         Address userAddress = new Address(address);
         Optional<byte[]> optionalUserAccountCredential = userAddress.getPaymentCredentialHash();
@@ -940,6 +983,7 @@ public class CardanoBlockchainService {
             if (exception instanceof CborSerializationException cborSerializationException) throw cborSerializationException;
             throw new RuntimeException(exception);
         }
+        requireWithinMaxTransactionSize(captured.get() != null ? captured.get() : transaction);
         pendingTransactionCache.populate(
                 captured.get() != null ? captured.get() : transaction,
                 proxyContractAddress, proxyScriptHash);

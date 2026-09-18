@@ -56,6 +56,8 @@ class StatisticsCategorizeTest {
                 StatisticsService.categorize("{\"uverify_template_id\":\"productVerification\"}", mapper));
         assertEquals(UseCaseCategory.STUDENT_CERTIFICATION,
                 StatisticsService.categorize("{\"uverify_template_id\":\"diploma\"}", mapper));
+        assertEquals(UseCaseCategory.STUDENT_CERTIFICATION,
+                StatisticsService.categorize("{\"uverify_template_id\":\"cardanoAcademyCertificate\"}", mapper));
         assertEquals(UseCaseCategory.CROSS_CHAIN_ATTESTATION,
                 StatisticsService.categorize("{\"uverify_template_id\":\"blockforce\"}", mapper));
         assertEquals(UseCaseCategory.NOTARY,
@@ -70,6 +72,8 @@ class StatisticsCategorizeTest {
                 StatisticsService.categorize("{\"uv_tid\":\"socialHub\"}", mapper));
         assertEquals(UseCaseCategory.STUDENT_CERTIFICATION,
                 StatisticsService.categorize("{\"uv_tid\":\"diploma\"}", mapper));
+        assertEquals(UseCaseCategory.STUDENT_CERTIFICATION,
+                StatisticsService.categorize("{\"uv_tid\":\"cardanoAcademyCertificate\",\"uverify_update_policy\":\"restricted\"}", mapper));
         assertEquals(UseCaseCategory.NOTARY,
                 StatisticsService.categorize("{\"uv_tid\":\"somethingElse\"}", mapper));
     }
