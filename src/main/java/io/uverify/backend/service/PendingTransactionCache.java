@@ -227,6 +227,18 @@ public class PendingTransactionCache {
         lockedWalletUtxos.clear();
     }
 
+    /**
+     * Drops every pending entry and lock. Needed when the chain the cache was built
+     * against is replaced, for example after a devnet snapshot restore, because the
+     * locked inputs are unspent again while the entries would keep them unusable for
+     * the whole TTL.
+     */
+    public void clear() {
+        pendingStateUtxos.clear();
+        lockedWalletUtxos.clear();
+        lockedCollateralUtxos.clear();
+    }
+
     void clearCollateralLocks() {
         lockedCollateralUtxos.clear();
     }

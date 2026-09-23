@@ -150,55 +150,9 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
                 .as(ExecuteUserActionResponse.class);
 
         Assertions.assertEquals(HttpStatus.OK, executeUserActionResponse.getStatus());
-        Assertions.assertEquals(0, executeUserActionResponse.getState().getBootstrapDatums().size());
+        // The restored base state already carries the shared test bootstrap datum.
+        Assertions.assertEquals(1, executeUserActionResponse.getState().getBootstrapDatums().size());
         Assertions.assertEquals(0, executeUserActionResponse.getState().getStates().size());
-    }
-
-    @Test
-    @Order(3)
-    public void initProxyContract() throws ApiException, CborSerializationException, CborDeserializationException, InterruptedException {
-        BuildTransactionRequest request = new BuildTransactionRequest();
-        request.setType(TransactionType.INIT);
-
-        ProxyInitResponse buildTransactionResponse = given()
-                .contentType(ContentType.JSON)
-                .body(request)
-                .when()
-                .post("/api/v1/transaction/build")
-                .then()
-                .extract()
-                .as(ProxyInitResponse.class);
-
-        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(buildTransactionResponse.getUnsignedProxyTransaction()));
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-        Assertions.assertTrue(result.isSuccessful());
-
-        waitForTransaction(result.getValue());
-
-        validatorHelper.setProxy(buildTransactionResponse.getProxyTxHash(), buildTransactionResponse.getProxyOutputIndex());
-    }
-
-    @Test
-    @Order(4)
-    public void deployUVerifyContracts() throws CborSerializationException, ApiException, InterruptedException, CborDeserializationException, CborException, AddressExcepion {
-        BuildTransactionResponse buildTransactionResponse = given()
-                .contentType(ContentType.JSON)
-                .when()
-                .post("/api/v1/library/deploy/proxy")
-                .then()
-                .extract()
-                .as(BuildTransactionResponse.class);
-
-        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(buildTransactionResponse.getUnsignedTransaction()));
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-        Assertions.assertTrue(result.isSuccessful());
-
-        if (result.isSuccessful()) {
-            // The signed transaction needs to be submitted as the processor
-            // ensures it has been signed by the service account
-            Transaction signedTransaction = TransactionSigner.INSTANCE.sign(transaction, serviceAccount.hdKeyPair());
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
-        }
     }
 
     @Test
@@ -232,10 +186,10 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Assertions.assertEquals(BuildStatusCode.SUCCESS, response.getStatus().getCode());
 
         Transaction signedTransaction = TransactionSigner.INSTANCE.sign(Transaction.deserialize(HexUtil.decodeHexString(response.getUnsignedTransaction())), serviceAccount.hdKeyPair());
-        Result<String> result = yaciCardanoContainer.getBackendService().getTransactionService().submitTransaction(signedTransaction.serialize());
+        Result<String> result = backendService.getTransactionService().submitTransaction(signedTransaction.serialize());
 
         if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
+            waitForTransaction(result.getValue());
         }
 
         Assertions.assertTrue(result.isSuccessful());
@@ -265,10 +219,10 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Assertions.assertEquals(BuildStatusCode.SUCCESS, response.getStatus().getCode());
 
         Transaction signedTransaction = TransactionSigner.INSTANCE.sign(Transaction.deserialize(HexUtil.decodeHexString(response.getUnsignedTransaction())), userAccount.hdKeyPair());
-        Result<String> result = yaciCardanoContainer.getBackendService().getTransactionService().submitTransaction(signedTransaction.serialize());
+        Result<String> result = backendService.getTransactionService().submitTransaction(signedTransaction.serialize());
 
         if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
+            waitForTransaction(result.getValue());
         }
 
         Assertions.assertTrue(result.isSuccessful());
@@ -298,7 +252,7 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
                 .as(ExecuteUserActionResponse.class);
 
         Assertions.assertEquals(HttpStatus.OK, executeUserActionResponse.getStatus());
-        Assertions.assertEquals(1, executeUserActionResponse.getState().getBootstrapDatums().size());
+        Assertions.assertEquals(2, executeUserActionResponse.getState().getBootstrapDatums().size());
         Assertions.assertEquals(1, executeUserActionResponse.getState().getStates().size());
 
         StateData stateDatum = executeUserActionResponse.getState().getStates().get(0);
@@ -337,10 +291,10 @@ public class UserStateControllerTest extends CardanoBlockchainTest {
         Assertions.assertEquals(BuildStatusCode.SUCCESS, response.getStatus().getCode());
 
         Transaction signedTransaction = TransactionSigner.INSTANCE.sign(Transaction.deserialize(HexUtil.decodeHexString(response.getUnsignedTransaction())), userAccount.hdKeyPair());
-        Result<String> result = yaciCardanoContainer.getBackendService().getTransactionService().submitTransaction(signedTransaction.serialize());
+        Result<String> result = backendService.getTransactionService().submitTransaction(signedTransaction.serialize());
 
         if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
+            waitForTransaction(result.getValue());
         }
 
         Assertions.assertTrue(result.isSuccessful());

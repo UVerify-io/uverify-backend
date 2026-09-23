@@ -58,7 +58,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.junit.jupiter.EnabledIf;
-import org.testcontainers.shaded.org.bouncycastle.util.encoders.Hex;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -120,7 +120,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
         this.connectedGoodsServiceWallet = Account.createFromMnemonic(Networks.testnet(), serviceWalletMnemonic);
 
         this.connectedGoodsService = connectedGoodsService;
-        this.connectedGoodsService.setBackendService(yaciCardanoContainer.getBackendService());
+        this.connectedGoodsService.setBackendService(backendService);
     }
 
     private void generateQRCode(String batchDir, String data, String filename) throws WriterException, IOException {
@@ -228,7 +228,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
                     HexUtil.decodeHexString(response.getUnsignedTransaction())), connectedGoodsServiceWallet);
 
             if (result.isSuccessful()) {
-                simulateYaciStoreBehavior(result.getValue());
+                waitForTransaction(result.getValue());
                 mintingTransactionHashes.put(batchDirs.get(i), result.getValue());
                 batchIds.put(batchDirs.get(i), response.getBatchId());
             }
@@ -276,7 +276,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
             Result<String> result = cardanoBlockchainService.submitTransaction(unsignedTransaction, facilitatorAccount);
 
             if (result.isSuccessful()) {
-                simulateYaciStoreBehavior(result.getValue());
+                waitForTransaction(result.getValue());
             }
 
             mintingTransactionHashes.put(batchDirs.get(i), result.getValue());
@@ -295,7 +295,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
     @Order(5)
     public void updateSocialHub() throws Exception {
         String mintingTransactionHash = mintingTransactionHashes.get(batchDirs.get(1));
-        Result<Utxo> output = yaciCardanoContainer.getUtxoService().getTxOutput(mintingTransactionHash, 0);
+        Result<Utxo> output = backendService.getUtxoService().getTxOutput(mintingTransactionHash, 0);
         Utxo utxo = output.getValue();
 
         SocialHubDatum socialHubDatum = new SocialHubDatumConverter().deserialize(utxo.getInlineDatum());
@@ -321,7 +321,7 @@ public class ConnectedGoodsExtensionTest extends CardanoBlockchainTest {
         Result<String> result = cardanoBlockchainService.submitTransaction(unsignedTransaction, facilitatorAccount);
 
         if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
+            waitForTransaction(result.getValue());
         }
 
         Assertions.assertTrue(result.isSuccessful());
