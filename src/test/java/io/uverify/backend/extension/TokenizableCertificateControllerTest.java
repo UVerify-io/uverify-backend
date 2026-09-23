@@ -25,7 +25,6 @@ import com.bloxbean.cardano.client.api.model.Utxo;
 import com.bloxbean.cardano.client.exception.AddressExcepion;
 import com.bloxbean.cardano.client.exception.CborDeserializationException;
 import com.bloxbean.cardano.client.exception.CborSerializationException;
-import com.bloxbean.cardano.client.transaction.TransactionSigner;
 import com.bloxbean.cardano.client.transaction.spec.Transaction;
 import com.bloxbean.cardano.client.util.HexUtil;
 import io.restassured.RestAssured;
@@ -33,18 +32,12 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.uverify.backend.CardanoBlockchainTest;
 import io.uverify.backend.dto.CertificateData;
-import io.uverify.backend.dto.BuildTransactionRequest;
-import io.uverify.backend.dto.BuildTransactionResponse;
-import io.uverify.backend.dto.ProxyInitResponse;
-import io.uverify.backend.enums.BuildStatusCode;
-import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.extension.dto.tokenizable.CertificateStatusResponse;
 import io.uverify.backend.extension.dto.tokenizable.TokenizableBuildRequest;
 import io.uverify.backend.extension.enums.ExtensionTransactionType;
 import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.extension.service.TokenizableCertificateService;
 import io.uverify.backend.extension.validators.tokenizable.TokenizableConfig;
-import io.uverify.backend.model.BootstrapDatum;
 import io.uverify.backend.repository.BootstrapDatumRepository;
 import io.uverify.backend.repository.CertificateRepository;
 import io.uverify.backend.repository.LibraryRepository;
@@ -117,77 +110,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
                 extensionManager, validatorHelper, libraryService, List.of());
         RestAssured.port = port;
         this.tokenizableCertificateService = tokenizableCertificateService;
-        this.tokenizableCertificateService.setBackendService(yaciCardanoContainer.getBackendService());
-    }
-
-    @Test
-    @Order(0)
-    public void initProxyContract() throws ApiException, CborSerializationException, CborDeserializationException, InterruptedException {
-        BuildTransactionRequest request = new BuildTransactionRequest();
-        request.setType(TransactionType.INIT);
-
-        ProxyInitResponse buildTransactionResponse = given()
-                .contentType(ContentType.JSON)
-                .body(request)
-                .when()
-                .post("/api/v1/transaction/build")
-                .then()
-                .extract()
-                .as(ProxyInitResponse.class);
-
-        Assertions.assertEquals(BuildStatusCode.SUCCESS, buildTransactionResponse.getStatus().getCode());
-
-        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(buildTransactionResponse.getUnsignedProxyTransaction()));
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-        Assertions.assertTrue(result.isSuccessful());
-
-        waitForTransaction(result.getValue());
-        validatorHelper.setProxy(buildTransactionResponse.getProxyTxHash(), buildTransactionResponse.getProxyOutputIndex());
-    }
-
-    @Test
-    @Order(1)
-    public void deployUVerifyContracts() throws CborSerializationException, ApiException, InterruptedException, CborDeserializationException, CborException, AddressExcepion {
-        BuildTransactionResponse buildTransactionResponse = given()
-                .contentType(ContentType.JSON)
-                .when()
-                .post("/api/v1/library/deploy/proxy")
-                .then()
-                .extract()
-                .as(BuildTransactionResponse.class);
-
-        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(buildTransactionResponse.getUnsignedTransaction()));
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-        Assertions.assertTrue(result.isSuccessful());
-
-        if (result.isSuccessful()) {
-            Transaction signedTransaction = TransactionSigner.INSTANCE.sign(transaction, serviceAccount.hdKeyPair());
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
-        }
-
-        Utxo proxyLibraryUtxo = libraryService.getProxyLibraryUtxo();
-        Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();
-
-        Assertions.assertNotNull(proxyLibraryUtxo);
-        Assertions.assertNotNull(stateLibraryUtxo);
-    }
-
-    @Test
-    @Order(2)
-    public void setupBootstrapToken() throws CborSerializationException, ApiException, InterruptedException, CborException, AddressExcepion {
-        BootstrapDatum bootstrapDatum = BootstrapDatum.generateFrom(List.of(feeReceiverAccount.baseAddress()));
-        bootstrapDatum.setTokenName("tc_test_bootstrap_token");
-        bootstrapDatum.setFeeInterval(3);
-        bootstrapDatum.setTransactionLimit(15);
-
-        Transaction transaction = cardanoBlockchainService.mintProxyBootstrapDatum(bootstrapDatum);
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-
-        if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue(), transaction);
-        }
-
-        Assertions.assertTrue(result.isSuccessful());
+        this.tokenizableCertificateService.setBackendService(backendService);
     }
 
     @Test
@@ -209,7 +132,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
     @Order(4)
     public void initTokenizableContract() throws ApiException, CborSerializationException, InterruptedException, CborException, AddressExcepion, CborDeserializationException {
         // Pick a UTxO from the service account to use as the one-shot init UTxO
-        Result<List<Utxo>> utxoResult = yaciCardanoContainer.getUtxoService().getUtxos(serviceAccount.baseAddress(), 100, 1);
+        Result<List<Utxo>> utxoResult = backendService.getUtxoService().getUtxos(serviceAccount.baseAddress(), 100, 1);
         Assertions.assertTrue(utxoResult.isSuccessful() && !utxoResult.getValue().isEmpty());
         Utxo selectedUtxo = utxoResult.getValue().get(0);
 
@@ -254,7 +177,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
         Assertions.assertTrue(result.isSuccessful());
 
         if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
+            waitForTransaction(result.getValue());
         }
     }
 
@@ -310,7 +233,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
         Assertions.assertTrue(result.isSuccessful());
 
         if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
+            waitForTransaction(result.getValue());
         }
     }
 
@@ -359,7 +282,7 @@ public class TokenizableCertificateControllerTest extends CardanoBlockchainTest 
         Assertions.assertTrue(result.isSuccessful());
 
         if (result.isSuccessful()) {
-            simulateYaciStoreBehavior(result.getValue());
+            waitForTransaction(result.getValue());
         }
     }
 

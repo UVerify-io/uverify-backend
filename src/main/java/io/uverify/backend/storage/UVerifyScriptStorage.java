@@ -25,6 +25,8 @@ import com.bloxbean.cardano.yaci.store.script.storage.impl.mapper.ScriptMapper;
 import com.bloxbean.cardano.yaci.store.script.storage.impl.repository.TxScriptRepository;
 import io.uverify.backend.service.CardanoBlockchainService;
 import io.uverify.backend.util.ValidatorHelper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -42,6 +44,9 @@ public class UVerifyScriptStorage extends TxScriptStorageImpl {
     @Autowired
     private final CardanoBlockchainService cardanoBlockchainService;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     public UVerifyScriptStorage(TxScriptRepository txScriptRepository, ScriptMapper scriptMapper, CardanoBlockchainService cardanoBlockchainService, ValidatorHelper validatorHelper) {
         super(txScriptRepository, scriptMapper);
         this.cardanoBlockchainService = cardanoBlockchainService;
@@ -55,5 +60,10 @@ public class UVerifyScriptStorage extends TxScriptStorageImpl {
     @Transactional
     public void handleScriptTransactionEvent(TransactionEvent transactionEvent) {
         cardanoBlockchainService.processTransactionEvent(transactionEvent);
+        // This listener runs inside the yaci-store block transaction. Its commit does not
+        // flush the JPA persistence context, so updates to already loaded entities (state
+        // datum countdown, bootstrap datum credentials) were silently lost unless a later
+        // query happened to trigger an auto flush.
+        entityManager.flush();
     }
 }

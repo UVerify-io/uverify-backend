@@ -31,12 +31,9 @@ import com.bloxbean.cardano.client.util.HexUtil;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.uverify.backend.CardanoBlockchainTest;
-import io.uverify.backend.dto.BuildTransactionRequest;
 import io.uverify.backend.dto.BuildTransactionResponse;
 import io.uverify.backend.dto.LibraryDeploymentResponse;
-import io.uverify.backend.dto.ProxyInitResponse;
 import io.uverify.backend.enums.BuildStatusCode;
-import io.uverify.backend.enums.TransactionType;
 import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.extension.service.FractionizedCertificateService;
 import io.uverify.backend.repository.BootstrapDatumRepository;
@@ -84,61 +81,6 @@ public class LibraryControllerTest extends CardanoBlockchainTest {
     }
 
     @Test
-    @Order(0)
-    public void initProxyContract() throws ApiException, CborSerializationException, CborDeserializationException, InterruptedException {
-        BuildTransactionRequest request = new BuildTransactionRequest();
-        request.setType(TransactionType.INIT);
-
-        ProxyInitResponse buildTransactionResponse = given()
-                .contentType(ContentType.JSON)
-                .body(request)
-                .when()
-                .post("/api/v1/transaction/build")
-                .then()
-                .extract()
-                .as(ProxyInitResponse.class);
-
-        Assertions.assertEquals(BuildStatusCode.SUCCESS, buildTransactionResponse.getStatus().getCode());
-
-        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(buildTransactionResponse.getUnsignedProxyTransaction()));
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-        Assertions.assertTrue(result.isSuccessful());
-
-        waitForTransaction(result.getValue());
-
-        validatorHelper.setProxy(buildTransactionResponse.getProxyTxHash(), buildTransactionResponse.getProxyOutputIndex());
-    }
-
-    @Test
-    @Order(1)
-    public void deployUVerifyContracts() throws CborSerializationException, ApiException, InterruptedException, CborDeserializationException, CborException, AddressExcepion {
-        BuildTransactionResponse buildTransactionResponse = given()
-                .contentType(ContentType.JSON)
-                .when()
-                .post("/api/v1/library/deploy/proxy")
-                .then()
-                .extract()
-                .as(BuildTransactionResponse.class);
-
-        Transaction transaction = Transaction.deserialize(HexUtil.decodeHexString(buildTransactionResponse.getUnsignedTransaction()));
-        Result<String> result = cardanoBlockchainService.submitTransaction(transaction, serviceAccount);
-        Assertions.assertTrue(result.isSuccessful());
-
-        if (result.isSuccessful()) {
-            // The signed transaction needs to be submitted as the processor
-            // ensures it has been signed by the service account
-            Transaction signedTransaction = TransactionSigner.INSTANCE.sign(transaction, serviceAccount.hdKeyPair());
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
-        }
-
-        Utxo proxyLibraryUtxo = libraryService.getProxyLibraryUtxo();
-        Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();
-
-        Assertions.assertNotNull(proxyLibraryUtxo);
-        Assertions.assertNotNull(stateLibraryUtxo);
-    }
-
-    @Test
     @Order(2)
     public void testUndeployActiveContract() {
         Utxo stateLibraryUtxo = libraryService.getStateLibraryUtxo();
@@ -183,7 +125,7 @@ public class LibraryControllerTest extends CardanoBlockchainTest {
             // The signed transaction needs to be submitted as the processor
             // ensures it has been signed by the service account
             Transaction signedTransaction = TransactionSigner.INSTANCE.sign(transaction, serviceAccount.hdKeyPair());
-            simulateYaciStoreBehavior(result.getValue(), signedTransaction);
+            waitForTransaction(result.getValue());
         }
     }
 

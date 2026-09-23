@@ -160,7 +160,7 @@ public class FaucetControllerTest extends CardanoBlockchainTest {
         // of merging them into one (mergeOutputs must be false in sendAda).
         waitForTransaction(claimResponse.getTxHash());
         Result<List<com.bloxbean.cardano.client.api.model.Utxo>> utxosResult =
-                yaciCardanoContainer.getBackendService().getUtxoService()
+                backendService.getUtxoService()
                         .getUtxos(userAccount.baseAddress(), 100, 1);
         long faucetUtxos = utxosResult.getValue().stream()
                 .filter(u -> u.getTxHash().equals(claimResponse.getTxHash()))
