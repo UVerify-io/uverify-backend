@@ -39,14 +39,14 @@ import java.util.List;
  * Serialized as {@code ConstrPlutusData(0, [...])}.
  */
 @Getter
-<span class="nc" id="L42">@Setter</span>
-<span class="nc" id="L43">@Builder</span>
-<span class="nc" id="L44">@AllArgsConstructor</span>
-<span class="nc" id="L45">@NoArgsConstructor</span>
+@Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class FractionizedConfig {
-<span class="nc" id="L47">    private String uverifyValidatorHash;</span>
-<span class="nc" id="L48">    private List&lt;String&gt; allowedInserters;</span>
-<span class="nc" id="L49">    private String deployer;</span>
+    private String uverifyValidatorHash;
+    private List&lt;String&gt; allowedInserters;
+    private String deployer;
 
     public static FractionizedConfig fromPlutusData(ConstrPlutusData constr) {
 <span class="nc" id="L52">        List&lt;PlutusData&gt; fields = constr.getData().getPlutusDataList();</span>
@@ -78,4 +78,4 @@ public class FractionizedConfig {
         );
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

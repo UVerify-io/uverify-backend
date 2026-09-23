@@ -31,21 +31,21 @@ import java.util.List;
 
 import static io.uverify.backend.util.CardanoUtils.fromCardanoNetwork;
 
-<span class="pc bnc" id="L34" title="All 78 branches missed.">@Data</span>
+@Data
 public class StateData {
-<span class="fc" id="L36">    private String id;</span>
-<span class="fc" id="L37">    private Integer fee;</span>
+    private String id;
+    private Integer fee;
     @JsonAlias({&quot;feeInterval&quot;, &quot;fee_interval&quot;})
-<span class="fc" id="L39">    private Integer feeInterval;</span>
+    private Integer feeInterval;
     @JsonAlias({&quot;feeReceiverAddresses&quot;, &quot;fee_receiver_addresses&quot;})
-<span class="fc" id="L41">    private List&lt;String&gt; feeReceiverAddresses;</span>
-<span class="fc" id="L42">    private Long ttl;</span>
+    private List&lt;String&gt; feeReceiverAddresses;
+    private Long ttl;
     @JsonAlias({&quot;batchSize&quot;, &quot;batch_size&quot;})
-<span class="fc" id="L44">    private Integer batchSize;</span>
-<span class="fc" id="L45">    private Integer countdown;</span>
+    private Integer batchSize;
+    private Integer countdown;
     @JsonAlias({&quot;bootstrapDatumName&quot;, &quot;bootstrap_datum_name&quot;})
-<span class="fc" id="L47">    private String bootstrapDatumName;</span>
-<span class="fc" id="L48">    private Integer version;</span>
+    private String bootstrapDatumName;
+    private Integer version;
 
     public static StateData fromStateDatumEntity(StateDatumEntity stateDatumEntity, CardanoNetwork network) {
 <span class="fc" id="L51">        StateData stateData = new StateData();</span>
@@ -65,4 +65,4 @@ public class StateData {
 <span class="fc" id="L65">        return stateData;</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -27,7 +27,7 @@ import java.util.Objects;
   }
 
   public SocialHubRedeemer fromPlutusData(ConstrPlutusData constr) {
-<span class="nc" id="L30">    var data = constr.getData();</span>
+<span class="nc" id="L30">    var constrData = constr.getData();</span>
 <span class="nc bnc" id="L31" title="All 2 branches missed.">    if(constr.getAlternative() == 0) {</span>
 <span class="nc" id="L32">      return SocialHubRedeemer.UPDATE;</span>
     }
@@ -70,4 +70,4 @@ import java.util.Objects;
 <span class="nc" id="L70">    return deserialize(bytes);</span>
   }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -24,24 +24,24 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
-<span class="nc bnc" id="L27" title="All 46 branches missed.">@Data</span>
-<span class="nc" id="L28">@NoArgsConstructor</span>
+@Data
+@NoArgsConstructor
 @Entity
 @Table(name = &quot;aym_stripe_purchase&quot;)
 public class AymStripePurchaseEntity {
 
     @Id
     @Column(name = &quot;session_id&quot;)
-<span class="nc" id="L35">    private String sessionId;</span>
+    private String sessionId;
 
     @Column(name = &quot;public_key&quot;, length = 64, nullable = false)
-<span class="nc" id="L38">    private String publicKey;</span>
+    private String publicKey;
 
     @Column(name = &quot;profile_id&quot;, nullable = false)
-<span class="nc" id="L41">    private String profileId;</span>
+    private String profileId;
 
     @Column(name = &quot;content_id&quot;, nullable = false)
-<span class="nc" id="L44">    private String contentId;</span>
+    private String contentId;
 
 <span class="nc" id="L46">    @Column(name = &quot;verified_at&quot;, nullable = false)</span>
 <span class="nc" id="L47">    private Instant verifiedAt = Instant.now();</span>
@@ -53,4 +53,4 @@ public class AymStripePurchaseEntity {
 <span class="nc" id="L53">        this.contentId = contentId;</span>
 <span class="nc" id="L54">    }</span>
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

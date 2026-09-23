@@ -43,7 +43,7 @@ import java.util.List;
 
 @Service
 <span class="fc" id="L45">@Slf4j</span>
-<span class="fc" id="L46">@AllArgsConstructor</span>
+@AllArgsConstructor
 public class UVerifyTransactionService {
 
     @Autowired
@@ -103,15 +103,15 @@ public class UVerifyTransactionService {
     public ProxyInitResponse buildInitProxyTx() {
         ProxyInitResponse proxyInitResponse;
         try {
-<span class="fc" id="L106">            proxyInitResponse = cardanoBlockchainService.initProxyContract();</span>
+<span class="nc" id="L106">            proxyInitResponse = cardanoBlockchainService.initProxyContract();</span>
 <span class="nc" id="L107">        } catch (ApiException | CborSerializationException e) {</span>
 <span class="nc" id="L108">            proxyInitResponse = ProxyInitResponse.builder()</span>
 <span class="nc" id="L109">                    .status(BuildStatus.builder()</span>
 <span class="nc" id="L110">                            .code(BuildStatusCode.ERROR)</span>
 <span class="nc" id="L111">                            .message(e.getMessage())</span>
 <span class="nc" id="L112">                            .build()).build();</span>
-<span class="fc" id="L113">        }</span>
-<span class="fc" id="L114">        return proxyInitResponse;</span>
+<span class="nc" id="L113">        }</span>
+<span class="nc" id="L114">        return proxyInitResponse;</span>
     }
 
     public BuildTransactionResponse buildBootstrapDatum(BootstrapData bootstrapData) {
@@ -191,4 +191,4 @@ public class UVerifyTransactionService {
         }
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

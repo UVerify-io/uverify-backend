@@ -24,8 +24,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
-<span class="nc bnc" id="L27" title="All 46 branches missed.">@Data</span>
-<span class="nc" id="L28">@NoArgsConstructor</span>
+@Data
+@NoArgsConstructor
 @Entity
 @Table(name = &quot;aym_completion_certificate&quot;)
 @IdClass(AymUserProfileId.class)
@@ -33,20 +33,20 @@ public class AymCompletionCertEntity {
 
     @Id
     @Column(name = &quot;public_key&quot;, length = 64)
-<span class="nc" id="L36">    private String publicKey;</span>
+    private String publicKey;
 
     @Id
     @Column(name = &quot;profile_id&quot;)
-<span class="nc" id="L40">    private String profileId;</span>
+    private String profileId;
 
     @Column(name = &quot;cert_hash&quot;, length = 64, nullable = false)
-<span class="nc" id="L43">    private String certHash;</span>
+    private String certHash;
 
     @Column(name = &quot;verify_url&quot;, length = 2000, nullable = false)
-<span class="nc" id="L46">    private String verifyUrl;</span>
+    private String verifyUrl;
 
     @Column(name = &quot;issued_at&quot;, nullable = false)
-<span class="nc" id="L49">    private Instant issuedAt;</span>
+    private Instant issuedAt;
 
 <span class="nc" id="L51">    public AymCompletionCertEntity(String publicKey, String profileId, String certHash, String verifyUrl) {</span>
 <span class="nc" id="L52">        this.publicKey = publicKey;</span>
@@ -56,4 +56,4 @@ public class AymCompletionCertEntity {
 <span class="nc" id="L56">        this.issuedAt = Instant.now();</span>
 <span class="nc" id="L57">    }</span>
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

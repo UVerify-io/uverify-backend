@@ -51,29 +51,29 @@ import java.util.Optional;
     }
 
     public static Long getLatestBlockNumber(BackendService backendService) throws ApiException {
-<span class="fc" id="L54">        Result&lt;Block&gt; latestBlock = backendService.getBlockService().getLatestBlock();</span>
-<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        if (latestBlock.isSuccessful()) {</span>
-<span class="fc" id="L56">            return latestBlock.getValue().getHeight();</span>
+<span class="nc" id="L54">        Result&lt;Block&gt; latestBlock = backendService.getBlockService().getLatestBlock();</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        if (latestBlock.isSuccessful()) {</span>
+<span class="nc" id="L56">            return latestBlock.getValue().getHeight();</span>
         } else {
 <span class="nc" id="L58">            throw new ApiException(&quot;Failed to get latest block: &quot; + latestBlock.getResponse());</span>
         }
     }
 
     public static String getLatestBlockHash(BackendService backendService) throws ApiException {
-<span class="fc" id="L63">        Result&lt;Block&gt; latestBlock = backendService.getBlockService().getLatestBlock();</span>
-<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        if (latestBlock.isSuccessful()) {</span>
-<span class="fc" id="L65">            return latestBlock.getValue().getHash();</span>
+<span class="nc" id="L63">        Result&lt;Block&gt; latestBlock = backendService.getBlockService().getLatestBlock();</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if (latestBlock.isSuccessful()) {</span>
+<span class="nc" id="L65">            return latestBlock.getValue().getHash();</span>
         } else {
 <span class="nc" id="L67">            throw new ApiException(&quot;Failed to get latest block: &quot; + latestBlock.getResponse());</span>
         }
     }
 
     public static Network fromCardanoNetwork(CardanoNetwork cardanoNetwork) {
-<span class="pc bpc" id="L72" title="3 of 4 branches missed.">        return switch (cardanoNetwork) {</span>
+<span class="pc bpc" id="L72" title="2 of 3 branches missed.">        return switch (cardanoNetwork) {</span>
 <span class="nc" id="L73">            case MAINNET -&gt; Networks.mainnet();</span>
 <span class="fc" id="L74">            case PREPROD, CUSTOM -&gt; Networks.preprod();</span>
 <span class="nc" id="L75">            case PREVIEW -&gt; Networks.preview();</span>
         };
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

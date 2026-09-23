@@ -32,15 +32,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-<span class="fc" id="L35">@Setter</span>
-<span class="pc" id="L36">@Builder</span>
-<span class="fc" id="L37">@NoArgsConstructor</span>
-<span class="fc" id="L38">@AllArgsConstructor</span>
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UVerifyCertificate {
-<span class="fc" id="L40">    private String hash;</span>
-<span class="fc" id="L41">    private String algorithm;</span>
-<span class="fc" id="L42">    private String issuer;</span>
-<span class="fc" id="L43">    private String extra;</span>
+    private String hash;
+    private String algorithm;
+    private String issuer;
+    private String extra;
 
     public static UVerifyCertificate fromCertificateData(CertificateData certificateData, String address) {
 <span class="fc" id="L46">        return UVerifyCertificate.builder()</span>
@@ -142,4 +142,4 @@ public class UVerifyCertificate {
 <span class="fc" id="L142">        return certificateData.toString();</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

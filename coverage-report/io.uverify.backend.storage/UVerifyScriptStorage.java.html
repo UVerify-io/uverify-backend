@@ -25,6 +25,8 @@ import com.bloxbean.cardano.yaci.store.script.storage.impl.mapper.ScriptMapper;
 import com.bloxbean.cardano.yaci.store.script.storage.impl.repository.TxScriptRepository;
 import io.uverify.backend.service.CardanoBlockchainService;
 import io.uverify.backend.util.ValidatorHelper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -34,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-<span class="fc" id="L37">@Slf4j</span>
+<span class="fc" id="L39">@Slf4j</span>
 @SuppressWarnings(&quot;unused&quot;)
 @Component
 @Profile(&quot;!disable-indexer&quot;)
@@ -42,19 +44,27 @@ public class UVerifyScriptStorage extends TxScriptStorageImpl {
     @Autowired
     private final CardanoBlockchainService cardanoBlockchainService;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     public UVerifyScriptStorage(TxScriptRepository txScriptRepository, ScriptMapper scriptMapper, CardanoBlockchainService cardanoBlockchainService, ValidatorHelper validatorHelper) {
-<span class="fc" id="L46">        super(txScriptRepository, scriptMapper);</span>
-<span class="fc" id="L47">        this.cardanoBlockchainService = cardanoBlockchainService;</span>
-<span class="fc" id="L48">    }</span>
+<span class="fc" id="L51">        super(txScriptRepository, scriptMapper);</span>
+<span class="fc" id="L52">        this.cardanoBlockchainService = cardanoBlockchainService;</span>
+<span class="fc" id="L53">    }</span>
 
     @Override
     public void saveAll(List&lt;TxScript&gt; txScripts) {
-<span class="nc" id="L52">    }</span>
+<span class="fc" id="L57">    }</span>
 
     @EventListener
     @Transactional
     public void handleScriptTransactionEvent(TransactionEvent transactionEvent) {
-<span class="nc" id="L57">        cardanoBlockchainService.processTransactionEvent(transactionEvent);</span>
-<span class="nc" id="L58">    }</span>
+<span class="fc" id="L62">        cardanoBlockchainService.processTransactionEvent(transactionEvent);</span>
+        // This listener runs inside the yaci-store block transaction. Its commit does not
+        // flush the JPA persistence context, so updates to already loaded entities (state
+        // datum countdown, bootstrap datum credentials) were silently lost unless a later
+        // query happened to trigger an auto flush.
+<span class="fc" id="L67">        entityManager.flush();</span>
+<span class="fc" id="L68">    }</span>
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -97,14 +97,14 @@ import org.springframework.web.bind.annotation.*;
 <span class="fc bfc" id="L97" title="All 2 branches covered.">            if (request.getType().equals(TransactionType.DEFAULT)) {</span>
 <span class="pc bpc" id="L98" title="1 of 2 branches missed.">                String bootstrapDatumName = request.getBootstrapDatum() != null ? request.getBootstrapDatum().getName() : null;</span>
 <span class="fc" id="L99">                return toResponse(transactionService.buildUVerifyTransaction(request.getCertificates(), request.getAddress(), bootstrapDatumName));</span>
-<span class="fc bfc" id="L100" title="All 2 branches covered.">            } else if (request.getType().equals(TransactionType.BOOTSTRAP)) {</span>
+<span class="pc bpc" id="L100" title="1 of 2 branches missed.">            } else if (request.getType().equals(TransactionType.BOOTSTRAP)) {</span>
 <span class="fc" id="L101">                return toResponse(transactionService.buildBootstrapDatum(request.getBootstrapDatum()));</span>
-<span class="pc bpc" id="L102" title="1 of 2 branches missed.">            } else if (request.getType().equals(TransactionType.CUSTOM)) {</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">            } else if (request.getType().equals(TransactionType.CUSTOM)) {</span>
 <span class="nc" id="L103">                return toResponse(transactionService.buildCustomTransaction(request.getCertificates(), request.getAddress(), request.getBootstrapDatum().getName()));</span>
-<span class="pc bpc" id="L104" title="1 of 2 branches missed.">            } else if (request.getType().equals(TransactionType.INIT)) {</span>
-<span class="fc" id="L105">                ProxyInitResponse proxyInitResponse = transactionService.buildInitProxyTx();</span>
-<span class="pc bpc" id="L106" title="1 of 2 branches missed.">                if (proxyInitResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
-<span class="fc" id="L107">                    return ResponseEntity.ok(proxyInitResponse);</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">            } else if (request.getType().equals(TransactionType.INIT)) {</span>
+<span class="nc" id="L105">                ProxyInitResponse proxyInitResponse = transactionService.buildInitProxyTx();</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">                if (proxyInitResponse.getStatus().getCode().equals(BuildStatusCode.SUCCESS)) {</span>
+<span class="nc" id="L107">                    return ResponseEntity.ok(proxyInitResponse);</span>
                 } else {
 <span class="nc" id="L109">                    return ResponseEntity.badRequest().body(proxyInitResponse);</span>
                 }
@@ -141,4 +141,4 @@ import org.springframework.web.bind.annotation.*;
         }
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

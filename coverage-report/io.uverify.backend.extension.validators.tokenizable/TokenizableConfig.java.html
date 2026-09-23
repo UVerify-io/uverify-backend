@@ -41,18 +41,18 @@ import java.util.List;
  * Serialized as {@code ConstrPlutusData(0, [...])}.
  */
 @Getter
-<span class="nc" id="L44">@Setter</span>
-<span class="nc" id="L45">@Builder</span>
-<span class="nc" id="L46">@AllArgsConstructor</span>
-<span class="nc" id="L47">@NoArgsConstructor</span>
+@Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class TokenizableConfig {
-<span class="nc" id="L49">    private String uverifyValidatorHash;</span>
-<span class="nc" id="L50">    private List&lt;String&gt; allowedInserters;</span>
-<span class="nc" id="L51">    private String deployer;</span>
+    private String uverifyValidatorHash;
+    private List&lt;String&gt; allowedInserters;
+    private String deployer;
     /**
      * Hex-encoded script hash; null means None (no CIP-68 support).
      */
-<span class="nc" id="L55">    private String cip68ScriptAddress;</span>
+    private String cip68ScriptAddress;
 
     public static TokenizableConfig fromPlutusData(ConstrPlutusData constr) {
 <span class="nc" id="L58">        List&lt;PlutusData&gt; fields = constr.getData().getPlutusDataList();</span>
@@ -96,4 +96,4 @@ public class TokenizableConfig {
         );
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

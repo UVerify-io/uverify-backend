@@ -35,19 +35,19 @@ import java.util.Optional;
 import static io.uverify.backend.util.ValidatorUtils.*;
 
 @Getter
-<span class="fc" id="L38">@Setter</span>
-<span class="fc" id="L39">@AllArgsConstructor</span>
-<span class="fc" id="L40">@NoArgsConstructor</span>
-<span class="nc" id="L41">@Builder</span>
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class BootstrapDatum {
-<span class="fc" id="L43">    private List&lt;byte[]&gt; allowedCredentials;</span>
-<span class="fc" id="L44">    private String tokenName;</span>
-<span class="fc" id="L45">    private Integer fee;</span>
-<span class="fc" id="L46">    private Integer feeInterval;</span>
-<span class="fc" id="L47">    private List&lt;byte[]&gt; feeReceivers;</span>
-<span class="fc" id="L48">    private Long ttl;</span>
-<span class="fc" id="L49">    private Integer transactionLimit;</span>
-<span class="fc" id="L50">    private Integer batchSize;</span>
+    private List&lt;byte[]&gt; allowedCredentials;
+    private String tokenName;
+    private Integer fee;
+    private Integer feeInterval;
+    private List&lt;byte[]&gt; feeReceivers;
+    private Long ttl;
+    private Integer transactionLimit;
+    private Integer batchSize;
 
     public static BootstrapDatum fromBootstrapData(BootstrapData bootstrapData) {
 <span class="fc" id="L53">        return new BootstrapDatum(</span>
@@ -177,4 +177,4 @@ public class BootstrapDatum {
         );
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

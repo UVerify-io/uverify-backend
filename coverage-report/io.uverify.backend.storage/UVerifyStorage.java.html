@@ -28,6 +28,8 @@ import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.service.CardanoBlockchainService;
 import io.uverify.backend.service.FaucetService;
 import io.uverify.backend.util.ValidatorHelper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +44,7 @@ import java.util.List;
 import java.util.Set;
 
 @Component
-<span class="fc" id="L45">@Slf4j</span>
+<span class="fc" id="L47">@Slf4j</span>
 @SuppressWarnings(&quot;unused&quot;)
 @Profile(&quot;!disable-indexer&quot;)
 public class UVerifyStorage extends UtxoStorageImpl {
@@ -59,68 +61,74 @@ public class UVerifyStorage extends UtxoStorageImpl {
     @Autowired(required = false)
     private FaucetService faucetService;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private String proxyContractAddress;
     private String proxyPolicyId;
 
     public UVerifyStorage(UtxoRepository utxoRepository, TxInputRepository spentOutputRepository, DSLContext dsl, UtxoCache utxoCache, PlatformTransactionManager transactionManager, CardanoBlockchainService cardanoBlockchainService, ExtensionManager extensionManager, ValidatorHelper validatorHelper) {
-<span class="fc" id="L66">        super(utxoRepository, spentOutputRepository, dsl, utxoCache, transactionManager);</span>
-<span class="fc" id="L67">        this.cardanoBlockchainService = cardanoBlockchainService;</span>
-<span class="fc" id="L68">        this.extensionManager = extensionManager;</span>
-<span class="fc" id="L69">        this.validatorHelper = validatorHelper;</span>
-<span class="fc" id="L70">    }</span>
+<span class="fc" id="L71">        super(utxoRepository, spentOutputRepository, dsl, utxoCache, transactionManager);</span>
+<span class="fc" id="L72">        this.cardanoBlockchainService = cardanoBlockchainService;</span>
+<span class="fc" id="L73">        this.extensionManager = extensionManager;</span>
+<span class="fc" id="L74">        this.validatorHelper = validatorHelper;</span>
+<span class="fc" id="L75">    }</span>
 
     @Override
     public void saveUnspent(List&lt;AddressUtxo&gt; addressUtxoList) {
-<span class="nc" id="L74">        List&lt;AddressUtxo&gt; processedByUVerifyCore = cardanoBlockchainService.processAddressUtxos(addressUtxoList);</span>
-<span class="nc" id="L75">        List&lt;AddressUtxo&gt; processedByExtensions = extensionManager.processAddressUtxos(addressUtxoList);</span>
+<span class="fc" id="L79">        List&lt;AddressUtxo&gt; processedByUVerifyCore = cardanoBlockchainService.processAddressUtxos(addressUtxoList);</span>
+<span class="fc" id="L80">        List&lt;AddressUtxo&gt; processedByExtensions = extensionManager.processAddressUtxos(addressUtxoList);</span>
 
-<span class="nc" id="L77">        List&lt;AddressUtxo&gt; processedByUVerifyProxy = hasBeenProcessedByUVerifyProxy(addressUtxoList);</span>
+<span class="fc" id="L82">        List&lt;AddressUtxo&gt; processedByUVerifyProxy = hasBeenProcessedByUVerifyProxy(addressUtxoList);</span>
 
-<span class="nc" id="L79">        Set&lt;AddressUtxo&gt; allProcessedUtxos = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L80">        allProcessedUtxos.addAll(processedByUVerifyCore);</span>
-<span class="nc" id="L81">        allProcessedUtxos.addAll(processedByExtensions);</span>
-<span class="nc" id="L82">        allProcessedUtxos.addAll(processedByUVerifyProxy);</span>
+<span class="fc" id="L84">        Set&lt;AddressUtxo&gt; allProcessedUtxos = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L85">        allProcessedUtxos.addAll(processedByUVerifyCore);</span>
+<span class="fc" id="L86">        allProcessedUtxos.addAll(processedByExtensions);</span>
+<span class="fc" id="L87">        allProcessedUtxos.addAll(processedByUVerifyProxy);</span>
 
-<span class="nc bnc" id="L84" title="All 2 branches missed.">        if (faucetService != null) {</span>
-<span class="nc" id="L85">            String faucetAddress = faucetService.getFaucetAddress();</span>
-<span class="nc" id="L86">            addressUtxoList.stream()</span>
-<span class="nc" id="L87">                    .filter(addressUtxo -&gt; faucetAddress.equals(addressUtxo.getOwnerAddr()))</span>
-<span class="nc" id="L88">                    .forEach(allProcessedUtxos::add);</span>
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">        if (faucetService != null) {</span>
+<span class="fc" id="L90">            String faucetAddress = faucetService.getFaucetAddress();</span>
+<span class="fc" id="L91">            addressUtxoList.stream()</span>
+<span class="fc" id="L92">                    .filter(addressUtxo -&gt; faucetAddress.equals(addressUtxo.getOwnerAddr()))</span>
+<span class="fc" id="L93">                    .forEach(allProcessedUtxos::add);</span>
         }
 
-<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (!allProcessedUtxos.isEmpty()) {</span>
-<span class="nc" id="L92">            super.saveUnspent(new ArrayList&lt;&gt;(allProcessedUtxos));</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        if (!allProcessedUtxos.isEmpty()) {</span>
+<span class="fc" id="L97">            super.saveUnspent(new ArrayList&lt;&gt;(allProcessedUtxos));</span>
         }
-<span class="nc" id="L94">    }</span>
+        // Same reason as in UVerifyScriptStorage: the surrounding block transaction does not
+        // flush the JPA persistence context on commit.
+<span class="fc" id="L101">        entityManager.flush();</span>
+<span class="fc" id="L102">    }</span>
 
     private List&lt;AddressUtxo&gt; hasBeenProcessedByUVerifyProxy(List&lt;AddressUtxo&gt; addressUtxoList) {
-<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (this.proxyContractAddress == null) {</span>
-<span class="nc" id="L98">            this.proxyContractAddress = validatorHelper.getProxyContractAddress();</span>
+<span class="fc bfc" id="L105" title="All 2 branches covered.">        if (this.proxyContractAddress == null) {</span>
+<span class="fc" id="L106">            this.proxyContractAddress = validatorHelper.getProxyContractAddress();</span>
         }
 
-<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (this.proxyPolicyId == null) {</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        if (this.proxyPolicyId == null) {</span>
             try {
-<span class="nc" id="L103">                this.proxyPolicyId = validatorHelper.getParameterizedProxyContract().getPolicyId();</span>
-<span class="nc" id="L104">            } catch (Exception e) {</span>
-<span class="nc" id="L105">                log.error(&quot;Error setting proxy policy ID&quot;, e);</span>
-<span class="nc" id="L106">            }</span>
+<span class="fc" id="L111">                this.proxyPolicyId = validatorHelper.getParameterizedProxyContract().getPolicyId();</span>
+<span class="nc" id="L112">            } catch (Exception e) {</span>
+<span class="nc" id="L113">                log.error(&quot;Error setting proxy policy ID&quot;, e);</span>
+<span class="fc" id="L114">            }</span>
         }
 
-<span class="nc" id="L109">        return addressUtxoList.stream().filter(addressUtxo -&gt;</span>
-<span class="nc bnc" id="L110" title="All 2 branches missed.">                addressUtxo.getOwnerAddr().equals(proxyContractAddress) &amp;&amp;</span>
-<span class="nc bnc" id="L111" title="All 6 branches missed.">                        addressUtxo.getAmounts().stream().anyMatch(amount -&gt; amount.getPolicyId() != null &amp;&amp; amount.getPolicyId().equals(proxyPolicyId))).toList();</span>
+<span class="fc" id="L117">        return addressUtxoList.stream().filter(addressUtxo -&gt;</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">                addressUtxo.getOwnerAddr().equals(proxyContractAddress) &amp;&amp;</span>
+<span class="pc bnc" id="L119" title="All 6 branches missed.">                        addressUtxo.getAmounts().stream().anyMatch(amount -&gt; amount.getPolicyId() != null &amp;&amp; amount.getPolicyId().equals(proxyPolicyId))).toList();</span>
     }
 
     @Override
     public void saveSpent(List&lt;TxInput&gt; inputs) {
-<span class="nc" id="L116">    }</span>
+<span class="fc" id="L124">    }</span>
 
     @Transactional
     @Override
     public int deleteUnspentBySlotGreaterThan(Long slot) {
-<span class="nc" id="L121">        cardanoBlockchainService.handleRollbackToSlot(slot);</span>
-<span class="nc" id="L122">        extensionManager.handleRollbackToSlot(slot);</span>
-<span class="nc" id="L123">        return 0;</span>
+<span class="fc" id="L129">        cardanoBlockchainService.handleRollbackToSlot(slot);</span>
+<span class="fc" id="L130">        extensionManager.handleRollbackToSlot(slot);</span>
+<span class="fc" id="L131">        return 0;</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

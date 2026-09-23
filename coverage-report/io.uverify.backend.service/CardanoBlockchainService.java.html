@@ -1036,8 +1036,8 @@ public class CardanoBlockchainService {
 <span class="fc" id="L1036">            final String libraryContractAddress = libraryService.getLibraryAddress();</span>
 <span class="pc bpc" id="L1037" title="1 of 4 branches missed.">            boolean hasLibraryInteraction = transaction.getBody().getOutputs() != null &amp;&amp; transaction.getBody().getOutputs().stream().anyMatch(utxo -&gt; utxo.getAddress().equals(libraryContractAddress));</span>
 
-<span class="pc bpc" id="L1039" title="2 of 6 branches missed.">            if (!hasLibraryInteraction &amp;&amp; (transaction.getWitnesses().getRedeemers() == null || transaction.getWitnesses().getRedeemers().size() == 0))</span>
-<span class="nc" id="L1040">                continue;</span>
+<span class="pc bpc" id="L1039" title="1 of 6 branches missed.">            if (!hasLibraryInteraction &amp;&amp; (transaction.getWitnesses().getRedeemers() == null || transaction.getWitnesses().getRedeemers().size() == 0))</span>
+<span class="fc" id="L1040">                continue;</span>
 
 <span class="fc" id="L1042">            final String proxyTxHash = validatorHelper.getProxyTransactionHash();</span>
 <span class="fc" id="L1043">            final Integer proxyOutputIndex = validatorHelper.getProxyOutputIndex();</span>
@@ -1089,9 +1089,9 @@ public class CardanoBlockchainService {
 <span class="fc" id="L1089">                Optional&lt;StateRedeemer&gt; stateRedeemer = matchedStateContractAddress.flatMap(rewardAddress -&gt;</span>
 <span class="fc" id="L1090">                        findWithdrawalRedeemer(withdrawals, rewardRedeemers, new Address(HexUtil.decodeHexString(rewardAddress))));</span>
 
-<span class="pc bpc" id="L1092" title="1 of 2 branches missed.">                if (stateRedeemer.isEmpty()) {</span>
-<span class="nc" id="L1093">                    log.warn(&quot;No StateRedeemer found for withdrawal in tx: {}&quot;, transaction.getTxHash());</span>
-<span class="nc" id="L1094">                    continue;</span>
+<span class="fc bfc" id="L1092" title="All 2 branches covered.">                if (stateRedeemer.isEmpty()) {</span>
+<span class="fc" id="L1093">                    log.warn(&quot;No StateRedeemer found for withdrawal in tx: {}&quot;, transaction.getTxHash());</span>
+<span class="fc" id="L1094">                    continue;</span>
                 }
 
 <span class="pc bpc" id="L1097" title="1 of 2 branches missed.">                if (proxyRedeemer.equals(ProxyRedeemer.USER_ACTION)) {</span>
@@ -1237,4 +1237,4 @@ public class CardanoBlockchainService {
 <span class="fc" id="L1237">        return submitTransaction(signedTx);</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

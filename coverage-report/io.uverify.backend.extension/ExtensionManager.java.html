@@ -51,8 +51,8 @@ import java.util.stream.Collectors;
     }
 
     public void handleRollbackToSlot(long slot) {
-<span class="nc" id="L54">        extensions.forEach(extension -&gt; extension.handleRollbackToSlot(slot));</span>
-<span class="nc" id="L55">    }</span>
+<span class="fc" id="L54">        extensions.forEach(extension -&gt; extension.handleRollbackToSlot(slot));</span>
+<span class="fc" id="L55">    }</span>
 
     public void addUsageStatistics(UsageStatistics usageStatistics) {
 <span class="fc" id="L58">        extensions.forEach(extension -&gt; extension.addUsageStatistics(usageStatistics));</span>
@@ -66,4 +66,4 @@ import java.util.stream.Collectors;
 <span class="fc" id="L66">        return total;</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

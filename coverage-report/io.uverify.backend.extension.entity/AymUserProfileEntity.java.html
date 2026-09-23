@@ -24,8 +24,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
-<span class="nc bnc" id="L27" title="All 46 branches missed.">@Data</span>
-<span class="nc" id="L28">@NoArgsConstructor</span>
+@Data
+@NoArgsConstructor
 @Entity
 @Table(name = &quot;aym_user_profile&quot;)
 @IdClass(AymUserProfileId.class)
@@ -33,17 +33,17 @@ public class AymUserProfileEntity {
 
     @Id
     @Column(name = &quot;public_key&quot;, length = 64)
-<span class="nc" id="L36">    private String publicKey;</span>
+    private String publicKey;
 
     @Id
     @Column(name = &quot;profile_id&quot;)
-<span class="nc" id="L40">    private String profileId;</span>
+    private String profileId;
 
     @Column(name = &quot;salt&quot;, length = 64, nullable = false)
-<span class="nc" id="L43">    private String salt;</span>
+    private String salt;
 
     @Column(name = &quot;profile_hash&quot;, length = 56)
-<span class="nc" id="L46">    private String profileHash;</span>
+    private String profileHash;
 
 <span class="nc" id="L48">    @Column(name = &quot;created_at&quot;, nullable = false)</span>
 <span class="nc" id="L49">    private Instant createdAt = Instant.now();</span>
@@ -55,4 +55,4 @@ public class AymUserProfileEntity {
 <span class="nc" id="L55">        this.profileHash = profileHash;</span>
 <span class="nc" id="L56">    }</span>
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -27,80 +27,80 @@ import java.util.Base64;
 import java.util.Optional;
 
 @Getter
-<span class="pc" id="L30">@Setter</span>
-<span class="fc" id="L31">@AllArgsConstructor</span>
-<span class="fc" id="L32">@NoArgsConstructor</span>
-<span class="pc" id="L33">@Builder</span>
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 @Entity
 @Table(name = &quot;social_hub&quot;)
 public class SocialHubEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-<span class="nc" id="L39">    private Long id;</span>
+    private Long id;
 
     @Column(name = &quot;password&quot;, nullable = false)
-<span class="fc" id="L42">    private String password;</span>
+    private String password;
 
     @Column(name = &quot;owner&quot;)
-<span class="fc" id="L45">    private String owner;</span>
+    private String owner;
 
     @Column(name = &quot;picture&quot;)
-<span class="fc" id="L48">    private String picture;</span>
+    private String picture;
 
     @Column(name = &quot;name&quot;)
-<span class="fc" id="L51">    private String name;</span>
+    private String name;
 
     @Column(name = &quot;subtitle&quot;)
-<span class="fc" id="L54">    private String subtitle;</span>
+    private String subtitle;
 
     @Column(name = &quot;x&quot;)
-<span class="fc" id="L57">    private String x;</span>
+    private String x;
 
     @Column(name = &quot;telegram&quot;)
-<span class="fc" id="L60">    private String telegram;</span>
+    private String telegram;
 
     @Column(name = &quot;instagram&quot;)
-<span class="fc" id="L63">    private String instagram;</span>
+    private String instagram;
 
     @Column(name = &quot;discord&quot;)
-<span class="fc" id="L66">    private String discord;</span>
+    private String discord;
 
     @Column(name = &quot;reddit&quot;)
-<span class="fc" id="L69">    private String reddit;</span>
+    private String reddit;
 
     @Column(name = &quot;youtube&quot;)
-<span class="fc" id="L72">    private String youtube;</span>
+    private String youtube;
 
     @Column(name = &quot;linkedin&quot;)
-<span class="fc" id="L75">    private String linkedin;</span>
+    private String linkedin;
 
     @Column(name = &quot;github&quot;)
-<span class="fc" id="L78">    private String github;</span>
+    private String github;
 
     @Column(name = &quot;website&quot;)
-<span class="fc" id="L81">    private String website;</span>
+    private String website;
 
     @Column(name = &quot;adahandle&quot;)
-<span class="fc" id="L84">    private String adaHandle;</span>
+    private String adaHandle;
 
     @Column(name = &quot;email&quot;)
-<span class="fc" id="L87">    private String email;</span>
+    private String email;
 
     @Column(name = &quot;asset_id&quot;, nullable = false)
-<span class="fc" id="L90">    private String assetId;</span>
+    private String assetId;
 
     @Column(name = &quot;transaction_id&quot;, nullable = false)
-<span class="nc" id="L93">    private String transactionId;</span>
+    private String transactionId;
 
     @Column(name = &quot;output_index&quot;, nullable = false)
-<span class="nc" id="L96">    private Integer outputIndex;</span>
+    private Integer outputIndex;
 
     @Column(name = &quot;creation_slot&quot;, nullable = false)
-<span class="nc" id="L99">    private Long creationSlot;</span>
+    private Long creationSlot;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = &quot;batch_id&quot;, referencedColumnName = &quot;id&quot;)
-<span class="fc" id="L103">    private ConnectedGoodEntity connectedGood;</span>
+    private ConnectedGoodEntity connectedGood;
 
     private static String fieldToString(byte[] data) {
 <span class="fc bfc" id="L106" title="All 2 branches covered.">        if (data == null) {</span>
@@ -167,4 +167,4 @@ public class SocialHubEntity {
 <span class="fc" id="L167">                .build();</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -25,24 +25,24 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.util.UUID;
 
-<span class="nc bnc" id="L28" title="All 38 branches missed.">@Data</span>
-<span class="nc" id="L29">@NoArgsConstructor</span>
+@Data
+@NoArgsConstructor
 @Entity
 @Table(name = &quot;aym_redeemed_voucher&quot;)
 public class AymRedeemedVoucherEntity {
 
     @Id
     @Column(columnDefinition = &quot;UUID&quot;)
-<span class="nc" id="L36">    private UUID id;</span>
+    private UUID id;
 
     @Column(name = &quot;content_id&quot;, nullable = false)
-<span class="nc" id="L39">    private String contentId;</span>
+    private String contentId;
 
 <span class="nc" id="L41">    @Column(name = &quot;redeemed_at&quot;, nullable = false)</span>
 <span class="nc" id="L42">    private Instant redeemedAt = Instant.now();</span>
 
     @Column(name = &quot;note&quot;, length = 500)
-<span class="nc" id="L45">    private String note;</span>
+    private String note;
 
 <span class="nc" id="L47">    public AymRedeemedVoucherEntity(UUID id, String contentId, String note) {</span>
 <span class="nc" id="L48">        this.id = id;</span>
@@ -50,4 +50,4 @@ public class AymRedeemedVoucherEntity {
 <span class="nc" id="L50">        this.note = note;</span>
 <span class="nc" id="L51">    }</span>
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

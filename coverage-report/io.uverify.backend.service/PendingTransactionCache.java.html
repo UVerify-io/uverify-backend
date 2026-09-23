@@ -227,12 +227,24 @@ public class PendingTransactionCache {
 <span class="fc" id="L227">        lockedWalletUtxos.clear();</span>
 <span class="fc" id="L228">    }</span>
 
+    /**
+     * Drops every pending entry and lock. Needed when the chain the cache was built
+     * against is replaced, for example after a devnet snapshot restore, because the
+     * locked inputs are unspent again while the entries would keep them unusable for
+     * the whole TTL.
+     */
+    public void clear() {
+<span class="fc" id="L237">        pendingStateUtxos.clear();</span>
+<span class="fc" id="L238">        lockedWalletUtxos.clear();</span>
+<span class="fc" id="L239">        lockedCollateralUtxos.clear();</span>
+<span class="fc" id="L240">    }</span>
+
     void clearCollateralLocks() {
-<span class="fc" id="L231">        lockedCollateralUtxos.clear();</span>
-<span class="fc" id="L232">    }</span>
+<span class="fc" id="L243">        lockedCollateralUtxos.clear();</span>
+<span class="fc" id="L244">    }</span>
 
     private String walletKey(String txHash, int index) {
-<span class="fc" id="L235">        return txHash + &quot;:&quot; + index;</span>
+<span class="fc" id="L247">        return txHash + &quot;:&quot; + index;</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

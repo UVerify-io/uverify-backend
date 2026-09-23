@@ -96,16 +96,16 @@ import java.util.Optional;
     // ── FHEAD (CertificateHead, alternative 0) ────────────────────────────────
 
     @Getter
-<span class="nc" id="L99">    @Setter</span>
-<span class="nc" id="L100">    @Builder</span>
-<span class="nc" id="L101">    @AllArgsConstructor</span>
-<span class="nc" id="L102">    @NoArgsConstructor</span>
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class FHead extends FractionizedDatum {
         /**
          * Raw bytes of the first node's key, or {@link Optional#empty()} for an empty list.
          */
-<span class="nc" id="L107">        private Optional&lt;byte[]&gt; next;</span>
-<span class="nc" id="L108">        private FractionizedConfig config;</span>
+        private Optional&lt;byte[]&gt; next;
+        private FractionizedConfig config;
 
         @Override
         public ConstrPlutusData toPlutusData() {
@@ -123,26 +123,26 @@ import java.util.Optional;
     // ── FNODE (CertificateNode, alternative 1) ────────────────────────────────
 
     @Getter
-<span class="nc" id="L126">    @Setter</span>
-<span class="nc" id="L127">    @Builder</span>
-<span class="nc" id="L128">    @AllArgsConstructor</span>
-<span class="nc" id="L129">    @NoArgsConstructor</span>
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class FNode extends FractionizedDatum {
         /** Raw bytes of this node's certificate hash key. */
-<span class="nc" id="L132">        private byte[] key;</span>
+        private byte[] key;
         /** Raw bytes of the successor key, or {@link Optional#empty()} for the last node. */
-<span class="nc" id="L134">        private Optional&lt;byte[]&gt; next;</span>
-<span class="nc" id="L135">        private long totalAmount;</span>
-<span class="nc" id="L136">        private long remainingAmount;</span>
+        private Optional&lt;byte[]&gt; next;
+        private long totalAmount;
+        private long remainingAmount;
         /** Raw payment key hashes; empty list means open access. */
-<span class="nc" id="L138">        private List&lt;byte[]&gt; claimants;</span>
+        private List&lt;byte[]&gt; claimants;
         /** Raw bytes of the fungible token asset name. */
-<span class="nc" id="L140">        private byte[] assetName;</span>
+        private byte[] assetName;
         /**
          * Maps to {@code FractionizedNodeStatus}: {@code TokensAvailable} (alt 0) = false,
          * {@code TokensExhausted} (alt 1) = true.
          */
-<span class="nc" id="L145">        private boolean exhausted;</span>
+        private boolean exhausted;
 
         @Override
         public ConstrPlutusData toPlutusData() {
@@ -185,4 +185,4 @@ import java.util.Optional;
         }
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

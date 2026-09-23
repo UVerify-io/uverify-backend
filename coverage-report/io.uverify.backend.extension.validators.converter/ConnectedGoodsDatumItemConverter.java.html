@@ -30,14 +30,14 @@ import java.util.Objects;
 
   public ConnectedGoodsDatumItem fromPlutusData(ConstrPlutusData constr) {
 <span class="fc" id="L32">    var obj = new ConnectedGoodsDatumItem();</span>
-<span class="fc" id="L33">    var data = constr.getData();</span>
+<span class="fc" id="L33">    var constrData = constr.getData();</span>
 
     //Field tokenName
-<span class="fc" id="L36">    var tokenName = deserializeBytesToString(((BytesPlutusData)data.getPlutusDataList().get(0)).getValue(), null);</span>
+<span class="fc" id="L36">    var tokenName = deserializeBytesToString(((BytesPlutusData)constrData.getPlutusDataList().get(0)).getValue(), null);</span>
 <span class="fc" id="L37">    obj.setTokenName(tokenName);</span>
 
     //Field password
-<span class="fc" id="L40">    var password = ((BytesPlutusData)data.getPlutusDataList().get(1)).getValue();</span>
+<span class="fc" id="L40">    var password = ((BytesPlutusData)constrData.getPlutusDataList().get(1)).getValue();</span>
 <span class="fc" id="L41">    obj.setPassword(password);</span>
 <span class="fc" id="L42">    return obj;</span>
   }
@@ -75,4 +75,4 @@ import java.util.Objects;
 <span class="nc" id="L75">    return deserialize(bytes);</span>
   }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

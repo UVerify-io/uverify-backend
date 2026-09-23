@@ -38,14 +38,14 @@ import java.util.List;
     // ── HEAD ─────────────────────────────────────────────────────────────────
 
     @Getter
-<span class="nc" id="L41">    @Setter</span>
-<span class="nc" id="L42">    @Builder</span>
-<span class="nc" id="L43">    @AllArgsConstructor</span>
-<span class="nc" id="L44">    @NoArgsConstructor</span>
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class Head extends TokenizableDatum {
         /** Hex-encoded key of the first node, or {@code null} for an empty list. */
-<span class="nc" id="L47">        private String next;</span>
-<span class="nc" id="L48">        private TokenizableConfig config;</span>
+        private String next;
+        private TokenizableConfig config;
 
         @Override
         public ConstrPlutusData toPlutusData() {
@@ -64,19 +64,19 @@ import java.util.List;
     // ── NODE ─────────────────────────────────────────────────────────────────
 
     @Getter
-<span class="nc" id="L67">    @Setter</span>
-<span class="nc" id="L68">    @Builder</span>
-<span class="nc" id="L69">    @AllArgsConstructor</span>
-<span class="nc" id="L70">    @NoArgsConstructor</span>
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class Node extends TokenizableDatum {
-<span class="nc" id="L72">        private String key;</span>
+        private String key;
         /** Hex-encoded key of the successor, or {@code null} for the last node. */
-<span class="nc" id="L74">        private String next;</span>
+        private String next;
         /** Hex-encoded payment key hash of the NFT owner. */
-<span class="nc" id="L76">        private String owner;</span>
+        private String owner;
         /** Hex-encoded base asset name (without any CIP-68 prefix). */
-<span class="nc" id="L78">        private String assetName;</span>
-<span class="nc" id="L79">        private boolean redeemed;</span>
+        private String assetName;
+        private boolean redeemed;
 
         @Override
         public ConstrPlutusData toPlutusData() {
@@ -146,4 +146,4 @@ import java.util.List;
         }
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

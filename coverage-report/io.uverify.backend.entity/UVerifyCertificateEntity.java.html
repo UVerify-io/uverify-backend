@@ -27,46 +27,46 @@ import java.util.Date;
 
 @Entity
 @Getter
-<span class="pc" id="L30">@Setter</span>
-<span class="pc" id="L31">@Builder</span>
-<span class="fc" id="L32">@NoArgsConstructor</span>
-<span class="fc" id="L33">@AllArgsConstructor</span>
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = &quot;uverify_certificate&quot;)
 public class UVerifyCertificateEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-<span class="nc" id="L38">    private Long id;</span>
+    private Long id;
 
     @Column(name = &quot;hash&quot;, nullable = false, length = 100)
-<span class="fc" id="L41">    private String hash;</span>
+    private String hash;
 
     @Column(name = &quot;payment_credential&quot;)
-<span class="fc" id="L44">    private String paymentCredential;</span>
+    private String paymentCredential;
 
     @Column(name = &quot;block_hash&quot;, nullable = false, length = 255)
-<span class="nc" id="L47">    private String blockHash;</span>
+    private String blockHash;
 
     @Column(name = &quot;block_number&quot;, nullable = false)
-<span class="nc" id="L50">    private Long blockNumber;</span>
+    private Long blockNumber;
 
     @Column(name = &quot;transaction_id&quot;, nullable = false, length = 255)
-<span class="nc" id="L53">    private String transactionId;</span>
+    private String transactionId;
 
     @Column(name = &quot;creation_time&quot;, nullable = false)
-<span class="nc" id="L56">    private Date creationTime;</span>
+    private Date creationTime;
 
     @Column(name = &quot;slot&quot;, nullable = false)
-<span class="fc" id="L59">    private Long slot;</span>
+    private Long slot;
 
     @Column(name = &quot;extra&quot;, nullable = false)
-<span class="fc" id="L62">    private String extra;</span>
+    private String extra;
 
     @Column(name = &quot;hash_algorithm&quot;, nullable = false, length = 100)
-<span class="nc" id="L65">    private String hashAlgorithm;</span>
+    private String hashAlgorithm;
 
     @ManyToOne
     @JoinColumn(name = &quot;state_datum_id&quot;)
-<span class="nc" id="L69">    private StateDatumEntity stateDatum;</span>
+    private StateDatumEntity stateDatum;
 
     public static UVerifyCertificateEntity fromUVerifyCertificate(UVerifyCertificate uVerifyCertificate) {
 <span class="fc" id="L72">        return UVerifyCertificateEntity.builder()</span>
@@ -78,4 +78,4 @@ public class UVerifyCertificateEntity {
 <span class="fc" id="L78">                .build();</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

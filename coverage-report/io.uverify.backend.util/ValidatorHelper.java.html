@@ -44,10 +44,10 @@ import static io.uverify.backend.util.ValidatorUtils.getProxyStateTokenName;
 @Getter
 <span class="fc" id="L45">@Slf4j</span>
 public class ValidatorHelper {
-<span class="nc" id="L47">    private final CardanoNetwork network;</span>
-<span class="nc" id="L48">    private final LibraryRepository libraryRepository;</span>
-<span class="fc" id="L49">    private String proxyTransactionHash;</span>
-<span class="fc" id="L50">    private Integer proxyOutputIndex;</span>
+    private final CardanoNetwork network;
+    private final LibraryRepository libraryRepository;
+    private String proxyTransactionHash;
+    private Integer proxyOutputIndex;
 
     @Autowired
     public ValidatorHelper(@Value(&quot;${proxy.transaction-hash}&quot;) String proxyTransactionHash,
@@ -154,4 +154,4 @@ public class ValidatorHelper {
 <span class="fc" id="L154">                .findFirst();</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
