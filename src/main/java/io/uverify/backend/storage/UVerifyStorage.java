@@ -28,6 +28,8 @@ import io.uverify.backend.extension.ExtensionManager;
 import io.uverify.backend.service.CardanoBlockchainService;
 import io.uverify.backend.service.FaucetService;
 import io.uverify.backend.util.ValidatorHelper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +60,9 @@ public class UVerifyStorage extends UtxoStorageImpl {
 
     @Autowired(required = false)
     private FaucetService faucetService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private String proxyContractAddress;
     private String proxyPolicyId;
@@ -91,6 +96,9 @@ public class UVerifyStorage extends UtxoStorageImpl {
         if (!allProcessedUtxos.isEmpty()) {
             super.saveUnspent(new ArrayList<>(allProcessedUtxos));
         }
+        // Same reason as in UVerifyScriptStorage: the surrounding block transaction does not
+        // flush the JPA persistence context on commit.
+        entityManager.flush();
     }
 
     private List<AddressUtxo> hasBeenProcessedByUVerifyProxy(List<AddressUtxo> addressUtxoList) {
