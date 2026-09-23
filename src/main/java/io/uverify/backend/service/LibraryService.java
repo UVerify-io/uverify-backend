@@ -156,8 +156,12 @@ public class LibraryService {
                         AddressProvider.getRewardAddress(script, network).getBytes()));
             }
             if (rewardAddresses.isEmpty()) {
+                // No deployment indexed yet. Do not cache this fallback, otherwise a
+                // deployment that arrives through the UTxO pipeline a moment later is
+                // never picked up and every withdrawal based state update is ignored.
                 rewardAddresses.add(HexUtil.encodeHexString(
-                        new Address(validatorHelper.getStateContractAddress()).getBytes()));
+                        AddressProvider.getRewardAddress(validatorHelper.getParameterizedUVerifyStateContract(), network).getBytes()));
+                return rewardAddresses;
             }
             stateContractRewardAddressCache = rewardAddresses;
         }
