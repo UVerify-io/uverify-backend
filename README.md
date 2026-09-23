@@ -26,7 +26,7 @@ The Spring Boot backend that powers [app.uverify.io](https://app.uverify.io). It
 
 ### Prerequisites
 
-- Java 21 or higher
+- Java 25 or higher
 - Maven 3.8+
 - Git
 - Docker (optional)
