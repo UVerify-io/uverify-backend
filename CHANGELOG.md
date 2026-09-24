@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.24.1](https://github.com/UVerify-io/uverify-backend/compare/v1.24.0...v1.24.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* do not cache the state contract reward address fallback ([6482f6d](https://github.com/UVerify-io/uverify-backend/commit/6482f6d4f58de7fa0275be0848179aa6d10e4ed0))
+* flush JPA changes made inside yaci-store block transactions ([b391671](https://github.com/UVerify-io/uverify-backend/commit/b391671521150204e3bfb6f15173ea259bca6813))
+
 ## [1.24.0](https://github.com/UVerify-io/uverify-backend/compare/v1.23.0...v1.24.0) (2026-09-18)
 
 
