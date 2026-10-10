@@ -20,13 +20,16 @@ package io.uverify.backend.extension.controller;
 
 import io.uverify.backend.extension.service.AymContentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.uverify.backend.extension.dto.aymvision.ChapterProgressRequest;
 import io.uverify.backend.extension.dto.aymvision.CompletionCertificate;
 import io.uverify.backend.extension.service.AymHandshakeService;
 import io.uverify.backend.extension.dto.aymvision.ContentItemDto;
 import io.uverify.backend.extension.dto.aymvision.ContentOwnershipDto;
 import io.uverify.backend.extension.dto.aymvision.CourseStateRequest;
+import io.uverify.backend.extension.entity.AymChapterProgressEntity;
 import io.uverify.backend.extension.exception.InvalidHandshakeException;
 import io.uverify.backend.extension.exception.ProfileNotFoundException;
+import io.uverify.backend.extension.repository.AymChapterProgressRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +37,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -49,13 +53,16 @@ public class AymContentController {
 
     private final AymHandshakeService handshakeService;
     private final AymContentService contentService;
+    private final AymChapterProgressRepository chapterProgressRepository;
     private final ObjectMapper objectMapper;
 
     public AymContentController(AymHandshakeService handshakeService,
                              AymContentService contentService,
+                             AymChapterProgressRepository chapterProgressRepository,
                              ObjectMapper objectMapper) {
         this.handshakeService = handshakeService;
         this.contentService = contentService;
+        this.chapterProgressRepository = chapterProgressRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -104,6 +111,46 @@ public class AymContentController {
             return ResponseEntity.status(401).body(e.getMessage());
         } catch (IOException e) {
             return ResponseEntity.badRequest().body("Could not read request body");
+        }
+    }
+
+    @PostMapping("/chapter-progress")
+    public ResponseEntity<?> reportChapterProgress(HttpServletRequest request) {
+        try {
+            byte[] rawBody = request.getInputStream().readAllBytes();
+            AymHandshakeService.HandshakeResult auth = verifyHandshake(request, rawBody);
+            ChapterProgressRequest body = objectMapper.readValue(rawBody, ChapterProgressRequest.class);
+            chapterProgressRepository
+                    .findByPublicKeyAndProfileIdAndCourseId(auth.publicKeyHex(), body.profileId(), body.courseId())
+                    .ifPresentOrElse(existing -> {
+                        if (body.chapterIndex() > existing.getChapterIndex()) {
+                            existing.setChapterIndex(body.chapterIndex());
+                            existing.setUpdatedAt(Instant.now());
+                            chapterProgressRepository.save(existing);
+                        }
+                    }, () -> chapterProgressRepository.save(
+                            new AymChapterProgressEntity(auth.publicKeyHex(), body.profileId(), body.courseId(), body.chapterIndex())));
+            return ResponseEntity.ok().build();
+        } catch (InvalidHandshakeException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body("Could not read request body");
+        }
+    }
+
+    @GetMapping("/chapter-progress")
+    public ResponseEntity<?> getChapterProgress(@RequestParam String profileId,
+                                                HttpServletRequest request) {
+        try {
+            AymHandshakeService.HandshakeResult auth = verifyHandshake(request, new byte[0]);
+            List<Map<String, Object>> result = chapterProgressRepository
+                    .findByPublicKeyAndProfileId(auth.publicKeyHex(), profileId)
+                    .stream()
+                    .map(e -> Map.<String, Object>of("courseId", e.getCourseId(), "chapterIndex", e.getChapterIndex()))
+                    .toList();
+            return ResponseEntity.ok(result);
+        } catch (InvalidHandshakeException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
         }
     }
 
