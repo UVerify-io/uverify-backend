@@ -56,6 +56,9 @@ public class UVerifyCredentialEntity {
     @Column(name = "keri_oobi", length = 500)
     private String keriOobi;
 
+    @Column(name = "keri_proof", length = 200)
+    private String keriProof;
+
     @Column(name = "keri_verified", nullable = false)
     @Builder.Default
     private boolean keriVerified = false;

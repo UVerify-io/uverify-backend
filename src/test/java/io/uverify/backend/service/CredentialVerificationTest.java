@@ -27,6 +27,7 @@ import io.uverify.backend.entity.UVerifyCredentialEntity;
 import io.uverify.backend.repository.CredentialRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,6 +39,7 @@ import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
@@ -49,12 +51,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
@@ -72,8 +76,14 @@ class CredentialVerificationTest {
 
     private static final String AID = "EKtQ1lymrnrh3qv5S18PBzQ7ukHGFJ7EXkH7B22XEMIL";
     private static final String PAYMENT_CREDENTIAL = "abcdef0123456789abcdef0123456789";
+    private static final String OTHER_PAYMENT_CREDENTIAL = "99999999999999999999999999999999";
+    private static final String PROOF = "0BDx3R1qKpZ8oVnbUeJ3nH9wT4sY7cLmA2fG6iE0dQ5kXjPzWv1uNrB8tSyMhC4gOaF7lI2eKqD9pR3sV6wY0zXcJ";
     private static final String AUTH_HASH = "deadbeef1234";
     private static final String VERIFIER_BASE = "http://mock-vlei";
+    private static final String AUTHORIZATION_URL = VERIFIER_BASE + "/authorizations/" + AID;
+    private static final String PROOF_URL = VERIFIER_BASE + "/request/verify/" + AID
+            + "?data=cardano:" + PAYMENT_CREDENTIAL + "&sig=" + PROOF;
+
     @Autowired
     private IdentityIndexerService identityIndexerService;
     @Autowired
@@ -93,99 +103,168 @@ class CredentialVerificationTest {
         cacheManager.getCache("vlei-verifier").clear();
     }
 
-    @Test
-    void verifier200_returnsTrue() {
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
-                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
-
-        assertTrue(identityIndexerService.checkVleiVerifier(AID));
-        mockServer.verify();
-    }
-
-    // ── checkVleiVerifier ──────────────────────────────────────────────────────
+    // ── verifyKeriBinding ─────────────────────────────────────────────────────
 
     @Test
-    void verifier404_returnsFalse() {
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
-                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+    void authorizedAidWithValidProof_returnsTrue() {
+        expectAuthorized();
+        expectProofAccepted();
 
-        assertFalse(identityIndexerService.checkVleiVerifier(AID));
+        assertTrue(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF));
         mockServer.verify();
     }
 
     @Test
-    void verifier401_returnsFalse() {
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
+    void authorizedAidWithRejectedProof_returnsFalse() {
+        expectAuthorized();
+        mockServer.expect(once(), requestTo(PROOF_URL))
+                .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
 
-        assertFalse(identityIndexerService.checkVleiVerifier(AID));
+        assertFalse(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF));
+        mockServer.verify();
+    }
+
+    @Test
+    void proofForAnotherWallet_isCheckedAgainstTheAnnouncingWallet() {
+        String otherWalletProofUrl = VERIFIER_BASE + "/request/verify/" + AID
+                + "?data=cardano:" + OTHER_PAYMENT_CREDENTIAL + "&sig=" + PROOF;
+        expectAuthorized();
+        mockServer.expect(once(), requestTo(otherWalletProofUrl))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+
+        assertFalse(identityIndexerService.verifyKeriBinding(AID, OTHER_PAYMENT_CREDENTIAL, PROOF));
+        mockServer.verify();
+    }
+
+    @Test
+    void unauthorizedAid_returnsFalseWithoutCheckingProof() {
+        mockServer.expect(once(), requestTo(AUTHORIZATION_URL))
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+
+        assertFalse(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF));
+        mockServer.verify();
+    }
+
+    @Test
+    void missingProof_returnsFalseWithoutHttpRequest() {
+        assertFalse(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, null));
+        assertFalse(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, ""));
+        mockServer.verify();
+    }
+
+    @Test
+    void aidThatIsNotQb64_returnsFalseWithoutHttpRequest() {
+        assertFalse(identityIndexerService.verifyKeriBinding("../presentations/x", PAYMENT_CREDENTIAL, PROOF));
         mockServer.verify();
     }
 
     @Test
     void verifierUnreachable_returnsFalseWithoutThrowing() {
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
+        mockServer.expect(once(), requestTo(AUTHORIZATION_URL))
                 .andRespond(withException(new java.io.IOException("connection refused")));
 
-        assertFalse(identityIndexerService.checkVleiVerifier(AID));
+        assertFalse(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF));
         mockServer.verify();
-    }
-
-    @Test
-    void secondCallHitsCache_onlyOneHttpRequest() {
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
-                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
-
-        assertTrue(identityIndexerService.checkVleiVerifier(AID));
-        assertTrue(identityIndexerService.checkVleiVerifier(AID)); // cache hit
-
-        mockServer.verify(); // would fail if two requests were made
     }
 
     // ── caching ───────────────────────────────────────────────────────────────
 
     @Test
-    void differentAids_eachGetSeparateHttpRequest() {
-        String aid2 = "EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao";
+    void secondCallHitsCache_onlyOneVerification() {
+        expectAuthorized();
+        expectProofAccepted();
 
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
-                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + aid2))
-                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+        assertTrue(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF));
+        assertTrue(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF)); // cache hit
 
-        assertTrue(identityIndexerService.checkVleiVerifier(AID));
-        assertFalse(identityIndexerService.checkVleiVerifier(aid2));
+        mockServer.verify(); // would fail if more requests were made
+    }
+
+    @Test
+    void cachedResultForOneWallet_isNotReusedForAnotherWallet() {
+        expectAuthorized();
+        expectProofAccepted();
+        assertTrue(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF));
+        mockServer.verify();
+
+        mockServer.reset();
+        expectAuthorized();
+        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/request/verify/" + AID
+                        + "?data=cardano:" + OTHER_PAYMENT_CREDENTIAL + "&sig=" + PROOF))
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+
+        assertFalse(identityIndexerService.verifyKeriBinding(AID, OTHER_PAYMENT_CREDENTIAL, PROOF));
+        mockServer.verify();
+    }
+
+    // ── AUTH indexing ─────────────────────────────────────────────────────────
+
+    @Test
+    void authCert_storesProofAndVerificationResult() {
+        given(credentialRepository.findByAuthCertHash(AUTH_HASH)).willReturn(Optional.empty());
+        expectAuthorized();
+        expectProofAccepted();
+
+        identityIndexerService.processNewCertificates(List.of(
+                certificate(AUTH_HASH, PAYMENT_CREDENTIAL, authExtra(PROOF))));
+
+        ArgumentCaptor<UVerifyCredentialEntity> saved = ArgumentCaptor.forClass(UVerifyCredentialEntity.class);
+        verify(credentialRepository).save(saved.capture());
+        assertEquals(PROOF, saved.getValue().getKeriProof());
+        assertTrue(saved.getValue().isKeriVerified());
         mockServer.verify();
     }
 
     @Test
-    void revokeCert_evictsCacheEntryForAid() {
-        // Seed the cache via the proxy (goes through @Cacheable)
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
-                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
-        identityIndexerService.checkVleiVerifier(AID);
+    void authCertWithoutProof_isIndexedUnverified() {
+        given(credentialRepository.findByAuthCertHash(AUTH_HASH)).willReturn(Optional.empty());
 
-        // Confirm it is cached — second call should NOT hit the server
-        identityIndexerService.checkVleiVerifier(AID);
+        identityIndexerService.processNewCertificates(List.of(
+                certificate(AUTH_HASH, PAYMENT_CREDENTIAL, authExtra(null))));
+
+        ArgumentCaptor<UVerifyCredentialEntity> saved = ArgumentCaptor.forClass(UVerifyCredentialEntity.class);
+        verify(credentialRepository).save(saved.capture());
+        assertFalse(saved.getValue().isKeriVerified());
+        mockServer.verify(); // no requests recorded
+    }
+
+    @Test
+    void authCertReusingAnotherWalletsHash_isSkipped() {
+        given(credentialRepository.findByAuthCertHash(AUTH_HASH)).willReturn(Optional.of(credentialEntity(AUTH_HASH)));
+
+        identityIndexerService.processNewCertificates(List.of(
+                certificate(AUTH_HASH, OTHER_PAYMENT_CREDENTIAL, authExtra(PROOF))));
+
+        verify(credentialRepository, never()).save(any());
+        mockServer.verify(); // no requests recorded
+    }
+
+    // ── REVOKE indexing ───────────────────────────────────────────────────────
+
+    @Test
+    void revokeCert_evictsCacheEntryForBinding() {
+        expectAuthorized();
+        expectProofAccepted();
+        identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF);
+        identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF); // cached
         mockServer.verify();
 
-        // Process a REVOKE cert through the real code path
         UVerifyCredentialEntity entity = credentialEntity(AUTH_HASH);
         given(credentialRepository.findByAuthCertHash(AUTH_HASH)).willReturn(Optional.of(entity));
         given(credentialRepository.save(any())).willReturn(entity);
 
         identityIndexerService.processNewCertificates(List.of(
-                revokeCert("{\"uverify_template_id\":\"IdentityAuth\",\"t\":\"REVOKE\",\"ct\":\"identity\",\"th\":\"" + AUTH_HASH + "\"}")
-        ));
+                certificate("revoke-" + System.nanoTime(), PAYMENT_CREDENTIAL, revokeExtra("uverify_template_id"))));
 
-        // After eviction the next call must reach the server again.
         // MockRestServiceServer forbids new expectations after requests have been made,
         // so reset before the second phase.
         mockServer.reset();
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
-                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        expectAuthorized();
+        expectProofAccepted();
 
-        assertTrue(identityIndexerService.checkVleiVerifier(AID));
+        assertTrue(identityIndexerService.verifyKeriBinding(AID, PAYMENT_CREDENTIAL, PROOF));
         mockServer.verify();
     }
 
@@ -196,21 +275,32 @@ class CredentialVerificationTest {
         given(credentialRepository.save(any())).willReturn(entity);
 
         identityIndexerService.processNewCertificates(List.of(
-                revokeCert("{\"uv_tid\":\"IdentityAuth\",\"t\":\"REVOKE\",\"ct\":\"identity\",\"th\":\"" + AUTH_HASH + "\"}")
-        ));
+                certificate("revoke-" + System.nanoTime(), PAYMENT_CREDENTIAL, revokeExtra("uv_tid"))));
 
         verify(credentialRepository).save(any());
+        assertTrue(entity.isRevoked());
     }
 
-    // ── cache eviction on revoke ───────────────────────────────────────────────
+    @Test
+    void revokeCertFromAnotherWallet_isIgnored() {
+        UVerifyCredentialEntity entity = credentialEntity(AUTH_HASH);
+        given(credentialRepository.findByAuthCertHash(AUTH_HASH)).willReturn(Optional.of(entity));
+
+        identityIndexerService.processNewCertificates(List.of(
+                certificate("revoke-" + System.nanoTime(), OTHER_PAYMENT_CREDENTIAL, revokeExtra("uverify_template_id"))));
+
+        verify(credentialRepository, never()).save(any());
+        assertFalse(entity.isRevoked());
+    }
+
+    // ── CredentialService integration ─────────────────────────────────────────
 
     @Test
     void resolveCredential_callsLiveVerifierAndReturnsResult() {
         given(credentialRepository.findByPaymentCredentialAndCredentialTypeAndRevokedFalse(PAYMENT_CREDENTIAL, "identity"))
                 .willReturn(Optional.of(credentialEntity(AUTH_HASH)));
-
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
-                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        expectAuthorized();
+        expectProofAccepted();
 
         Optional<CredentialResponse> result = credentialService.resolveCredential(PAYMENT_CREDENTIAL, "identity");
 
@@ -219,16 +309,26 @@ class CredentialVerificationTest {
         mockServer.verify();
     }
 
-    // ── CredentialService integration ─────────────────────────────────────────
+    @Test
+    void resolveCredential_withoutProof_isUnverifiedEvenForAuthorizedAid() {
+        UVerifyCredentialEntity entity = credentialEntity(AUTH_HASH);
+        entity.setKeriProof(null);
+        given(credentialRepository.findByPaymentCredentialAndCredentialTypeAndRevokedFalse(PAYMENT_CREDENTIAL, "identity"))
+                .willReturn(Optional.of(entity));
+
+        Optional<CredentialResponse> result = credentialService.resolveCredential(PAYMENT_CREDENTIAL, "identity");
+
+        assertTrue(result.isPresent());
+        assertFalse(result.get().isKeriVerified());
+        mockServer.verify(); // no requests recorded
+    }
 
     @Test
     void resolveCredential_cacheServesSubsequentCalls() {
         given(credentialRepository.findByPaymentCredentialAndCredentialTypeAndRevokedFalse(PAYMENT_CREDENTIAL, "identity"))
                 .willReturn(Optional.of(credentialEntity(AUTH_HASH)));
-
-        // Only one HTTP call expected even though resolve is called twice
-        mockServer.expect(once(), requestTo(VERIFIER_BASE + "/authorizations/" + AID))
-                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        expectAuthorized();
+        expectProofAccepted();
 
         credentialService.resolveCredential(PAYMENT_CREDENTIAL, "identity");
         credentialService.resolveCredential(PAYMENT_CREDENTIAL, "identity");
@@ -252,20 +352,49 @@ class CredentialVerificationTest {
 
         assertTrue(result.isPresent());
         assertTrue(result.get().isKeriVerified()); // from DB, not live check
-        verify(unconfigured, never()).checkVleiVerifier(any());
+        verify(unconfigured, never()).verifyKeriBinding(any(), any(), any());
     }
 
     @Test
-    void resolveByHash_doesNotCallVerifier() {
+    void resolveByHash_activeCredential_callsLiveVerifier() {
+        given(credentialRepository.findByAuthCertHash(AUTH_HASH)).willReturn(Optional.of(credentialEntity(AUTH_HASH)));
+        expectAuthorized();
+        expectProofAccepted();
+
+        Optional<CredentialResponse> result = credentialService.resolveCredentialByHash(AUTH_HASH);
+
+        assertTrue(result.isPresent());
+        assertTrue(result.get().isKeriVerified());
+        mockServer.verify();
+    }
+
+    @Test
+    void resolveByHash_revokedCredential_doesNotCallVerifier() {
         UVerifyCredentialEntity entity = credentialEntity(AUTH_HASH);
+        entity.setRevoked(true);
         entity.setKeriVerified(true);
         given(credentialRepository.findByAuthCertHash(AUTH_HASH)).willReturn(Optional.of(entity));
 
         Optional<CredentialResponse> result = credentialService.resolveCredentialByHash(AUTH_HASH);
 
         assertTrue(result.isPresent());
+        assertFalse(result.get().isActive());
         assertTrue(result.get().isKeriVerified()); // plain DB read, no HTTP
         mockServer.verify(); // no requests recorded
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    private void expectAuthorized() {
+        mockServer.expect(once(), requestTo(AUTHORIZATION_URL))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+    }
+
+    private void expectProofAccepted() {
+        mockServer.expect(once(), requestTo(PROOF_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.ACCEPTED));
     }
 
     private UVerifyCredentialEntity credentialEntity(String authHash) {
@@ -274,16 +403,25 @@ class CredentialVerificationTest {
                 .paymentCredential(PAYMENT_CREDENTIAL)
                 .credentialType("identity")
                 .keriAid(AID)
+                .keriProof(PROOF)
                 .build();
     }
 
-    // ── helpers ───────────────────────────────────────────────────────────────
+    private String authExtra(String proof) {
+        String proofField = proof == null ? "" : ",\"p\":\"" + proof + "\"";
+        return "{\"uverify_template_id\":\"IdentityAuth\",\"t\":\"AUTH\",\"ct\":\"identity\",\"i\":\"" + AID + "\""
+                + proofField + "}";
+    }
 
-    private UVerifyCertificateEntity revokeCert(String extra) {
+    private String revokeExtra(String templateIdKey) {
+        return "{\"" + templateIdKey + "\":\"IdentityAuth\",\"t\":\"REVOKE\",\"ct\":\"identity\",\"th\":\"" + AUTH_HASH + "\"}";
+    }
+
+    private UVerifyCertificateEntity certificate(String hash, String paymentCredential, String extra) {
         return UVerifyCertificateEntity.builder()
-                .hash("cert-" + System.nanoTime())
+                .hash(hash)
                 .extra(extra)
-                .paymentCredential(PAYMENT_CREDENTIAL)
+                .paymentCredential(paymentCredential)
                 .transactionId("tx-hash")
                 .slot(200L)
                 .build();
