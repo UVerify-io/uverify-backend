@@ -79,7 +79,7 @@ Uverify Backend,io.uverify.backend.extension.service,FractionizedCertificateServ
 Uverify Backend,io.uverify.backend.extension.service,AymHandshakeService.HandshakeResult,6,0,0,0,1,0,1,0,1,0
 Uverify Backend,io.uverify.backend.extension.service,AymContentService,174,0,6,0,35,0,10,0,7,0
 Uverify Backend,io.uverify.backend.extension.service,TadamonGoogleSheetsService,552,0,38,0,125,0,30,0,11,0
-Uverify Backend,io.uverify.backend.extension.service,ConnectedGoodsService,88,1155,14,30,19,247,14,35,2,25
+Uverify Backend,io.uverify.backend.extension.service,ConnectedGoodsService,110,1133,16,28,23,243,15,34,2,25
 Uverify Backend,io.uverify.backend.extension.service,TokenizableCertificateService.PredecessorResult,46,0,0,0,12,0,7,0,7,0
 Uverify Backend,io.uverify.backend.extension.service,NoOpAymCertificateIssuer,13,0,0,0,4,0,3,0,3,0
 Uverify Backend,io.uverify.backend.extension.service,AymMaterialService,129,0,14,0,26,0,12,0,5,0
