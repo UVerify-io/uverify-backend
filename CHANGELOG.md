@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.24.2](https://github.com/UVerify-io/uverify-backend/compare/v1.24.1...v1.24.2) (2026-10-22)
+
+
+### Bug Fixes
+
+* restart the devnet sync when the indexer stalls in tests ([7b45fce](https://github.com/UVerify-io/uverify-backend/commit/7b45fcea4ac8a7a8a3d148e419cf7b3c9e2f0b20))
+* restart the devnet sync when the indexer stalls in tests ([8ae0e17](https://github.com/UVerify-io/uverify-backend/commit/8ae0e17e7ab3162b56d5fa033e6dbe5bd925215b))
+* verify the KERI binding proof before reporting keriVerified ([dc160ac](https://github.com/UVerify-io/uverify-backend/commit/dc160ac93b8815dd57e407f64b0e99265166d08a))
+* verify the KERI binding proof before reporting keriVerified ([f7c0188](https://github.com/UVerify-io/uverify-backend/commit/f7c0188f3493a934b7697acdb63d980817702fac))
+
 ## [1.24.1](https://github.com/UVerify-io/uverify-backend/compare/v1.24.0...v1.24.1) (2026-09-23)
 
 
