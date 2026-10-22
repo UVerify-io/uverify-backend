@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.24.3](https://github.com/UVerify-io/uverify-backend/compare/v1.24.2...v1.24.3) (2026-10-22)
+
+
+### Bug Fixes
+
+* build the docker image with JDK 25 ([9ece22b](https://github.com/UVerify-io/uverify-backend/commit/9ece22b98e7e694f90f64262b50977215531b889))
+* build the docker image with JDK 25 ([5bc1dd0](https://github.com/UVerify-io/uverify-backend/commit/5bc1dd0113f7ef45c06629701c04436d28005460))
+
 ## [1.24.2](https://github.com/UVerify-io/uverify-backend/compare/v1.24.1...v1.24.2) (2026-10-22)
 
 
