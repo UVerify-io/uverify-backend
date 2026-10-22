@@ -59,6 +59,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +77,7 @@ import static io.uverify.backend.devnet.YanoDevnet.TEST_BOOTSTRAP_TOKEN;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CardanoBlockchainTest {
     private static final Duration INDEXING_TIMEOUT = Duration.ofSeconds(90);
+    private static final Duration SYNC_STALL_TIMEOUT = Duration.ofSeconds(15);
 
     protected final YanoDevnet devnet = YanoDevnet.get();
     protected final BackendService backendService = devnet.backendService();
@@ -312,10 +314,45 @@ public class CardanoBlockchainTest {
     }
 
     protected void awaitIndexed(java.util.concurrent.Callable<Boolean> condition, String description) {
+        SyncProgress progress = new SyncProgress();
         Awaitility.await("indexing of " + description)
                 .atMost(INDEXING_TIMEOUT)
                 .pollInterval(Duration.ofMillis(250))
-                .until(condition);
+                .until(() -> {
+                    if (condition.call()) {
+                        return true;
+                    }
+                    restartSyncIfStalled(progress);
+                    return false;
+                });
+    }
+
+    /**
+     * Under CPU contention (2-core CI runners) the embedded yaci-store sync occasionally
+     * stops requesting blocks from the Yano devnet and never recovers on its own. The
+     * devnet produces a block every 200ms, so a cursor that does not move for
+     * {@link #SYNC_STALL_TIMEOUT} means the sync is stuck. A restart resumes from the cursor.
+     */
+    private void restartSyncIfStalled(SyncProgress progress) {
+        long cursorBlock = cursorService.getCursor().map(Cursor::getBlock).orElse(-1L);
+        Instant now = Instant.now();
+        if (cursorBlock != progress.cursorBlock) {
+            progress.cursorBlock = cursorBlock;
+            progress.since = now;
+            return;
+        }
+        if (Duration.between(progress.since, now).compareTo(SYNC_STALL_TIMEOUT) < 0) {
+            return;
+        }
+        log.warn("Indexer has not moved past block {} for {}, restarting the sync", cursorBlock, SYNC_STALL_TIMEOUT);
+        startService.stop();
+        startService.start();
+        progress.since = now;
+    }
+
+    private static final class SyncProgress {
+        private long cursorBlock = Long.MIN_VALUE;
+        private Instant since = Instant.now();
     }
 
     /**
