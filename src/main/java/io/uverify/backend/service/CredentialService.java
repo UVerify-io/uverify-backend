@@ -57,18 +57,15 @@ public class CredentialService {
     public Optional<CredentialResponse> resolveCredentialByHash(String authHash) {
         return credentialRepository
                 .findByAuthCertHash(authHash)
-                .map(this::toResponseFromDB);
-    }
-
-    private CredentialResponse toResponseFromDB(UVerifyCredentialEntity entity) {
-        return buildResponse(entity, entity.isKeriVerified());
+                .map(entity -> entity.isRevoked() ? buildResponse(entity, entity.isKeriVerified()) : toResponse(entity));
     }
 
     private CredentialResponse toResponse(UVerifyCredentialEntity entity) {
         // When the vLEI Verifier is configured, check live (Caffeine-cached, evicted on
         // index/revoke events). Falls back to the DB value when not configured.
         boolean keriVerified = identityIndexerService.isVleiVerifierConfigured()
-                ? identityIndexerService.checkVleiVerifier(entity.getKeriAid())
+                ? identityIndexerService.verifyKeriBinding(
+                        entity.getKeriAid(), entity.getPaymentCredential(), entity.getKeriProof())
                 : entity.isKeriVerified();
         return buildResponse(entity, keriVerified);
     }

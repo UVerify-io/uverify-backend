@@ -34,11 +34,14 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -49,6 +52,8 @@ public class IdentityIndexerService {
     private static final String IDENTITY_AUTH_TEMPLATE_ID = "IdentityAuth";
 
     private static final String CACHE_NAME = "vlei-verifier";
+    private static final String BINDING_PAYLOAD_PREFIX = "cardano:";
+    private static final Pattern QB64 = Pattern.compile("^[A-Za-z0-9_-]{1,200}$");
 
     private final CredentialRepository credentialRepository;
     private final ObjectMapper objectMapper;
@@ -108,7 +113,7 @@ public class IdentityIndexerService {
         if (TYPE_AUTH.equals(type)) {
             handleAuthCert(cert, fields);
         } else if (TYPE_REVOKE.equals(type)) {
-            handleRevokeCert(fields);
+            handleRevokeCert(cert, fields);
         }
     }
 
@@ -117,32 +122,40 @@ public class IdentityIndexerService {
         String aid = (String) fields.get("i");
         String schema = (String) fields.get("s");
         String oobi = (String) fields.get("o");
+        String proof = (String) fields.get("p");
 
         if (credentialType == null || credentialType.isBlank()) {
             log.warn("AUTH cert hash={} missing ct field, skipping", cert.getHash());
             return;
         }
 
-        // Direct call (bypasses proxy/cache) — we want a live result at indexing time.
-        boolean verified = checkVleiVerifier(aid);
-        // Pre-populate the cache so the first GET does not make a second live call.
-        Cache cache = cacheManager.getCache(CACHE_NAME);
-        if (cache != null && aid != null) {
-            cache.put(aid, verified);
-        }
-
         Optional<UVerifyCredentialEntity> existing = credentialRepository.findByAuthCertHash(cert.getHash());
-        UVerifyCredentialEntity entity;
-        entity = existing.orElseGet(() -> UVerifyCredentialEntity.builder()
+        // Certificate hashes are not unique across wallets. Without this check a second wallet could
+        // reuse a hash and have its proof verified against the first wallet's stored binding.
+        if (existing.isPresent() && !existing.get().getPaymentCredential().equals(cert.getPaymentCredential())) {
+            log.warn("AUTH cert hash={} is already registered for another wallet, skipping", cert.getHash());
+            return;
+        }
+        UVerifyCredentialEntity entity = existing.orElseGet(() -> UVerifyCredentialEntity.builder()
                 .authCertHash(cert.getHash())
                 .paymentCredential(cert.getPaymentCredential())
                 .credentialType(credentialType)
                 .keriAid(aid)
                 .keriSchema(schema)
                 .keriOobi(oobi)
+                .keriProof(proof)
                 .txHash(cert.getTransactionId())
                 .slot(cert.getSlot())
                 .build());
+
+        // Direct call (bypasses proxy/cache) — we want a live result at indexing time.
+        boolean verified = verifyKeriBinding(entity.getKeriAid(), entity.getPaymentCredential(), entity.getKeriProof());
+        // Pre-populate the cache so the first GET does not make a second live call.
+        Cache cache = cacheManager.getCache(CACHE_NAME);
+        if (cache != null && hasBindingFields(entity.getKeriAid(), entity.getKeriProof())) {
+            cache.put(bindingCacheKey(entity), verified);
+        }
+
         entity.setKeriVerified(verified);
         entity.setLastVerifiedAt(Instant.now());
         credentialRepository.save(entity);
@@ -151,7 +164,7 @@ public class IdentityIndexerService {
                 cert.getPaymentCredential(), verified);
     }
 
-    private void handleRevokeCert(Map<String, Object> fields) {
+    private void handleRevokeCert(UVerifyCertificateEntity cert, Map<String, Object> fields) {
         String targetHash = (String) fields.get("th");
         if (targetHash == null || targetHash.isBlank()) {
             log.warn("REVOKE cert missing th field, skipping");
@@ -159,30 +172,73 @@ public class IdentityIndexerService {
         }
         credentialRepository.findByAuthCertHash(targetHash).ifPresentOrElse(
                 entity -> {
+                    if (!entity.getPaymentCredential().equals(cert.getPaymentCredential())) {
+                        log.warn("REVOKE cert hash={} from wallet={} targets a credential of another wallet, skipping",
+                                cert.getHash(), cert.getPaymentCredential());
+                        return;
+                    }
                     entity.setRevoked(true);
                     credentialRepository.save(entity);
                     // Evict so the next GET re-checks the vLEI Verifier live.
                     Cache cache = cacheManager.getCache(CACHE_NAME);
-                    if (cache != null && entity.getKeriAid() != null) {
-                        cache.evict(entity.getKeriAid());
+                    if (cache != null && hasBindingFields(entity.getKeriAid(), entity.getKeriProof())) {
+                        cache.evict(bindingCacheKey(entity));
                     }
                     log.info("Revoked credential authHash={}", targetHash);
                 },
                 () -> log.warn("REVOKE target authHash={} not found in credential table", targetHash));
     }
 
-    @Cacheable(value = "vlei-verifier", key = "#aid", condition = "#aid != null && !#aid.isEmpty()")
-    public boolean checkVleiVerifier(String aid) {
-        if (vleiVerifierUrl == null || vleiVerifierUrl.isBlank() || aid == null || aid.isBlank()) {
+    /**
+     * True when the vLEI Verifier authorizes {@code aid} and {@code proof} is a valid signature of
+     * {@code cardano:<paymentCredential>} by the AID's current signing key. The proof is what ties
+     * the AID to the wallet. Without it any wallet could announce an authorized AID as its own.
+     */
+    @Cacheable(value = CACHE_NAME, key = "#aid + '|' + #paymentCredential + '|' + #proof",
+            condition = "#aid != null && !#aid.isBlank() && #proof != null && !#proof.isBlank()")
+    public boolean verifyKeriBinding(String aid, String paymentCredential, String proof) {
+        if (!isVleiVerifierConfigured()) {
             log.debug("vLEI Verifier URL not configured, skipping verification");
             return false;
         }
-        try {
-            var response = restTemplate.getForEntity(vleiVerifierUrl + "/authorizations/" + aid, Map.class);
-            return response.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            log.warn("vLEI Verifier check failed for aid={}: {}", aid, e.getMessage());
+        if (!hasBindingFields(aid, proof) || !QB64.matcher(aid).matches() || !QB64.matcher(proof).matches()) {
             return false;
         }
+        return isAuthorized(aid) && isBindingProofValid(aid, paymentCredential, proof);
+    }
+
+    private boolean isAuthorized(String aid) {
+        URI uri = UriComponentsBuilder.fromUriString(vleiVerifierUrl)
+                .pathSegment("authorizations", aid)
+                .build().encode().toUri();
+        try {
+            return restTemplate.getForEntity(uri, Void.class).getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.warn("vLEI Verifier authorization check failed for aid={}: {}", aid, e.getMessage());
+            return false;
+        }
+    }
+
+    // The verifier checks the non-indexed signature against the key state of the AID's KEL.
+    private boolean isBindingProofValid(String aid, String paymentCredential, String proof) {
+        URI uri = UriComponentsBuilder.fromUriString(vleiVerifierUrl)
+                .pathSegment("request", "verify", aid)
+                .queryParam("data", BINDING_PAYLOAD_PREFIX + paymentCredential)
+                .queryParam("sig", proof)
+                .build().encode().toUri();
+        try {
+            return restTemplate.postForEntity(uri, null, Void.class).getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.warn("vLEI Verifier rejected the binding proof for aid={}: {}", aid, e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean hasBindingFields(String aid, String proof) {
+        return aid != null && !aid.isBlank() && proof != null && !proof.isBlank();
+    }
+
+    private static String bindingCacheKey(UVerifyCredentialEntity entity) {
+        return entity.getKeriAid() + "|" + entity.getPaymentCredential() + "|" + entity.getKeriProof();
     }
 }
