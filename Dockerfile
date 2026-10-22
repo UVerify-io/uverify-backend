@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM eclipse-temurin:25-jdk-jammy AS build
 
 WORKDIR /app
 COPY pom.xml /app/pom.xml
@@ -9,7 +9,7 @@ RUN ./mvnw verify clean --fail-never
 COPY . /app
 RUN ./mvnw clean package -DskipTests
 
-FROM eclipse-temurin:21-jre-jammy AS runtime
+FROM eclipse-temurin:25-jre-jammy AS runtime
 WORKDIR /app
 COPY --from=build /app/target/*.jar /app/uverify-backend.jar
 
