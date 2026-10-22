@@ -22,7 +22,7 @@ Uverify Backend,io.uverify.backend.service,UVerifyTransactionService,206,57,15,1
 Uverify Backend,io.uverify.backend.service,BootstrapDatumService,9,108,3,5,3,27,4,9,1,8
 Uverify Backend,io.uverify.backend.service,FaucetService,79,284,11,19,29,73,11,13,0,9
 Uverify Backend,io.uverify.backend.service,ShortLinkService,11,80,0,4,4,23,0,9,0,7
-Uverify Backend,io.uverify.backend.service,IdentityIndexerService,149,177,23,19,38,43,22,11,3,9
+Uverify Backend,io.uverify.backend.service,IdentityIndexerService,31,463,18,42,11,96,19,27,1,15
 Uverify Backend,io.uverify.backend.service,IdentityIndexerService.new TypeReference() {...},0,8,0,0,0,1,0,1,0,1
 Uverify Backend,io.uverify.backend.service,PrepareCollateralService,23,4,0,0,9,1,1,1,1,1
 Uverify Backend,io.uverify.backend.service,PendingTransactionCache.PendingEntry,0,14,0,0,0,2,0,2,0,2
@@ -32,7 +32,7 @@ Uverify Backend,io.uverify.backend.service,CredentialService.new TypeReference()
 Uverify Backend,io.uverify.backend.service,UVerifyCertificateService,11,33,0,0,2,11,2,4,2,4
 Uverify Backend,io.uverify.backend.service,StateDatumService,60,127,13,7,13,36,11,11,1,11
 Uverify Backend,io.uverify.backend.service,PendingTransactionCache,22,488,14,36,5,104,14,31,0,20
-Uverify Backend,io.uverify.backend.service,CredentialService,35,75,4,4,9,23,4,7,1,6
+Uverify Backend,io.uverify.backend.service,CredentialService,34,87,3,7,9,23,3,9,1,6
 Uverify Backend,io.uverify.backend.service,UserStateService,208,226,24,12,50,58,23,10,5,10
 Uverify Backend,io.uverify.backend.service,StatisticsService,0,200,0,15,0,55,0,20,0,11
 Uverify Backend,io.uverify.backend.enums,BuildStatusCode,0,57,0,0,0,10,0,1,0,1
@@ -121,6 +121,10 @@ Uverify Backend,io.uverify.backend.filter,RateLimitFilter,37,80,4,6,9,20,5,6,1,5
 Uverify Backend,io.uverify.backend.entity,StateDatumEntity,0,58,0,0,0,19,0,3,0,3
 Uverify Backend,io.uverify.backend.entity,BootstrapDatumEntity,18,87,0,0,4,29,1,5,1,5
 Uverify Backend,io.uverify.backend.entity,UVerifyCertificateEntity,0,18,0,0,0,7,0,1,0,1
+Uverify Backend,io.uverify.backend.extension.validators.fractionized,FractionizedDatum,174,0,10,0,37,0,10,0,5,0
+Uverify Backend,io.uverify.backend.extension.validators.fractionized,FractionizedConfig,84,0,0,0,18,0,5,0,5,0
+Uverify Backend,io.uverify.backend.extension.validators.fractionized,FractionizedDatum.FHead,45,0,2,0,5,0,3,0,2,0
+Uverify Backend,io.uverify.backend.extension.validators.fractionized,FractionizedDatum.FNode,148,0,6,0,23,0,8,0,5,0
 Uverify Backend,io.uverify.backend.extension.dto.aymvision,CourseStateRequest,12,0,0,0,1,0,1,0,1,0
 Uverify Backend,io.uverify.backend.extension.dto.aymvision,CompletionCertificate,9,0,0,0,1,0,1,0,1,0
 Uverify Backend,io.uverify.backend.extension.dto.aymvision,CheckoutInfo,15,0,0,0,1,0,1,0,1,0
@@ -129,10 +133,6 @@ Uverify Backend,io.uverify.backend.extension.dto.aymvision,ChallengeRequest,6,0,
 Uverify Backend,io.uverify.backend.extension.dto.aymvision,ContentOwnershipDto,6,0,0,0,1,0,1,0,1,0
 Uverify Backend,io.uverify.backend.extension.dto.aymvision,ContentItemDto,22,0,0,0,2,0,2,0,2,0
 Uverify Backend,io.uverify.backend.extension.dto.aymvision,RedeemResult,9,0,0,0,1,0,1,0,1,0
-Uverify Backend,io.uverify.backend.extension.validators.fractionized,FractionizedDatum,174,0,10,0,37,0,10,0,5,0
-Uverify Backend,io.uverify.backend.extension.validators.fractionized,FractionizedConfig,84,0,0,0,18,0,5,0,5,0
-Uverify Backend,io.uverify.backend.extension.validators.fractionized,FractionizedDatum.FHead,45,0,2,0,5,0,3,0,2,0
-Uverify Backend,io.uverify.backend.extension.validators.fractionized,FractionizedDatum.FNode,148,0,6,0,23,0,8,0,5,0
 Uverify Backend,io.uverify.backend.exception,UVerifyTransactionException,0,10,0,0,0,4,0,2,0,2
 Uverify Backend,io.uverify.backend.extension.dto,SocialHub,311,135,12,6,70,40,13,19,6,17
 Uverify Backend,io.uverify.backend.util,UpdatePolicyResolver.PolicyMode,1,57,0,2,1,5,0,3,0,2

@@ -34,13 +34,16 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
-<span class="fc" id="L43">@Slf4j</span>
+<span class="fc" id="L46">@Slf4j</span>
 @Service
 public class IdentityIndexerService {
 
@@ -49,6 +52,8 @@ public class IdentityIndexerService {
     private static final String IDENTITY_AUTH_TEMPLATE_ID = &quot;IdentityAuth&quot;;
 
     private static final String CACHE_NAME = &quot;vlei-verifier&quot;;
+    private static final String BINDING_PAYLOAD_PREFIX = &quot;cardano:&quot;;
+<span class="fc" id="L56">    private static final Pattern QB64 = Pattern.compile(&quot;^[A-Za-z0-9_-]{1,200}$&quot;);</span>
 
     private final CredentialRepository credentialRepository;
     private final ObjectMapper objectMapper;
@@ -61,129 +66,180 @@ public class IdentityIndexerService {
     public IdentityIndexerService(CredentialRepository credentialRepository,
                                   ObjectMapper objectMapper,
                                   CacheManager cacheManager,
-<span class="fc" id="L64">                                  @Qualifier(&quot;vleiVerifierRestTemplate&quot;) RestTemplate restTemplate) {</span>
-<span class="fc" id="L65">        this.credentialRepository = credentialRepository;</span>
-<span class="fc" id="L66">        this.objectMapper = objectMapper;</span>
-<span class="fc" id="L67">        this.cacheManager = cacheManager;</span>
-<span class="fc" id="L68">        this.restTemplate = restTemplate;</span>
-<span class="fc" id="L69">    }</span>
+<span class="fc" id="L69">                                  @Qualifier(&quot;vleiVerifierRestTemplate&quot;) RestTemplate restTemplate) {</span>
+<span class="fc" id="L70">        this.credentialRepository = credentialRepository;</span>
+<span class="fc" id="L71">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L72">        this.cacheManager = cacheManager;</span>
+<span class="fc" id="L73">        this.restTemplate = restTemplate;</span>
+<span class="fc" id="L74">    }</span>
 
     @Async
     public void processNewCertificates(List&lt;UVerifyCertificateEntity&gt; certs) {
-<span class="fc bfc" id="L73" title="All 2 branches covered.">        for (UVerifyCertificateEntity cert : certs) {</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">        for (UVerifyCertificateEntity cert : certs) {</span>
             try {
-<span class="fc" id="L75">                processOneCertificate(cert);</span>
-<span class="nc" id="L76">            } catch (Exception e) {</span>
-<span class="nc" id="L77">                log.warn(&quot;Failed to index credential for cert hash={}: {}&quot;, cert.getHash(), e.getMessage());</span>
-<span class="fc" id="L78">            }</span>
-<span class="fc" id="L79">        }</span>
-<span class="fc" id="L80">    }</span>
+<span class="fc" id="L80">                processOneCertificate(cert);</span>
+<span class="nc" id="L81">            } catch (Exception e) {</span>
+<span class="nc" id="L82">                log.warn(&quot;Failed to index credential for cert hash={}: {}&quot;, cert.getHash(), e.getMessage());</span>
+<span class="fc" id="L83">            }</span>
+<span class="fc" id="L84">        }</span>
+<span class="fc" id="L85">    }</span>
 
     @Transactional
     public void deleteCredentialsAfterSlot(long slot) {
-<span class="fc" id="L84">        credentialRepository.deleteAllAfterSlot(slot);</span>
-<span class="fc" id="L85">    }</span>
+<span class="fc" id="L89">        credentialRepository.deleteAllAfterSlot(slot);</span>
+<span class="fc" id="L90">    }</span>
 
     public boolean isVleiVerifierConfigured() {
-<span class="pc bpc" id="L88" title="2 of 4 branches missed.">        return vleiVerifierUrl != null &amp;&amp; !vleiVerifierUrl.isBlank();</span>
+<span class="pc bpc" id="L93" title="2 of 4 branches missed.">        return vleiVerifierUrl != null &amp;&amp; !vleiVerifierUrl.isBlank();</span>
     }
 
     private void processOneCertificate(UVerifyCertificateEntity cert) throws Exception {
-<span class="fc" id="L92">        String extra = cert.getExtra();</span>
-<span class="pc bpc" id="L93" title="2 of 4 branches missed.">        if (extra == null || extra.isBlank()) {</span>
-<span class="nc" id="L94">            return;</span>
+<span class="fc" id="L97">        String extra = cert.getExtra();</span>
+<span class="pc bpc" id="L98" title="2 of 4 branches missed.">        if (extra == null || extra.isBlank()) {</span>
+<span class="nc" id="L99">            return;</span>
         }
-<span class="fc" id="L96">        Map&lt;String, Object&gt; fields = objectMapper.readValue(extra, new TypeReference&lt;&gt;() {</span>
+<span class="fc" id="L101">        Map&lt;String, Object&gt; fields = objectMapper.readValue(extra, new TypeReference&lt;&gt;() {</span>
         });
 
-<span class="fc bfc" id="L99" title="All 2 branches covered.">        if (!IDENTITY_AUTH_TEMPLATE_ID.equals(TemplateIdResolver.resolveTemplateId(fields))) {</span>
-<span class="fc" id="L100">            return;</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (!IDENTITY_AUTH_TEMPLATE_ID.equals(TemplateIdResolver.resolveTemplateId(fields))) {</span>
+<span class="fc" id="L105">            return;</span>
         }
 
-<span class="fc" id="L103">        String type = (String) fields.get(&quot;t&quot;);</span>
-<span class="pc bpc" id="L104" title="1 of 2 branches missed.">        if (type == null) {</span>
-<span class="nc" id="L105">            return;</span>
+<span class="fc" id="L108">        String type = (String) fields.get(&quot;t&quot;);</span>
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">        if (type == null) {</span>
+<span class="nc" id="L110">            return;</span>
         }
 
-<span class="pc bpc" id="L108" title="1 of 2 branches missed.">        if (TYPE_AUTH.equals(type)) {</span>
-<span class="nc" id="L109">            handleAuthCert(cert, fields);</span>
-<span class="pc bpc" id="L110" title="1 of 2 branches missed.">        } else if (TYPE_REVOKE.equals(type)) {</span>
-<span class="fc" id="L111">            handleRevokeCert(fields);</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        if (TYPE_AUTH.equals(type)) {</span>
+<span class="fc" id="L114">            handleAuthCert(cert, fields);</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">        } else if (TYPE_REVOKE.equals(type)) {</span>
+<span class="fc" id="L116">            handleRevokeCert(cert, fields);</span>
         }
-<span class="fc" id="L113">    }</span>
+<span class="fc" id="L118">    }</span>
 
     private void handleAuthCert(UVerifyCertificateEntity cert, Map&lt;String, Object&gt; fields) {
-<span class="nc" id="L116">        String credentialType = (String) fields.get(&quot;ct&quot;);</span>
-<span class="nc" id="L117">        String aid = (String) fields.get(&quot;i&quot;);</span>
-<span class="nc" id="L118">        String schema = (String) fields.get(&quot;s&quot;);</span>
-<span class="nc" id="L119">        String oobi = (String) fields.get(&quot;o&quot;);</span>
+<span class="fc" id="L121">        String credentialType = (String) fields.get(&quot;ct&quot;);</span>
+<span class="fc" id="L122">        String aid = (String) fields.get(&quot;i&quot;);</span>
+<span class="fc" id="L123">        String schema = (String) fields.get(&quot;s&quot;);</span>
+<span class="fc" id="L124">        String oobi = (String) fields.get(&quot;o&quot;);</span>
+<span class="fc" id="L125">        String proof = (String) fields.get(&quot;p&quot;);</span>
 
-<span class="nc bnc" id="L121" title="All 4 branches missed.">        if (credentialType == null || credentialType.isBlank()) {</span>
-<span class="nc" id="L122">            log.warn(&quot;AUTH cert hash={} missing ct field, skipping&quot;, cert.getHash());</span>
-<span class="nc" id="L123">            return;</span>
+<span class="pc bpc" id="L127" title="2 of 4 branches missed.">        if (credentialType == null || credentialType.isBlank()) {</span>
+<span class="nc" id="L128">            log.warn(&quot;AUTH cert hash={} missing ct field, skipping&quot;, cert.getHash());</span>
+<span class="nc" id="L129">            return;</span>
         }
+
+<span class="fc" id="L132">        Optional&lt;UVerifyCredentialEntity&gt; existing = credentialRepository.findByAuthCertHash(cert.getHash());</span>
+        // Certificate hashes are not unique across wallets. Without this check a second wallet could
+        // reuse a hash and have its proof verified against the first wallet's stored binding.
+<span class="pc bpc" id="L135" title="1 of 4 branches missed.">        if (existing.isPresent() &amp;&amp; !existing.get().getPaymentCredential().equals(cert.getPaymentCredential())) {</span>
+<span class="fc" id="L136">            log.warn(&quot;AUTH cert hash={} is already registered for another wallet, skipping&quot;, cert.getHash());</span>
+<span class="fc" id="L137">            return;</span>
+        }
+<span class="fc" id="L139">        UVerifyCredentialEntity entity = existing.orElseGet(() -&gt; UVerifyCredentialEntity.builder()</span>
+<span class="fc" id="L140">                .authCertHash(cert.getHash())</span>
+<span class="fc" id="L141">                .paymentCredential(cert.getPaymentCredential())</span>
+<span class="fc" id="L142">                .credentialType(credentialType)</span>
+<span class="fc" id="L143">                .keriAid(aid)</span>
+<span class="fc" id="L144">                .keriSchema(schema)</span>
+<span class="fc" id="L145">                .keriOobi(oobi)</span>
+<span class="fc" id="L146">                .keriProof(proof)</span>
+<span class="fc" id="L147">                .txHash(cert.getTransactionId())</span>
+<span class="fc" id="L148">                .slot(cert.getSlot())</span>
+<span class="fc" id="L149">                .build());</span>
 
         // Direct call (bypasses proxy/cache) — we want a live result at indexing time.
-<span class="nc" id="L127">        boolean verified = checkVleiVerifier(aid);</span>
+<span class="fc" id="L152">        boolean verified = verifyKeriBinding(entity.getKeriAid(), entity.getPaymentCredential(), entity.getKeriProof());</span>
         // Pre-populate the cache so the first GET does not make a second live call.
-<span class="nc" id="L129">        Cache cache = cacheManager.getCache(CACHE_NAME);</span>
-<span class="nc bnc" id="L130" title="All 4 branches missed.">        if (cache != null &amp;&amp; aid != null) {</span>
-<span class="nc" id="L131">            cache.put(aid, verified);</span>
+<span class="fc" id="L154">        Cache cache = cacheManager.getCache(CACHE_NAME);</span>
+<span class="pc bpc" id="L155" title="1 of 4 branches missed.">        if (cache != null &amp;&amp; hasBindingFields(entity.getKeriAid(), entity.getKeriProof())) {</span>
+<span class="fc" id="L156">            cache.put(bindingCacheKey(entity), verified);</span>
         }
 
-<span class="nc" id="L134">        Optional&lt;UVerifyCredentialEntity&gt; existing = credentialRepository.findByAuthCertHash(cert.getHash());</span>
-        UVerifyCredentialEntity entity;
-<span class="nc" id="L136">        entity = existing.orElseGet(() -&gt; UVerifyCredentialEntity.builder()</span>
-<span class="nc" id="L137">                .authCertHash(cert.getHash())</span>
-<span class="nc" id="L138">                .paymentCredential(cert.getPaymentCredential())</span>
-<span class="nc" id="L139">                .credentialType(credentialType)</span>
-<span class="nc" id="L140">                .keriAid(aid)</span>
-<span class="nc" id="L141">                .keriSchema(schema)</span>
-<span class="nc" id="L142">                .keriOobi(oobi)</span>
-<span class="nc" id="L143">                .txHash(cert.getTransactionId())</span>
-<span class="nc" id="L144">                .slot(cert.getSlot())</span>
-<span class="nc" id="L145">                .build());</span>
-<span class="nc" id="L146">        entity.setKeriVerified(verified);</span>
-<span class="nc" id="L147">        entity.setLastVerifiedAt(Instant.now());</span>
-<span class="nc" id="L148">        credentialRepository.save(entity);</span>
+<span class="fc" id="L159">        entity.setKeriVerified(verified);</span>
+<span class="fc" id="L160">        entity.setLastVerifiedAt(Instant.now());</span>
+<span class="fc" id="L161">        credentialRepository.save(entity);</span>
 
-<span class="nc" id="L150">        log.info(&quot;Indexed credential type={} for wallet={}, keriVerified={}&quot;, credentialType,</span>
-<span class="nc" id="L151">                cert.getPaymentCredential(), verified);</span>
-<span class="nc" id="L152">    }</span>
+<span class="fc" id="L163">        log.info(&quot;Indexed credential type={} for wallet={}, keriVerified={}&quot;, credentialType,</span>
+<span class="fc" id="L164">                cert.getPaymentCredential(), verified);</span>
+<span class="fc" id="L165">    }</span>
 
-    private void handleRevokeCert(Map&lt;String, Object&gt; fields) {
-<span class="fc" id="L155">        String targetHash = (String) fields.get(&quot;th&quot;);</span>
-<span class="pc bpc" id="L156" title="2 of 4 branches missed.">        if (targetHash == null || targetHash.isBlank()) {</span>
-<span class="nc" id="L157">            log.warn(&quot;REVOKE cert missing th field, skipping&quot;);</span>
-<span class="nc" id="L158">            return;</span>
+    private void handleRevokeCert(UVerifyCertificateEntity cert, Map&lt;String, Object&gt; fields) {
+<span class="fc" id="L168">        String targetHash = (String) fields.get(&quot;th&quot;);</span>
+<span class="pc bpc" id="L169" title="2 of 4 branches missed.">        if (targetHash == null || targetHash.isBlank()) {</span>
+<span class="nc" id="L170">            log.warn(&quot;REVOKE cert missing th field, skipping&quot;);</span>
+<span class="nc" id="L171">            return;</span>
         }
-<span class="fc" id="L160">        credentialRepository.findByAuthCertHash(targetHash).ifPresentOrElse(</span>
+<span class="fc" id="L173">        credentialRepository.findByAuthCertHash(targetHash).ifPresentOrElse(</span>
                 entity -&gt; {
-<span class="fc" id="L162">                    entity.setRevoked(true);</span>
-<span class="fc" id="L163">                    credentialRepository.save(entity);</span>
-                    // Evict so the next GET re-checks the vLEI Verifier live.
-<span class="fc" id="L165">                    Cache cache = cacheManager.getCache(CACHE_NAME);</span>
-<span class="pc bpc" id="L166" title="2 of 4 branches missed.">                    if (cache != null &amp;&amp; entity.getKeriAid() != null) {</span>
-<span class="fc" id="L167">                        cache.evict(entity.getKeriAid());</span>
+<span class="fc bfc" id="L175" title="All 2 branches covered.">                    if (!entity.getPaymentCredential().equals(cert.getPaymentCredential())) {</span>
+<span class="fc" id="L176">                        log.warn(&quot;REVOKE cert hash={} from wallet={} targets a credential of another wallet, skipping&quot;,</span>
+<span class="fc" id="L177">                                cert.getHash(), cert.getPaymentCredential());</span>
+<span class="fc" id="L178">                        return;</span>
                     }
-<span class="fc" id="L169">                    log.info(&quot;Revoked credential authHash={}&quot;, targetHash);</span>
-<span class="fc" id="L170">                },</span>
-<span class="nc" id="L171">                () -&gt; log.warn(&quot;REVOKE target authHash={} not found in credential table&quot;, targetHash));</span>
-<span class="fc" id="L172">    }</span>
+<span class="fc" id="L180">                    entity.setRevoked(true);</span>
+<span class="fc" id="L181">                    credentialRepository.save(entity);</span>
+                    // Evict so the next GET re-checks the vLEI Verifier live.
+<span class="fc" id="L183">                    Cache cache = cacheManager.getCache(CACHE_NAME);</span>
+<span class="pc bpc" id="L184" title="2 of 4 branches missed.">                    if (cache != null &amp;&amp; hasBindingFields(entity.getKeriAid(), entity.getKeriProof())) {</span>
+<span class="fc" id="L185">                        cache.evict(bindingCacheKey(entity));</span>
+                    }
+<span class="fc" id="L187">                    log.info(&quot;Revoked credential authHash={}&quot;, targetHash);</span>
+<span class="fc" id="L188">                },</span>
+<span class="nc" id="L189">                () -&gt; log.warn(&quot;REVOKE target authHash={} not found in credential table&quot;, targetHash));</span>
+<span class="fc" id="L190">    }</span>
 
-    @Cacheable(value = &quot;vlei-verifier&quot;, key = &quot;#aid&quot;, condition = &quot;#aid != null &amp;&amp; !#aid.isEmpty()&quot;)
-    public boolean checkVleiVerifier(String aid) {
-<span class="pc bpc" id="L176" title="4 of 8 branches missed.">        if (vleiVerifierUrl == null || vleiVerifierUrl.isBlank() || aid == null || aid.isBlank()) {</span>
-<span class="nc" id="L177">            log.debug(&quot;vLEI Verifier URL not configured, skipping verification&quot;);</span>
-<span class="nc" id="L178">            return false;</span>
+    /**
+     * True when the vLEI Verifier authorizes {@code aid} and {@code proof} is a valid signature of
+     * {@code cardano:&lt;paymentCredential&gt;} by the AID's current signing key. The proof is what ties
+     * the AID to the wallet. Without it any wallet could announce an authorized AID as its own.
+     */
+    @Cacheable(value = CACHE_NAME, key = &quot;#aid + '|' + #paymentCredential + '|' + #proof&quot;,
+            condition = &quot;#aid != null &amp;&amp; !#aid.isBlank() &amp;&amp; #proof != null &amp;&amp; !#proof.isBlank()&quot;)
+    public boolean verifyKeriBinding(String aid, String paymentCredential, String proof) {
+<span class="pc bpc" id="L200" title="1 of 2 branches missed.">        if (!isVleiVerifierConfigured()) {</span>
+<span class="nc" id="L201">            log.debug(&quot;vLEI Verifier URL not configured, skipping verification&quot;);</span>
+<span class="nc" id="L202">            return false;</span>
         }
+<span class="pc bpc" id="L204" title="1 of 6 branches missed.">        if (!hasBindingFields(aid, proof) || !QB64.matcher(aid).matches() || !QB64.matcher(proof).matches()) {</span>
+<span class="fc" id="L205">            return false;</span>
+        }
+<span class="fc bfc" id="L207" title="All 4 branches covered.">        return isAuthorized(aid) &amp;&amp; isBindingProofValid(aid, paymentCredential, proof);</span>
+    }
+
+    private boolean isAuthorized(String aid) {
+<span class="fc" id="L211">        URI uri = UriComponentsBuilder.fromUriString(vleiVerifierUrl)</span>
+<span class="fc" id="L212">                .pathSegment(&quot;authorizations&quot;, aid)</span>
+<span class="fc" id="L213">                .build().encode().toUri();</span>
         try {
-<span class="fc" id="L181">            var response = restTemplate.getForEntity(vleiVerifierUrl + &quot;/authorizations/&quot; + aid, Map.class);</span>
-<span class="fc" id="L182">            return response.getStatusCode().is2xxSuccessful();</span>
-<span class="fc" id="L183">        } catch (Exception e) {</span>
-<span class="fc" id="L184">            log.warn(&quot;vLEI Verifier check failed for aid={}: {}&quot;, aid, e.getMessage());</span>
-<span class="fc" id="L185">            return false;</span>
+<span class="fc" id="L215">            return restTemplate.getForEntity(uri, Void.class).getStatusCode().is2xxSuccessful();</span>
+<span class="fc" id="L216">        } catch (Exception e) {</span>
+<span class="fc" id="L217">            log.warn(&quot;vLEI Verifier authorization check failed for aid={}: {}&quot;, aid, e.getMessage());</span>
+<span class="fc" id="L218">            return false;</span>
         }
+    }
+
+    // The verifier checks the non-indexed signature against the key state of the AID's KEL.
+    private boolean isBindingProofValid(String aid, String paymentCredential, String proof) {
+<span class="fc" id="L224">        URI uri = UriComponentsBuilder.fromUriString(vleiVerifierUrl)</span>
+<span class="fc" id="L225">                .pathSegment(&quot;request&quot;, &quot;verify&quot;, aid)</span>
+<span class="fc" id="L226">                .queryParam(&quot;data&quot;, BINDING_PAYLOAD_PREFIX + paymentCredential)</span>
+<span class="fc" id="L227">                .queryParam(&quot;sig&quot;, proof)</span>
+<span class="fc" id="L228">                .build().encode().toUri();</span>
+        try {
+<span class="fc" id="L230">            return restTemplate.postForEntity(uri, null, Void.class).getStatusCode().is2xxSuccessful();</span>
+<span class="fc" id="L231">        } catch (Exception e) {</span>
+<span class="fc" id="L232">            log.warn(&quot;vLEI Verifier rejected the binding proof for aid={}: {}&quot;, aid, e.getMessage());</span>
+<span class="fc" id="L233">            return false;</span>
+        }
+    }
+
+    private static boolean hasBindingFields(String aid, String proof) {
+<span class="pc bpc" id="L238" title="2 of 8 branches missed.">        return aid != null &amp;&amp; !aid.isBlank() &amp;&amp; proof != null &amp;&amp; !proof.isBlank();</span>
+    }
+
+    private static String bindingCacheKey(UVerifyCredentialEntity entity) {
+<span class="fc" id="L242">        return entity.getKeriAid() + &quot;|&quot; + entity.getPaymentCredential() + &quot;|&quot; + entity.getKeriProof();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
